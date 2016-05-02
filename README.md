@@ -1,0 +1,2 @@
+# igv-snapshoter
+
