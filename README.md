@@ -1,2 +1,2 @@
-# igv-snapshoter
+# TE-bkpAssembler
 
