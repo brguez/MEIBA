@@ -35,6 +35,9 @@ Execute  for one dataset (sample).
 	-i	<TXT>			TraFiC TE somatic insertion calls for a given sample.		
 
 	-f	<FASTA>			Fasta containing TE insertions supporting reads. 
+
+	-g 	<GENOME>		Reference genome (RG). Please make sure you provide the same RG version you used to run TraFiC. 
+					Also, make sure the same chromosome naming conventions are used.
 	
 	-s	<STRING>		Sample id. Output file will be named accordingly.	
 		
@@ -55,7 +58,7 @@ help
 ################################
 function getoptions {
 
-while getopts ":i:f:s:k:o:h" opt "$@"; 
+while getopts ":i:f:g:s:k:o:h" opt "$@"; 
 do
    case $opt in   	
       
@@ -73,7 +76,14 @@ do
               fasta=$OPTARG
 	  fi
 	  ;;
-      
+
+      g)
+	  if [ -n "$OPTARG" ];
+	  then
+              genome=$OPTARG
+	  fi
+	  ;;      
+
       s)
 	  if [ -n "$OPTARG" ];
 	  then
@@ -193,7 +203,8 @@ fi
 ## ~~~~~~~~~~~~~~~~~~~
 
 if [[ ! -e $input ]]; then log "The TraFiC TE insertion calls file does not exist. Mandatory argument -i\n" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -e $fasta ]]; then log "The fasta with the TE insertion supporting reads does not exist. Mandatory argument -e" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -e $fasta ]]; then log "The TE insertion supporting reads fasta file does not exist. Mandatory argument -f" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -e $genome ]]; then log "The reference genome fasta file does not not exist. Mandatory argument -g" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ $sampleId == "" ]]; then log "The sample id is not provided. Mandatory argument -s\n" "ERROR" >&2; usageDoc; exit -1; fi
 
 
@@ -229,8 +240,8 @@ binDir=$rootDir/bin
 ## Output files directories
 fastaDir=$outDir/Fasta
 contigsDir=$outDir/Contigs
-contigsDir=$outDir/Contigs
 assemblyLogsDir=$contigsDir/logs
+blatDir=$outDir/Blat
 
 # 5. Programs/Scripts
 ######################
@@ -249,6 +260,7 @@ printf "  %-34s %s\n\n" "TE-BkpAssembler $version"
 printf "  %-34s %s\n" "***** MANDATORY ARGUMENTS *****"
 printf "  %-34s %s\n" "input:" "$input"
 printf "  %-34s %s\n" "fasta:" "$fasta"
+printf "  %-34s %s\n" "genome:" "$genome"
 printf "  %-34s %s\n\n" "sampleId:" "$sampleId"
 printf "  %-34s %s\n" "***** OPTIONAL ARGUMENTS *****"
 printf "  %-34s %s\n" "K-mer length:" "$kmerLen"
@@ -279,13 +291,17 @@ if [[ ! -d $fastaDir ]]; then mkdir $fastaDir; fi
 if [[ ! -d $contigsDir ]]; then mkdir $contigsDir; fi
 if [[ ! -d $assemblyLogsDir ]]; then mkdir $assemblyLogsDir; fi
 
+# Contigs alignment with Blat:
+if [[ ! -d $blatDir ]]; then mkdir $blatDir; fi
+
+
 # 1) Produces for each TE insertion two fasta (one for read pairs supporting + cluster and another one for read pairs supporting - cluster)
 ############################################################################################################################################
 # These fasta files will be used to assemble the 5' and 3' TE insertion breakpoint sequences 
 #############################################################################################
 # Each fasta will be named according to this convention: 
 ########################################################
-# - ${sampleId}:${family}:${chr}_${beg}_${end}:${orientation}.txt
+# - ${fastaDir}/${sampleId}:${family}:${chr}_${beg}_${end}:${orientation}.fa
 # where:
 # 	- sampleId: identifier to name log, intermediate and output files
 #	- family: TE family (L1, ALU, SVA...)
@@ -301,16 +317,24 @@ run "python $CLUSTERS2FASTA $input $fasta --outDir $fastaDir > $logFile" "$ECHO"
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
-# 2) Assemble the 5' and 3' TE insertion breakpoints with velvet. 
-#################################################################
-# An independent assembly is performed for each insertion breakpoint
-#####################################################################
-# output: 
-############
+
+# 2) Assemble the 5' and 3' TE insertion breakpoints with velvet. An independent assembly is performed for each insertion breakpoint 
+######################################################################################################################################
+# It will produce a fasta containing the assembled contigs for each cluster insertion
+######################################################################################
+# Fasta naming convention:
+########################### 
+# - ${contigsDir}/${sampleId}:${family}:${chr}_${beg}_${end}:${orientation}.contigs.fa
+# where:
+# 	- sampleId: identifier to name log, intermediate and output files
+#	- family: TE family (L1, ALU, SVA...)
+#	- chr: insertion chromosome
+# 	- beg: insertion beginning
+#	- end: insertion end
+#	- orientation: cluster (+ or -)
 
 step="BKP-ASSEMBLY"
 startTime=$(date +%s)
-
 printHeader "Assembling the 5' and 3' TE insertion breakpoints with velvet"  
 
 ls $fastaDir | grep '.*fa' | while read bkpFasta; 
@@ -325,15 +349,55 @@ do
 	log "2. Breakpoint assembly with velvet\n" $step
 	run "$VELVETG $contigsDir -exp_cov auto -cov_cutoff auto >> $logFile" "$ECHO"
 	log "3. Rename output files\n" $step
-	run "mv ${contigsDir}/Log ${contigsDir}/logs/${bkpId}.log" "$ECHO"
+	run "mv ${contigsDir}/Log $assemblyLogsDir/${bkpId}.log" "$ECHO"
 	run "mv ${contigsDir}/contigs.fa ${contigsDir}/${bkpId}.contigs.fa" "$ECHO"
 	log "4. Cleaning\n" $step
 	run "rm ${contigsDir}/Sequences ${contigsDir}/Roadmaps ${contigsDir}/PreGraph ${contigsDir}/stats.txt ${contigsDir}/LastGraph ${contigsDir}/Graph2" "$ECHO"
 done
 
+endTime=$(date +%s)
+printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
+
+
+# 3) Align the assembled bkp contigs into the reference genome with blat
+#########################################################################
+
+
+allContigsPath=${blatDir}/"allContigs.fa"
+echo -n "" > $allContigsPath
+blatPath=${blatDir}/"allContigs.psl"
+
+step="BLAT"
+startTime=$(date +%s)
+printHeader "Aligning the assembled bkp contigs into the reference genome with blat"  
+
+## 3.1 Pool all the fasta in a single one
+# Ouput:
+
+log "1. Producing a single fasta with the contigs from all insertions\n" $step
+ls $fastaDir | grep '.*fa' | while read bkpFasta; 
+do 	
+	bkpId=${bkpFasta%.fa}	
+	contigPath=${contigsDir}/${bkpId}".contigs.fa"
+	
+	log "** ${bkpId} breakpoint **\n" $step		
+	awk -v bkpId=$bkpId '! /^>/{row=$0; print $0} /^>/{sub(/>/, "", $1); row=">"bkpId"::"$1; print row;}' $contigPath >> $allContigsPath
+done 
+
+## 3.2 Align the contigs with Blat into the reference genome and consensus L1 sequence
+log "2. Align the contigs with Blat into the reference genome (and consensus L1 sequence)\n" $step
+run "blat -t=dna -q=dna -maxIntron=0 -minScore=20 -out=psl -noHead $genome $allContigsPath $blatPath  >> $logFile" "$ECHO"
+
+## 3.3 Split blat output in a single file per insertion and cluster
+log "3. Split blat output in a single file per insertion and cluster\n" $step
+awk -v OFS="\t" -v outDir=${blatDir} '{split($10,id,"::"); $10=id[2]; outFile=outDir"/"id[1]".psl"; print $0 >> outFile; close(outFile)}' $blatPath
+
+endTime=$(date +%s)
+printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
+
 
 ######################
-# 3) CLEANUP AND END #
+# 4) CLEANUP AND END #
 ######################
 
 end=$(date +%s)
