@@ -386,7 +386,7 @@ done
 
 ## 3.2 Align the contigs with Blat into the reference genome and consensus L1 sequence
 log "2. Align the contigs with Blat into the reference genome (and consensus L1 sequence)\n" $step
-run "blat -t=dna -q=dna -maxIntron=0 -minScore=20 -out=psl -noHead $genome $allContigsPath $blatPath  >> $logFile" "$ECHO"
+run "blat -t=dna -q=dna -minScore=20 -out=psl -noHead $genome $allContigsPath $blatPath  >> $logFile" "$ECHO"
 
 ## 3.3 Split blat output in a single file per insertion and cluster
 log "3. Split blat output in a single file per insertion and cluster\n" $step
