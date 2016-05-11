@@ -88,7 +88,7 @@ for line in insertions:
     line = line.split("\t")
     chrPlus = line[0]
     begPlus = line[1]
-    endPlus = line[2]
+    endPlus = int(line[2]) + 100 # Done because this coordinate is the beginning of the read. So, I need to sum the readlength. I need to add an input parameter to specify the read length. 
     nbReadsPlus = line[3]
     familyPlus = line[4]
     readPairListPlus = line[5].split(",")
@@ -101,8 +101,8 @@ for line in insertions:
     
     ## Generate an insertion id for + and - clusters (insertion coordinates defined by the end 
     # of + cluster and beg of - cluster)    
-    insertionIdPlus = familyPlus + ":" + chrPlus + "_" + endPlus + "_" + begMinus + ":" + "+"
-    insertionIdMinus = familyMinus + ":" + chrMinus + "_" + endPlus + "_" + begMinus + ":" + "-"
+    insertionIdPlus = familyPlus + ":" + chrPlus + "_" + str(endPlus) + "_" + begMinus + ":" + "+"
+    insertionIdMinus = familyMinus + ":" + chrMinus + "_" + str(endPlus) + "_" + begMinus + ":" + "-"
     
     ## Inizialize dictionary keys for + and - clusters if they do not exist
     # a) + Cluster
