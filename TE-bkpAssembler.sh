@@ -301,9 +301,8 @@ if [[ ! -d $blatDir ]]; then mkdir $blatDir; fi
 #############################################################################################
 # Each fasta will be named according to this convention: 
 ########################################################
-# - ${fastaDir}/${sampleId}:${family}:${chr}_${beg}_${end}:${orientation}.fa
+# - ${fastaDir}/${family}:${chr}_${beg}_${end}:${orientation}.fa
 # where:
-# 	- sampleId: identifier to name log, intermediate and output files
 #	- family: TE family (L1, ALU, SVA...)
 #	- chr: insertion chromosome
 # 	- beg: insertion beginning
@@ -324,9 +323,8 @@ printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs
 ######################################################################################
 # Fasta naming convention:
 ########################### 
-# - ${contigsDir}/${sampleId}:${family}:${chr}_${beg}_${end}:${orientation}.contigs.fa
+# - ${contigsDir}/${family}:${chr}_${beg}_${end}:${orientation}.contigs.fa
 # where:
-# 	- sampleId: identifier to name log, intermediate and output files
 #	- family: TE family (L1, ALU, SVA...)
 #	- chr: insertion chromosome
 # 	- beg: insertion beginning
@@ -361,11 +359,19 @@ printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs
 
 # 3) Align the assembled bkp contigs into the reference genome with blat
 #########################################################################
-
-
-allContigsPath=${blatDir}/"allContigs.fa"
-echo -n "" > $allContigsPath
-blatPath=${blatDir}/"allContigs.psl"
+# It will produce a psl with the blat alignments for the assembled contigs 
+###########################################################################
+# for each cluster insertion
+##############################
+# Psl naming convention:
+########################### 
+# - ${blatPath}/${family}:${chr}_${beg}_${end}:${orientation}.psl
+# where:
+#	- family: TE family (L1, ALU, SVA...)
+#	- chr: insertion chromosome
+# 	- beg: insertion beginning
+#	- end: insertion end
+#	- orientation: cluster (+ or -)
 
 step="BLAT"
 startTime=$(date +%s)
@@ -373,6 +379,10 @@ printHeader "Aligning the assembled bkp contigs into the reference genome with b
 
 ## 3.1 Pool all the fasta in a single one
 # Ouput:
+# - allContigsPath=${blatDir}/"allContigs.fa"
+
+allContigsPath=${blatDir}/"allContigs.fa"
+echo -n "" > $allContigsPath
 
 log "1. Producing a single fasta with the contigs from all insertions\n" $step
 ls $fastaDir | grep '.*fa' | while read bkpFasta; 
@@ -385,15 +395,54 @@ do
 done 
 
 ## 3.2 Align the contigs with Blat into the reference genome and consensus L1 sequence
+# Ouput:
+# - blatPath=${blatDir}/"allContigs.psl"
+
+blatPath=${blatDir}/"allContigs.psl"
+
 log "2. Align the contigs with Blat into the reference genome (and consensus L1 sequence)\n" $step
 run "blat -t=dna -q=dna -minScore=20 -out=psl -noHead $genome $allContigsPath $blatPath  >> $logFile" "$ECHO"
 
+
 ## 3.3 Split blat output in a single file per insertion and cluster
+# Output:
+# - a psl for each cluster and insertion
+# - ${blatPath}/${family}:${chr}_${beg}_${end}:${orientation}.psl
 log "3. Split blat output in a single file per insertion and cluster\n" $step
 awk -v OFS="\t" -v outDir=${blatDir} '{split($10,id,"::"); $10=id[2]; outFile=outDir"/"id[1]".psl"; print $0 >> outFile; close(outFile)}' $blatPath
 
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
+
+
+# 4) TE insertion breakpoints analysis from assembled and aligned contigs
+##########################################################################
+# It will produce a single file containing...
+##############################################
+# $outDir 
+
+## 4.1 Make a list with the TE insertion ids:
+# Output:
+# - $outDir/insertions_list.txt
+insertionsList=$outDir/insertions_list.txt
+
+ls $blatDir | grep '.*psl' | grep -v "allContigs"| awk '{split($1,a,":"); print a[1]":"a[2];}' | sort | uniq > $insertionsList
+
+## 4.2 Prepare input file for insertion breakpoint analysis
+# Output:
+# - $outDir/paths2bkpAnalysis.txt
+paths2bkpAnalysis=$outDir/paths2bkpAnalysis.txt
+echo -n "" > $paths2bkpAnalysis
+ 
+cat $insertionsList | while read insertionId; 
+do 	
+	contigPlusPath=${contigsDir}/${insertionId}:+.contigs.fa
+	contigMinusPath=${contigsDir}/${insertionId}:-.contigs.fa
+	blatPlusPath=${blatDir}/${insertionId}:+.psl
+	blatMinusPath=${blatDir}/${insertionId}:-.psl
+	
+	printf ${insertionId}"\t"${contigPlusPath}","${contigMinusPath}"\t"${blatPlusPath}","${blatMinusPath}"\n" >> $paths2bkpAnalysis
+done
 
 
 ######################
