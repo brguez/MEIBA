@@ -389,8 +389,7 @@ ls $fastaDir | grep '.*fa' | while read bkpFasta;
 do 	
 	bkpId=${bkpFasta%.fa}	
 	contigPath=${contigsDir}/${bkpId}".contigs.fa"
-	
-	log "** ${bkpId} breakpoint **\n" $step		
+		
 	awk -v bkpId=$bkpId '! /^>/{row=$0; print $0} /^>/{sub(/>/, "", $1); row=">"bkpId"::"$1; print row;}' $contigPath >> $allContigsPath
 done 
 
@@ -398,11 +397,18 @@ done
 # Ouput:
 # - blatPath=${blatDir}/"allContigs.psl"
 
+## Notes about blat alignment configuration:
+# Default blat configuration does not work well for 5-prime informative contigs (those spanning TE - genomic dna bkp)
+# As the TE piece of sequence was mapping multiple times  with better score the genomic dna alignment was not reported.
+# Problem solved decreasing the -repMatch value:
+# -repMatch=N    Sets the number of repetitions of a tile allowed before
+#                it is marked as overused.  Typically this is 256 for tileSize
+#                12, 1024 for tile size 11, 4096 for tile size 10.
+
 blatPath=${blatDir}/"allContigs.psl"
 
 log "2. Align the contigs with Blat into the reference genome (and consensus L1 sequence)\n" $step
-run "blat -t=dna -q=dna -minScore=20 -out=psl -noHead $genome $allContigsPath $blatPath  >> $logFile" "$ECHO"
-
+run "blat -t=dna -q=dna -stepSize=5 tileSize=11 -minScore=20 -repMatch=256 -out=psl -noHead $genome $allContigsPath $blatPath  >> $logFile" "$ECHO"
 
 ## 3.3 Split blat output in a single file per insertion and cluster
 # Output:
