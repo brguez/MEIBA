@@ -4,11 +4,13 @@
 <<authors
 ******************************************************************************
 	
-	TE-bkpAssembler.sh
+	TEIBA.sh
+
+	Transposable Element Insertion Breakpoint Analyzer (TEIBA)
 	
 	Copyright (c) 2016 Bernardo Rodríguez-Martín
 	
-	Mobile Genomes and Disease group.
+	Mobile Genomes & Disease Lab.
 	Universidad de Vigo (Spain)
 
 	Licenced under the GNU General Public License 3.0 license.
@@ -23,7 +25,7 @@ function usageDoc
 cat <<help
 	
 
-**** TE-bkpAssembler.sh	version $version ****
+**** TEIBA version $version ****
 Execute  for one dataset (sample).
 	
 *** USAGE
@@ -163,7 +165,7 @@ function run {
 ############################
 
 # TE-bkpAssembler version 
-version=v1
+version=0.1
 
 # Enable extended pattern matching 
 shopt -s extglob
@@ -252,7 +254,7 @@ VELVETG=$binDir/velvetg
 ## DISPLAY PROGRAM CONFIGURATION  
 ##################################
 printf "\n"
-header=" TE-bkpAssembler CONFIGURATION FOR $sampleId"
+header=" TEIBA CONFIGURATION FOR $sampleId"
 echo $header
 eval "for i in {1..${#header}};do printf \"-\";done"
 printf "\n\n"
@@ -270,7 +272,7 @@ printf "  %-34s %s\n\n" "outDir:" "$outDir"
 ##########
 ## START #
 ##########
-header="Executing TE-bkpAssembler $version for $lid"
+header="Executing TEIBA $version for $lid"
 echo $header
 eval "for i in {1..${#header}};do printf \"-\";done"
 printf "\n\n"
