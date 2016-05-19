@@ -160,7 +160,7 @@ printf "\n\n"
 # - $outDir/insertion_region.fa
 targetRegionPath=$outDir/insertion_region.fa 
 
-echo "1. Make fasta with target dna region for blat alignment" >&2
+echo "1. Make fasta with target dna region for blat alignment" >&1
 
 read family chr beg end cluster <<<$(echo $insertionId | awk '{split($1, info, ":"); family=info[1]; cluster=info[3]; split(info[2], coord, "_"); chr=coord[1]; beg=coord[2]; end=coord[3]; print family, chr, beg, end, cluster;}')
 
@@ -169,7 +169,7 @@ targetEnd=`expr $end + $windowSize`
 targetInterval=$chr":"$targetBeg"-"$targetEnd
 offset=$targetBeg
 
-echo "samtools faidx $genome $targetInterval > $targetRegionPath" >&2
+echo "samtools faidx $genome $targetInterval > $targetRegionPath" >&1
 samtools faidx $genome $targetInterval > $targetRegionPath
 
 
@@ -180,9 +180,9 @@ samtools faidx $genome $targetInterval > $targetRegionPath
 # - $outDir/target_sequences.fa
 targetSeqPath=$outDir/target_sequences.fa
 
-echo "2. Concatenate target region fasta with TE reference sequence fasta" >&2
+echo "2. Concatenate target region fasta with TE reference sequence fasta" >&1
 
-echo "cat $outDir/insertion_region.fa $TEseq > $targetSeqPath" >&2
+echo "cat $outDir/insertion_region.fa $TEseq > $targetSeqPath" >&1
 cat $outDir/insertion_region.fa $TEseq > $targetSeqPath
 
 
@@ -193,9 +193,9 @@ cat $outDir/insertion_region.fa $TEseq > $targetSeqPath
 # - $outDir/$insertionId".tmp.psl"
 tmpBlatPath=$outDir/$insertionId".tmp.psl" 
 
-echo "3. Blat contigs into the fasta generated in 2." >&2
+echo "3. Blat contigs into the fasta generated in 2." >&1
 
-echo "blat -t=dna -q=dna -stepSize=5 -minScore=20 -out=psl -noHead $outDir/target_sequences.fa $contigs $tmpBlatPath" >&2
+echo "blat -t=dna -q=dna -stepSize=5 -minScore=20 -out=psl -noHead $outDir/target_sequences.fa $contigs $tmpBlatPath" >&1
 blat -t=dna -q=dna -stepSize=5 -minScore=20 -out=psl -noHead $outDir/target_sequences.fa $contigs $tmpBlatPath
 
 
@@ -206,17 +206,17 @@ blat -t=dna -q=dna -stepSize=5 -minScore=20 -out=psl -noHead $outDir/target_sequ
 # - $outDir/$insertionId".psl"
 blatPath=$outDir/$insertionId".psl"
 
-echo "4. Convert psl template coordenates to genomic coordenates (add offset) " >&2
+echo "4. Convert psl template coordenates to genomic coordenates (add offset) " >&1
 
-echo "awk -v OFS='\t' -v offset=$offset -f $ADDOFFSET $outDir/$insertionId".tmp.psl" > $blatPath" >&2
+echo "awk -v OFS='\t' -v offset=$offset -f $ADDOFFSET $outDir/$insertionId".tmp.psl" > $blatPath" >&1
 awk -v OFS='\t' -v offset=$offset -f $ADDOFFSET $outDir/$insertionId".tmp.psl" > $blatPath
 
 
 ######################
 # 5. CLEANUP AND END #
 ######################
-echo "5. Cleanup and end" >&2
-echo >&2
+echo "5. Cleanup and end" >&1
+echo >&1
 rm $targetRegionPath $targetSeqPath $tmpBlatPath 
 
 

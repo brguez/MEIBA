@@ -255,8 +255,9 @@ bashDir=$srcDir/bash
 ## Output files directories
 fastaDir=$outDir/Fasta
 contigsDir=$outDir/Contigs
-assemblyLogsDir=$contigsDir/logs
 blatDir=$outDir/Blat
+logsDir=$outDir/Logs
+assemblyLogsDir=$logsDir/2_assembly
 
 # 5. Programs/Scripts
 ######################
@@ -273,7 +274,6 @@ header=" TEIBA CONFIGURATION FOR $sampleId"
 echo $header
 eval "for i in {1..${#header}};do printf \"-\";done"
 printf "\n\n"
-printf "  %-34s %s\n\n" "TE-BkpAssembler $version"
 printf "  %-34s %s\n" "***** MANDATORY ARGUMENTS *****"
 printf "  %-34s %s\n" "input:" "$input"
 printf "  %-34s %s\n" "fasta:" "$fasta"
@@ -283,17 +283,15 @@ printf "  %-34s %s\n\n" "sampleId:" "$sampleId"
 printf "  %-34s %s\n" "***** OPTIONAL ARGUMENTS *****"
 printf "  %-34s %s\n" "K-mer length:" "$kmerLen"
 printf "  %-34s %s\n\n" "outDir:" "$outDir"
-	
+
 ##########
 ## START #
 ##########
-header="Executing TEIBA $version for $lid"
+header="Executing TEIBA $version for $sampleId"
 echo $header
 eval "for i in {1..${#header}};do printf \"-\";done"
 printf "\n\n"
 start=$(date +%s)
-
-logFile=$outDir/TE-bkpAssembler_${sampleId}.log
 
 #######################    	
 # 0) PRELIMINARY STEPS #
@@ -306,10 +304,13 @@ if [[ ! -d $fastaDir ]]; then mkdir $fastaDir; fi
 
 # Assembled contigs of TE insertion breakpoints and assembly logs
 if [[ ! -d $contigsDir ]]; then mkdir $contigsDir; fi
-if [[ ! -d $assemblyLogsDir ]]; then mkdir $assemblyLogsDir; fi
 
 # Contigs alignment with Blat:
 if [[ ! -d $blatDir ]]; then mkdir $blatDir; fi
+
+# Log directories:
+if [[ ! -d $logsDir ]]; then mkdir $logsDir; fi
+if [[ ! -d $assemblyLogsDir ]]; then mkdir $assemblyLogsDir; fi
 
 
 # 1) Produces for each TE insertion two fasta (one for read pairs supporting + cluster and another one for read pairs supporting - cluster)
@@ -329,7 +330,7 @@ if [[ ! -d $blatDir ]]; then mkdir $blatDir; fi
 step="CLUSTERS2FASTA"
 startTime=$(date +%s)
 printHeader "Producing per TE insertion two fasta for insertion bkp assembly"  
-run "python $CLUSTERS2FASTA $input $fasta --outDir $fastaDir > $logFile" "$ECHO"	
+run "python $CLUSTERS2FASTA $input $fasta --outDir $fastaDir 1> $logsDir/1_clusters2fasta.out 2> $logsDir/1_clusters2fasta.err" "$ECHO"	
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
@@ -360,9 +361,9 @@ do
 		
 	log "** ${bkpId} breakpoint **\n" $step
 	log "1. Preparing files for assembly\n" $step
-	run "$VELVETH $contigsDir $kmerLen -fasta -short $fastaPath >> $logFile " "$ECHO"
+	run "$VELVETH $contigsDir $kmerLen -fasta -short $fastaPath 1>> $logsDir/2_assembly.out 2>> $logsDir/2_assembly.err" "$ECHO"
 	log "2. Breakpoint assembly with velvet\n" $step
-	run "$VELVETG $contigsDir -exp_cov auto -cov_cutoff auto >> $logFile" "$ECHO"
+	run "$VELVETG $contigsDir -exp_cov auto -cov_cutoff auto 1>> $logsDir/2_assembly.out 2>> $logsDir/2_assembly.err" "$ECHO"
 	log "3. Rename output files\n" $step
 	run "mv ${contigsDir}/Log $assemblyLogsDir/${bkpId}.log" "$ECHO"
 	run "mv ${contigsDir}/contigs.fa ${contigsDir}/${bkpId}.contigs.fa" "$ECHO"
@@ -373,6 +374,7 @@ done
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
+exit
 
 # 3) Align the assembled bkp contigs into the reference genome with blat
 #########################################################################
@@ -394,45 +396,6 @@ step="BLAT"
 startTime=$(date +%s)
 printHeader "Aligning the assembled bkp contigs into the reference genome with blat"  
 
-## 3.1 Pool all the fasta in a single one
-# Ouput:
-# - allContigsPath=${blatDir}/"allContigs.fa"
-
-allContigsPath=${blatDir}/"allContigs.fa"
-echo -n "" > $allContigsPath
-
-log "1. Producing a single fasta with the contigs from all insertions\n" $step
-ls $fastaDir | grep '.*fa' | while read bkpFasta; 
-do 	
-	bkpId=${bkpFasta%.fa}	
-	contigPath=${contigsDir}/${bkpId}".contigs.fa"
-		
-	awk -v bkpId=$bkpId '! /^>/{row=$0; print $0} /^>/{sub(/>/, "", $1); row=">"bkpId"::"$1; print row;}' $contigPath >> $allContigsPath
-done 
-
-## 3.2 Align the contigs with Blat into the reference genome and consensus L1 sequence
-# Ouput:
-# - blatPath=${blatDir}/"allContigs.psl"
-
-## Notes about blat alignment configuration:
-# Default blat configuration does not work well for 5-prime informative contigs (those spanning TE - genomic dna bkp)
-# As the TE piece of sequence was mapping multiple times  with better score the genomic dna alignment was not reported.
-# Problem solved decreasing the -repMatch value:
-# -repMatch=N    Sets the number of repetitions of a tile allowed before
-#                it is marked as overused.  Typically this is 256 for tileSize
-#                12, 1024 for tile size 11, 4096 for tile size 10.
-
-blatPath=${blatDir}/"allContigs.psl"
-
-log "2. Align the contigs with Blat into the reference genome (and consensus L1 sequence)\n" $step
-run "blat -t=dna -q=dna -stepSize=5 tileSize=11 -minScore=20 -repMatch=256 -out=psl -noHead $genome $allContigsPath $blatPath  >> $logFile" "$ECHO"
-
-## 3.3 Split blat output in a single file per insertion and cluster
-# Output:
-# - a psl for each cluster and insertion
-# - ${blatPath}/${family}:${chr}_${beg}_${end}:${orientation}.psl
-log "3. Split blat output in a single file per insertion and cluster\n" $step
-awk -v OFS="\t" -v outDir=${blatDir} '{split($10,id,"::"); $10=id[2]; outFile=outDir"/"id[1]".psl"; print $0 >> outFile; close(outFile)}' $blatPath
 
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
