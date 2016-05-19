@@ -26,7 +26,7 @@ cat <<help
 	
 
 **** TEIBA version $version ****
-Execute  for one dataset (sample).
+Execute for one dataset (sample).
 	
 *** USAGE
 
@@ -38,8 +38,11 @@ Execute  for one dataset (sample).
 
 	-f	<FASTA>			Fasta containing TE insertions supporting reads. 
 
-	-g 	<GENOME>		Reference genome (RG). Please make sure you provide the same RG version you used to run TraFiC. 
+	-g 	<FASTA>			Reference Genome in fasta format (RG). Please make sure you provide the same RG version you used to run TraFiC. 
 					Also, make sure the same chromosome naming conventions are used.
+	
+	-c	<FASTA>			Consensus transposable element (TE) sequences in fasta format. Header lines must be named ">L1", ">Alu" and ">SVA" for
+					L1, Alu and SVA TE, respectively.  
 	
 	-s	<STRING>		Sample id. Output file will be named accordingly.	
 		
@@ -60,7 +63,7 @@ help
 ################################
 function getoptions {
 
-while getopts ":i:f:g:s:k:o:h" opt "$@"; 
+while getopts ":i:f:g:c:s:k:o:h" opt "$@"; 
 do
    case $opt in   	
       
@@ -84,7 +87,14 @@ do
 	  then
               genome=$OPTARG
 	  fi
-	  ;;      
+	  ;;    
+
+      c)
+	  if [ -n "$OPTARG" ];
+	  then
+              TEseq=$OPTARG
+	  fi
+	  ;;    
 
       s)
 	  if [ -n "$OPTARG" ];
@@ -207,6 +217,7 @@ fi
 if [[ ! -e $input ]]; then log "The TraFiC TE insertion calls file does not exist. Mandatory argument -i\n" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -e $fasta ]]; then log "The TE insertion supporting reads fasta file does not exist. Mandatory argument -f" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -e $genome ]]; then log "The reference genome fasta file does not not exist. Mandatory argument -g" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -e $TEseq ]]; then log "The consensus TE fasta file does not not exist. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ $sampleId == "" ]]; then log "The sample id is not provided. Mandatory argument -s\n" "ERROR" >&2; usageDoc; exit -1; fi
 
 
@@ -236,8 +247,10 @@ fi
 # 4. Directories
 ################
 ## binaries and scripts
-srcDir=$rootDir/src
 binDir=$rootDir/bin
+srcDir=$rootDir/src
+pyDir=$srcDir/python
+bashDir=$srcDir/bash 
 
 ## Output files directories
 fastaDir=$outDir/Fasta
@@ -247,9 +260,11 @@ blatDir=$outDir/Blat
 
 # 5. Programs/Scripts
 ######################
-CLUSTERS2FASTA=$srcDir/clusters2fasta.py
+CLUSTERS2FASTA=$pyDir/clusters2fasta.py
+ALIGN_CONTIGS=$bashDir/alignContigs2reference.sh
 VELVETH=$binDir/velveth
 VELVETG=$binDir/velvetg
+
 
 ## DISPLAY PROGRAM CONFIGURATION  
 ##################################
@@ -263,11 +278,11 @@ printf "  %-34s %s\n" "***** MANDATORY ARGUMENTS *****"
 printf "  %-34s %s\n" "input:" "$input"
 printf "  %-34s %s\n" "fasta:" "$fasta"
 printf "  %-34s %s\n" "genome:" "$genome"
+printf "  %-34s %s\n" "consensus-TE:" "$TEseq"
 printf "  %-34s %s\n\n" "sampleId:" "$sampleId"
 printf "  %-34s %s\n" "***** OPTIONAL ARGUMENTS *****"
 printf "  %-34s %s\n" "K-mer length:" "$kmerLen"
 printf "  %-34s %s\n\n" "outDir:" "$outDir"
-	 
 	
 ##########
 ## START #
