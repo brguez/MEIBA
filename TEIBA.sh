@@ -374,7 +374,6 @@ done
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
-exit
 
 # 3) Align the assembled bkp contigs into the reference genome with blat
 #########################################################################
@@ -396,10 +395,19 @@ step="BLAT"
 startTime=$(date +%s)
 printHeader "Aligning the assembled bkp contigs into the reference genome with blat"  
 
+ls $contigsDir | grep '.*fa' | while read bkpContigs;
+do
+	bkpContigsPath=${contigsDir}/${bkpContigs}	
+	bkpId=${bkpContigs%.contigs.fa}
+	
+	log "** ${bkpId} breakpoint **\n" $step
+	run "bash $ALIGN_CONTIGS $bkpContigsPath $bkpId $genome $TEseq 1000 $blatDir 1>> $logsDir/3_blat.out 2>> $logsDir/3_blat.err" "$ECHO"
+done 
 
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
+exit
 
 # 4) TE insertion breakpoints analysis from assembled and aligned contigs
 ##########################################################################
