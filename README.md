@@ -1,2 +1,2 @@
-# TE-bkpAssembler
+# TEIBA repository
 
