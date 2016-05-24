@@ -56,35 +56,35 @@ BEGIN{
 	qStarts=$20;
 	tStarts=$21;
 
-	# Set template name as chromosome id
+	# Set template name as chromosome id	
 	split(tName, name, ":"); 
 	tName=name[1]; 
-
-	# Set template size as na, since we do not have and need the chromosome size.  
-	tSize="na"; 
 	
-	# Add offset to template start and end (chromosomic coordenates)
-	tStart=tStart + offset - 1;
-	tEnd=tEnd + offset - 1;
-
-	# Add offset to the list of template starts
-	nb=split(tStarts, startsList, ",");
-	
-	tStarts="";
- 
-	for (counter=1; counter<=(nb-1); counter++)
+	if (tName!="L1")
 	{
-		startPos = startsList[counter];
+		# Add offset to template start and end (chromosomic coordenates)	
+		tStart=tStart + offset;
+		tEnd=tEnd + offset;
+
+		# Add offset to the list of template starts
+		nb=split(tStarts, startsList, ",");
+	
+		tStarts="";
+ 
+		for (counter=1; counter<=(nb-1); counter++)
+		{
+			startPos = startsList[counter];
 				
-		if (tStarts=="")
-		{
-			startPos=startPos + offset - 1;
-			tStarts=startPos",";
-		}
-		else
-		{
-			startPos=startPos + offset -1 ;
-			tStarts=tStarts""startPos",";
+			if (tStarts=="")
+			{
+				startPos=startPos + offset;
+				tStarts=startPos",";
+			}
+			else
+			{
+				startPos=startPos + offset;
+				tStarts=tStarts""startPos",";
+			}
 		}
 	}
 	
