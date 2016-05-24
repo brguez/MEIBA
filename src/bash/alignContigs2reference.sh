@@ -167,7 +167,7 @@ read family chr beg end cluster <<<$(echo $insertionId | awk '{split($1, info, "
 targetBeg=`expr $beg - $windowSize` 
 targetEnd=`expr $end + $windowSize`
 targetInterval=$chr":"$targetBeg"-"$targetEnd
-offset=$targetBeg
+offset=`expr $targetBeg - 1`
 
 echo "samtools faidx $genome $targetInterval > $targetRegionPath" >&1
 samtools faidx $genome $targetInterval > $targetRegionPath
@@ -217,6 +217,7 @@ awk -v OFS='\t' -v offset=$offset -f $ADDOFFSET $outDir/$insertionId".tmp.psl" >
 ######################
 echo "5. Cleanup and end" >&1
 echo >&1
+echo "rm $targetRegionPath $targetSeqPath $tmpBlatPath" >&1
 rm $targetRegionPath $targetSeqPath $tmpBlatPath 
 
 
