@@ -174,7 +174,7 @@ function run {
 # SETTING UP THE ENVIRONMENT
 ############################
 
-# TE-bkpAssembler version 
+# TEIBA version 
 version=0.1
 
 # Enable extended pattern matching 
@@ -265,7 +265,7 @@ CLUSTERS2FASTA=$pyDir/clusters2fasta.py
 ALIGN_CONTIGS=$bashDir/alignContigs2reference.sh
 VELVETH=$binDir/velveth
 VELVETG=$binDir/velvetg
-
+BKP_ANALYSIS=$pyDir/insertionBkpAnalysis.py
 
 ## DISPLAY PROGRAM CONFIGURATION  
 ##################################
@@ -329,7 +329,8 @@ if [[ ! -d $assemblyLogsDir ]]; then mkdir $assemblyLogsDir; fi
  	
 step="CLUSTERS2FASTA"
 startTime=$(date +%s)
-printHeader "Producing per TE insertion two fasta for insertion bkp assembly"  
+printHeader "Prepare fasta for assembly"  
+log "Producing per TE insertion two fasta for insertion bkp assembly" $step
 run "python $CLUSTERS2FASTA $input $fasta --outDir $fastaDir 1> $logsDir/1_clusters2fasta.out 2> $logsDir/1_clusters2fasta.err" "$ECHO"	
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
@@ -393,6 +394,7 @@ printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs
 
 step="BLAT"
 startTime=$(date +%s)
+
 printHeader "Aligning the assembled bkp contigs into the reference genome with blat"  
 
 ls $contigsDir | grep '.*fa' | while read bkpContigs;
@@ -407,13 +409,14 @@ done
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
-exit
 
-# 4) TE insertion breakpoints analysis from assembled and aligned contigs
+# 4) TE insertion breakpoint analysis from assembled and aligned contigs
 ##########################################################################
-# It will produce a single file containing...
-##############################################
-# $outDir 
+# It will produce a single file containing the insertion breakpoint and 
+########################################################################
+# many pieces of information associated (orientation, TSD, length...)
+# ####################################################################
+# - $outDir/TEIBA.results.txt 
 
 ## 4.1 Make a list with the TE insertion ids:
 # Output:
@@ -438,13 +441,37 @@ do
 	printf ${insertionId}"\t"${contigPlusPath}","${contigMinusPath}"\t"${blatPlusPath}","${blatMinusPath}"\n" >> $paths2bkpAnalysis
 done
 
+## 4.3 Perform breakpoint analysis
+# Output:
+# - $outDir/TEIBA.results.txt 
+TEIBAout=$outDir/TEIBA.results.txt 
+
+if [ ! -s $TEIBAout ]; 
+then
+	step="BKP-ANALYSIS"
+	startTime=$(date +%s)
+	printHeader "Performing TE insertion breakpoint analysis"
+	log "Identifying insertion breakpoints, TSD, TE length, TE orientation and TE structure" $step  
+	run "python $BKP_ANALYSIS $paths2bkpAnalysis -o $outDir" "$ECHO"
+	
+	if [ ! -s $TEIBAout ]; 
+	then	
+		log "Error performing breakpoint analysis\n" "ERROR" 
+        	exit -1
+	else
+		endTime=$(date +%s)
+		printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
+	fi
+else
+	printHeader "Output file already exists... skipping step"
+fi
 
 ######################
-# 4) CLEANUP AND END #
+# 5) CLEANUP AND END #
 ######################
 
 end=$(date +%s)
-printHeader "TE-bkpAssembler for $sampleId completed in $(echo "($end-$start)/60" | bc -l | xargs printf "%.2f\n") min "
+printHeader "TEIBA for $sampleId completed in $(echo "($end-$start)/60" | bc -l | xargs printf "%.2f\n") min "
 
 # disable extglob
 shopt -u extglob
