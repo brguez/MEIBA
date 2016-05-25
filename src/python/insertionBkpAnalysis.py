@@ -214,6 +214,10 @@ class insertion():
         if (orientation == 'inconsistent'):    
             score = 4
 
+	    ## Inconsistent -> no TSD info available:
+	    TSDlength = "na"
+            TSDseq = "na"
+
         ## ------ Provisional -------
         ## Print results into the standard output
         print "TraFiC-id: ", traficId
