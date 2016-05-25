@@ -109,7 +109,7 @@ class insertion():
                 3. Any informative contig identified.
                 4. Inconsistent insertion. Informative contig for both clusters of the same type (5',5' or 3',3'). 
             2) breakpoint. Breakpoint coordinates (tuple: chrom and pos)
-            3) TSD. Target site duplication (tuple: TSD size and sequence). 
+            3) TS. Target site duplication or microdeletion (tuple: TSD size and sequence). 
             4) orientation. TE insertion DNA strand/orientation (+ or -) 
             5) polyA. Poly-A sequence. 
         """
@@ -124,9 +124,9 @@ class insertion():
         
         informativeContigMinusObj = insertionObj.clusterMinusObj.find_informative_contig(self.coordinates)
         
-        ### Determine insertion breakpoints, TSD and TE orientation from informative contigs 
+        ### Determine insertion breakpoints, TS and TE orientation from informative contigs 
         
-        subHeader("Determining insertion breakpoint, TSD and TE orientation from informative contigs")
+        subHeader("Determining insertion breakpoint, TS and TE orientation from informative contigs")
         
         ## Set variables 
         
@@ -144,11 +144,13 @@ class insertion():
             infoPlus = informativeContigPlusObj.informative[2]
             typeMinus = informativeContigMinusObj.informative[0]
             infoMinus = informativeContigMinusObj.informative[2]
-            contigPlus = informativeContigPlusObj.seq
-            contigMinus = informativeContigMinusObj.seq
+	    contigPlusId = informativeContigPlusObj.ID 
+            contigPlusSeq = informativeContigPlusObj.seq
+            contigMinusId = informativeContigMinusObj.ID 
+	    contigMinusSeq = informativeContigMinusObj.seq
             
-            # Find Target Size Duplication (TSD)
-            TSDlength, TSDseq = self.find_TSD(informativeContigPlusObj, informativeContigMinusObj)
+            # Find Target Site Duplication (TSD) or microdeletion (TSM)
+            targetSiteSize, targetSiteSeq = self.target_site(informativeContigPlusObj, informativeContigMinusObj)
                         
         # B) There is an informative contig for + cluster
         elif (informativeContigPlusObj != ""):
@@ -162,10 +164,12 @@ class insertion():
             infoPlus = informativeContigPlusObj.informative[2]
             typeMinus = "none"
             infoMinus = "none"
-            TSDlength = "na"
-            TSDseq = "na"
-            contigPlus = informativeContigPlusObj.seq
-            contigMinus = "na"
+            targetSiteSize = "na"
+	    targetSiteSeq = "na"
+	    contigPlusId = informativeContigPlusObj.ID 
+            contigPlusSeq = informativeContigPlusObj.seq
+            contigMinusId = "na"
+	    contigMinusSeq = "na"
             
         # C) There is an informative contig for - cluster
         elif (informativeContigMinusObj != ""):
@@ -179,10 +183,12 @@ class insertion():
             infoPlus = "none"
             typeMinus = informativeContigMinusObj.informative[0]
             infoMinus = informativeContigMinusObj.informative[2]
-            TSDlength = "na"
-            TSDseq = "na"
-            contigPlus = "na"
-            contigMinus = informativeContigMinusObj.seq
+            targetSiteSize = "na"
+	    targetSiteSeq = "na"
+	    contigPlusId = "na"
+            contigPlusSeq = "na"
+            contigMinusId = informativeContigMinusObj.ID 
+	    contigMinusSeq = informativeContigMinusObj.seq
         
         # D) There are not informative contigs for any of the clusters
         else:
@@ -196,10 +202,12 @@ class insertion():
             infoPlus = "none"
             typeMinus = "none"
             infoMinus = "none"
-            TSDlength = "na"
-            TSDseq = "na"
-            contigPlus = "na"
-            contigMinus = "na"
+            targetSiteSize = "na"
+	    targetSiteSeq = "na"
+	    contigPlusId = "na"
+            contigPlusSeq = "na"
+            contigMinusId = "na"
+	    contigMinusSeq = "na"
         
         # TE insertion orientation
         orientation = self.insertion_orientation(typePlus, typeMinus)
@@ -214,9 +222,10 @@ class insertion():
         if (orientation == 'inconsistent'):    
             score = 4
 
-	    ## Inconsistent -> no TSD info available:
-	    TSDlength = "na"
-            TSDseq = "na"
+	    ## Inconsistent -> no Target Site info available:
+	    targetSiteSize = "na"
+	    targetSiteSeq = "na"
+
 
         ## ------ Provisional -------
         ## Print results into the standard output
@@ -224,22 +233,24 @@ class insertion():
         print "Score: ", score    
         print "Bkp-plus: ", bkpPlus
         print "Bkp-minus", bkpMinus
-        print "TSD-length: ", TSDlength
-        print "TSD-seq: ", TSDseq 
+        print "TS-length: ", targetSiteSize
+        print "TS-seq: ", targetSiteSeq 
         print "Orientation: ", orientation
         print "Structure: ", structure
         print "TE-length: ", length
         print "perc-Length: ", percLength
         print "Poly-A: ", polyA
-        print "contig-Plus: ", contigPlus
-        print "contig-Minus: ", contigMinus
+        print "contig-plus-id: ", contigPlusId
+        print "contig-plus-seq: ", contigPlusSeq
+        print "contig-minus-id: ", contigMinusId
+        print "contig-minus-seq: ", contigMinusSeq
         
         ## Print results into an output file
         fileName = "TEIBA.results.txt"
         outFilePath = outDir + "/" + fileName
         outFile = open( outFilePath, "a" )
 
-        row = traficId + "\t" + str(score) + "\t" + str(bkpPlus) + "\t" + str(bkpMinus) + "\t" + str(TSDlength) + "\t" + TSDseq + "\t" + orientation + "\t" + structure + "\t" + str(length) + "\t" + str(percLength) + "\t" + polyA + "\t" + contigPlus + "\t" + contigMinus + "\n"
+        row = traficId + "\t" + str(score) + "\t" + str(bkpPlus) + "\t" + str(bkpMinus) + "\t" + str(targetSiteSize) + "\t" + targetSiteSeq + "\t" + orientation + "\t" + structure + "\t" + str(length) + "\t" + str(percLength) + "\t" + polyA + "\t" + contigPlusId + "\t" + contigPlusSeq + "\t" + contigMinusId + "\t" + contigMinusSeq + "\n"
         outFile.write(row)
         
         # Close output and end
@@ -250,11 +261,11 @@ class insertion():
         """ 
             Determine TE insertion strand/orientation.
             
-            + orientation:
+            1) + orientation:
                 5' informative (+ cluster)      ####TE####---------------
                 3' informative (- cluster)      ---------------AAAAAAAAAA
             
-            - orientation (the opposite)
+            2) - orientation (the opposite)
                 3' informative (+ cluster)      ---------------AAAAAAAAAA 
                 5' informative (- cluster)      ####TE####---------------
 
@@ -297,8 +308,28 @@ class insertion():
     
     def insertion_structure(self, typePlus, infoPlus, typeMinus, infoMinus, orientation):
         """
-            ..
-        
+            Determine TE insertion structure.
+
+            1) 5'inverted:
+
+	    	TE in + orientation with 5'inversion    ----#######TE######AAAAA----
+                                                            <<<<<<>>>>>>>>>>
+        	                                            <---->
+                                                           inversion 
+        	5-prime informative contig              --------- (5'inversion signature: the piece of contig corresponding to L1 
+                                                                   aligns in the opposite DNA strand than the TE insertion orientation)
+
+	    2) Full length L1:
+
+                                                       ----#######TE######AAAAA----
+            3) 5' truncated L1:
+
+	                                               --------###TE######AAAAA----
+         					 	   <-->
+                                                  	 deletion
+                5-prime informative contig              ---____--- (5'truncation signature: the piece of contig corresponding to L1 
+                                                                    aligns in the body of the L1 and not in the 5' extreme) 
+
             Input:
             1) typePlus. One of 'none', '5-prime' or '3-prime'.
             2) infoPlus. Poly-A sequence for 3' and TE alignment object for 5' 
@@ -344,25 +375,13 @@ class insertion():
             percLength = "na"
             
         ## 2. Determine TE insertion structure
-        ## 2.A) L1 inverted in its 5'
-        # TE in + orientation with 5'inversion    ----#######TE######AAAAA----
-        #                                             <<<<<<>>>>>>>>>>
-        #                                             <---->
-        #                                            inversion 
-        # 5-prime informative contig              --------- (5'inversion signature: the piece of contig corresponding to L1 
-        #                                                    aligns in the opposite DNA strand than the TE insertion orientation)
+        ## 2.A) TE inverted in its 5'
         if (strand != orientation) and (structure != "na"):
             structure = "5'inverted"
             length = "na"
             percLength = "na"
             
         ## 2.B) L1 full length or 5' truncated
-        # Full length L1                         ----#######TE######AAAAA----
-        # 5' truncated L1                        --------###TE######AAAAA----
-        #                                            <-->
-        #                                          deletion
-        # 5-prime informative contig              ---____--- (5'truncation signature: the piece of contig corresponding to L1 
-        #                                                    aligns in the body of the L1 and not in the 5' extreme) 
         elif (structure != "na"):
             length = tSize - tBeg
             percLength = float(length) / tSize * 100
@@ -411,22 +430,30 @@ class insertion():
             
         return polyA
                   
-    def find_TSD(self, informativeContigPlusObj, informativeContigMinusObj):
+    def target_site(self, informativeContigPlusObj, informativeContigMinusObj):
         """ 
-            Determine Target Site Duplication (TSD) size:
+            Determine Target Site Duplication (TSD) or Target Site Microdeletion Size (TSM).
+
+	    1) TSD:
                      
             --------------------------- bkpPlus
                     bkpMinus --------------------
                              <-------->
                                  TSD (7bp)
-        
+	    2) TSM:
+		      bkpPlus
+	    -----------------          bkpMinus
+                                       --------------------
+                             <-------->
+                                 TSM (7bp)
+
             Input:
             1) bkpPlus. Breakpoint coordinates according to + cluster informative contig (tuple: chrom and pos).
             2) bkpMinus. Breakpoint coordinates according to - cluster informative contig (tuple: chrom and pos).
                      
             Output:
-            1) TSDlength. Target site duplication length
-            2) TSDseq. Target site duplication sequence
+            1) targetSiteSize. Target site duplication or microdeletion length
+            2) targetSiteSeq. Target site duplication sequence or 'na' if no TSD or TSM
         """
         
         bkpPosPlus = informativeContigPlusObj.informative[1][1]
@@ -437,33 +464,40 @@ class insertion():
         if (bkpPosPlus > bkpPosMinus):
             
             ## Compute TSD length
-            TSDlength = bkpPosPlus - bkpPosMinus
+            targetSiteSize = bkpPosPlus - bkpPosMinus
         
             ## Extract TSD sequence
-            # A) Begin of the contig sequence aligned in the TE insertion genomic region
+            # A.a) Begin of the contig sequence aligned in the TE insertion genomic region
             #   -------------**TSD**######TE#####
             #   --------------------
             # qBeg               *qEnd*
             if (alignObjPlus.alignType == "beg"):
-                beg = alignObjPlus.qEnd - TSDlength
+                beg = alignObjPlus.qEnd - targetSiteSize
                 end = alignObjPlus.qEnd
-                TSDseq = informativeContigPlusObj.seq[beg:end]
+                targetSiteSeq = informativeContigPlusObj.seq[beg:end]
         
-            # B) End of the contig sequence aligned in the TE insertion genomic region
+            # A.b) End of the contig sequence aligned in the TE insertion genomic region
             #   ######TE#####AAAAAAA**TSD**-------------
             #                       --------------------
             #                    *qBeg*               qEnd
             elif (alignObjPlus.alignType == "end"):
                 beg = alignObjPlus.qBeg 
-                end = alignObjPlus.qBeg + TSDlength
-                TSDseq = informativeContigPlusObj.seq[beg:end]           
-                
-        # B) No target site duplication
+                end = alignObjPlus.qBeg + targetSiteSize
+                targetSiteSeq = informativeContigPlusObj.seq[beg:end]           
+
+	# B) Target site microdeletion (TSM)        
+	elif (bkpPosPlus < bkpPosMinus):    
+	    
+	    ## Compute TSM length
+            targetSiteSize =  bkpPosPlus - bkpPosMinus 
+	    targetSiteSeq = "na"
+
+        # C) No TSD or TSM
         else:
-            TSDlength = 0
-            TSDseq = "na"
+            targetSiteSize = 0
+            targetSiteSeq = "na"
             
-        return (TSDlength, TSDseq)
+        return (targetSiteSize, targetSiteSeq)
     
     def imprecise_bkp(self, insertionCoord):
         """ 
