@@ -117,13 +117,17 @@ class insertion():
         ## Find informative contig for + cluster 
         subHeader("Searching informative contigs for + cluster")
         
-        informativeContigPlusObj = self.clusterPlusObj.find_informative_contig(self.coordinates)
+        
+	bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj = self.clusterPlusObj.find_informative_contigs(self.coordinates)
 
         ## Find informative contig for - cluster
         subHeader("Searching informative contigs for - cluster")
         
-        informativeContigMinusObj = insertionObj.clusterMinusObj.find_informative_contig(self.coordinates)
+        bestInformative5primeContigMinuaObj, bestInformative3primeContigMinusObj = insertionObj.clusterMinusObj.find_informative_contigs(self.coordinates)
         
+	print "informative-contigs", bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj, bestInformative5primeContigMinuaObj, bestInformative3primeContigMinusObj
+	return
+
         ### Determine insertion breakpoints, TS and TE orientation from informative contigs 
         
         subHeader("Determining insertion breakpoint, TS and TE orientation from informative contigs")
@@ -561,8 +565,7 @@ class cluster():
         """
         self.ID = ID
         self.contigsDict = self.create_contigs_dict(contigsFasta)
-        
-
+	           
     #### FUNCTIONS ####
     def fasta_reader(self, contigsFasta):
         """ 
@@ -665,23 +668,36 @@ class cluster():
             alignmentList = alignmentsDict[contigId]
             self.contigsDict[contigId].alignList = alignmentList  
 
-    def find_informative_contig(self, insertionCoord):
+    def find_informative_contigs(self, insertionCoord):
         """
-            Identify cluster informative contig if any. An informative cluster spans 5' or 3' insertion breakpoints.
+            Identify 5' and 3' informative contig belonging to the cluster. Informative 5' and 3' contigs span 5' and 3' insertion breakpoints, respectively.
             
             Input:
             insertionCoord. Region of interest. Format: ${chrom}_${beg}_${end}. 
                                Example: 10_108820680_108820678.
             
             Output:
-            1) informativeContigObj. Informative contig object
+            1) bestInformative5primeContigObj. Best 5' Informative contig object. 'na' if not found     
+	    2) bestInformative3primeContigObj. Best 3' Informative contig object. 'na' if not found
         """
         
-        informativeContigObj = ""
+	bestInformative5primeContigObj = "na"
+	bestInformative3primeContigObj = "na"
+
+	informative5primeContigObjList = []
+	informative3primeContigObjList = []
+
+	# A) Target position for positive cluster
+	if (self.ID == "+"):
+	    targetPos = int(insertionCoord.split("_")[1])
+	# B) Target position for negative cluster	
+	else:
+	    targetPos = int(insertionCoord.split("_")[2])
            
         info(str(len(self.contigsDict)) + ' input contigs') 
-        
-        ## Iterate over each contig object checking it is informative or not
+
+        ## Iterate over each contig object checking if it is informative or not. 
+	# Make two list of 5' and 3' informative contigs 
         for contigId in self.contigsDict:    
             contigObj = self.contigsDict[contigId]
     
@@ -690,19 +706,59 @@ class cluster():
     
             # A) Informative contig
             if (informative ==  1):
-                message = contigObj.ID + " " + str(contigObj.informative[0]) + " " + contigObj.seq + " " + str(contigObj.informative[1]) + " " + str(contigObj.informative[2])
-                log("INFORMATIVE", message)               
-                informativeContigObj = contigObj
-                
-                # Stop iteration when informative contig found
-                break
-            
+		
+		# A.a) informative 5-prime 		
+		if str(contigObj.informative[0]) == "5-prime":
+	                informative5primeContigObjList.append(contigObj)
+
+		# A.b) informative 3-prime 		
+		else:   
+			informative3primeContigObjList.append(contigObj)
+	
+		message = str(contigObj) + " " + str(contigObj.ID) + " " + str(contigObj.informative[0]) + " " + contigObj.seq + " " + str(contigObj.informative[1]) + " " + str(contigObj.informative[2])
+		log("INFORMATIVE", message)               
+               
             # B) Not informative contig
             else:    
-                message = contigObj.ID + " " + str(contigObj.informative[0]) + " " + contigObj.seq + " " + str(contigObj.informative[1]) + " " + str(contigObj.informative[2])
+                message = str(contigObj) + " " + str(contigObj.ID) + " " + str(contigObj.informative[0]) + " " + contigObj.seq + " " + str(contigObj.informative[1]) + " " + str(contigObj.informative[2]) 
                 log("NOT-INFORMATIVE", message)
-                  
-        return informativeContigObj
+        
+	## Select the best 5' and 3' informative contigs
+	# Note: Best defined as contig spanning putative insertion  
+	# breakpoint closer to the insertion target region
+	
+	# 1) informative 5-prime 
+	
+	bestDist = ""
+
+	for contigObj in  informative5primeContigObjList:
+		
+	    dist = abs(targetPos - contigObj.informative[1][1])
+
+	    if (bestInformative5primeContigObj == "na") or (dist < bestDist):
+			
+		bestInformative5primeContigObj = contigObj
+		bestDist = dist
+	
+	# 2) informative 3-prime  
+
+	print "informative-3prime-list: ", len(informative3primeContigObjList), informative3primeContigObjList
+	
+	bestDist = ""
+
+	for contigObj in  informative3primeContigObjList:
+		
+	    dist = abs(targetPos - contigObj.informative[1][1])
+
+	    if (bestInformative3primeContigObj == "na") or (dist < bestDist):
+			
+		bestInformative3primeContigObj = contigObj
+		bestDist = dist
+	
+	
+	return (bestInformative5primeContigObj, bestInformative3primeContigObj)
+
+
         
 class contig():
     """ 
@@ -819,7 +875,7 @@ class contig():
             for alignObj in supportingAlignList:  
                 
                 # 2) Check if candidate contig span 3' breakpoint (have polyA tail)
-                is3prime, bkpCoord, polyASeq = self.is_3prime_bkp(alignObj)
+                is3prime, bkpCoord, polyASeq = self.is_3prime_informative(alignObj)
                 
                 # 2.A) Candidate contig is informative 3-prime, it has a polyA tail 
                 if (is3prime == 1):
@@ -831,8 +887,8 @@ class contig():
                 # 2.B) Candidate contig is not informative 3-prime
                 else:
                     
-                    # 3) Check if candidate contig span 5' breakpoint (remaining sequece is maps in L1
-                    is5prime, bkpCoord, TEalignmentObj = self.is_5prime_bkp(alignObj)
+                    # 3) Check if candidate contig span 5' breakpoint (remaining sequece is maps in L1)
+                    is5prime, bkpCoord, TEalignmentObj = self.is_5prime_informative(alignObj)
                     
                     # 3.A) Candidate contig is informative 5-prime, it has TE sequence 
                     if (is5prime == 1):
@@ -853,7 +909,7 @@ class contig():
         return informativeBoolean
                 
         
-    def is_3prime_bkp(self, alignObj):
+    def is_3prime_informative(self, alignObj):
         """
         Check if candidate contig is 3' informative. Defined as contigs spanning 
         polyA - insertion target region breakpoint:
@@ -981,7 +1037,7 @@ class contig():
                 
         return polyASeq
       
-    def is_5prime_bkp(self, alignObj):
+    def is_5prime_informative(self, alignObj):
         """
         Check if candidate contig is 5' informative. Defined as contigs spanning 
         TE sequence - insertion target region breakpoint:
