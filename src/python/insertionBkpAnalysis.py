@@ -116,17 +116,20 @@ class insertion():
         
         ## Find informative contig for + cluster 
         subHeader("Searching informative contigs for + cluster")
-        
-        
+	
 	bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj = self.clusterPlusObj.find_informative_contigs(self.coordinates)
 
         ## Find informative contig for - cluster
         subHeader("Searching informative contigs for - cluster")
-        
-        bestInformative5primeContigMinuaObj, bestInformative3primeContigMinusObj = insertionObj.clusterMinusObj.find_informative_contigs(self.coordinates)
+
+        bestInformative5primeContigMinuaObj, bestInformative3primeContigMinusObj = self.clusterMinusObj.find_informative_contigs(self.coordinates)
         
 	print "informative-contigs", bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj, bestInformative5primeContigMinuaObj, bestInformative3primeContigMinusObj
+	
+
 	return
+
+	# ---------------- until here. Next steps need to be updated... ----------------------
 
         ### Determine insertion breakpoints, TS and TE orientation from informative contigs 
         
@@ -681,12 +684,14 @@ class cluster():
 	    2) bestInformative3primeContigObj. Best 3' Informative contig object. 'na' if not found
         """
         
+	## Initial status -> none informative contig 
 	bestInformative5primeContigObj = "na"
 	bestInformative3primeContigObj = "na"
 
 	informative5primeContigObjList = []
 	informative3primeContigObjList = []
 
+	## Determine TraFiC target position
 	# A) Target position for positive cluster
 	if (self.ID == "+"):
 	    targetPos = int(insertionCoord.split("_")[1])
@@ -700,29 +705,33 @@ class cluster():
 	# Make two list of 5' and 3' informative contigs 
         for contigId in self.contigsDict:    
             contigObj = self.contigsDict[contigId]
-    
+    	    contigObj.cluster = self.ID
+
             # Check if it is an informative contig
             informative = contigObj.is_informative(insertionCoord)
-    
-            # A) Informative contig
+	
+	    # A) Informative contig
             if (informative ==  1):
-		
+
+		#print "informative-contig: ", contigObj.informativeDict
+		#print contigObj.informativeDict['type'], contigObj.informativeDict["bkp"], contigObj.informativeDict["info"], contigObj.informativeDict["targetRegionAlignObj"]
+	
 		# A.a) informative 5-prime 		
-		if str(contigObj.informative[0]) == "5-prime":
+		if contigObj.informativeDict['type'] == "5-prime":
 	                informative5primeContigObjList.append(contigObj)
 
 		# A.b) informative 3-prime 		
 		else:   
 			informative3primeContigObjList.append(contigObj)
 	
-		message = str(contigObj) + " " + str(contigObj.ID) + " " + str(contigObj.informative[0]) + " " + contigObj.seq + " " + str(contigObj.informative[1]) + " " + str(contigObj.informative[2])
+		message = str(contigObj) + " " + contigObj.ID + " " + contigObj.informativeDict['type'] + " " + contigObj.seq + " " + str(contigObj.informativeDict["bkp"]) + " " + str(contigObj.informativeDict["info"])
 		log("INFORMATIVE", message)               
                
             # B) Not informative contig
             else:    
-                message = str(contigObj) + " " + str(contigObj.ID) + " " + str(contigObj.informative[0]) + " " + contigObj.seq + " " + str(contigObj.informative[1]) + " " + str(contigObj.informative[2]) 
+                message = str(contigObj) + " " + contigObj.ID + " " + contigObj.informativeDict['type'] + " " + contigObj.seq + " " + str(contigObj.informativeDict["bkp"]) + " " + str(contigObj.informativeDict["info"])
                 log("NOT-INFORMATIVE", message)
-        
+
 	## Select the best 5' and 3' informative contigs
 	# Note: Best defined as contig spanning putative insertion  
 	# breakpoint closer to the insertion target region
@@ -732,8 +741,9 @@ class cluster():
 	bestDist = ""
 
 	for contigObj in  informative5primeContigObjList:
-		
-	    dist = abs(targetPos - contigObj.informative[1][1])
+	    
+	    bkpCoord = contigObj.informativeDict["bkp"][1]
+	    dist = abs(targetPos - bkpCoord)
 
 	    if (bestInformative5primeContigObj == "na") or (dist < bestDist):
 			
@@ -741,25 +751,22 @@ class cluster():
 		bestDist = dist
 	
 	# 2) informative 3-prime  
-
-	print "informative-3prime-list: ", len(informative3primeContigObjList), informative3primeContigObjList
 	
 	bestDist = ""
 
 	for contigObj in  informative3primeContigObjList:
 		
-	    dist = abs(targetPos - contigObj.informative[1][1])
+            bkpCoord = contigObj.informativeDict["bkp"][1]
+	    dist = abs(targetPos - bkpCoord)
 
 	    if (bestInformative3primeContigObj == "na") or (dist < bestDist):
 			
 		bestInformative3primeContigObj = contigObj
 		bestDist = dist
-	
-	
+
 	return (bestInformative5primeContigObj, bestInformative3primeContigObj)
 
 
-        
 class contig():
     """ 
     Transposable element insertion contig class. 
@@ -788,16 +795,18 @@ class contig():
         self.ID = contigTuple[0]
         self.seq = contigTuple[1]
         self.length = int(len(self.seq))
-        
+
+	# Cluster the contig belongs to
+	self.cluster = ""
+
         # Contig alignment information
         self.alignList = []   # List of blat alignments for this contig
-        self.informative = [] # Four elements list: 
-                              # 1) type (5-prime, 3-prime or none) 
-                              # 2) breakpoint coordinates (tuple: chrom and pos, 'na' for both if type == none)
-                              # 3) info dependent on the type. 5-prime: alignment object with contig's alignment in TE sequence info; 
-                              #    3-prime: PolyA sequence; none: 'na' )
-                              # 4) alignment object with contig's alignment in the target region info. 
-                            
+        self.informativeDict = {} # Dictionary key -> value pairs:
+        self.informativeDict["type"] = "na"       	      # type -> 5-prime, 3-prime or none
+        self.informativeDict["bkp"] = "na"          	      # bkp -> tuple: chrom and pos, 'na' for both if type == none)
+        self.informativeDict["info"] = "na"        	      # info -> 5-prime: aligment object with contig's alignment in TE sequence info; 3-prime: PolyA sequence; none: 'na'
+        self.informativeDict["targetRegionAlignObj"] = "na"   # targetRegionAlignObj -> alignment object with contig's alignment in the target region info. 
+                             
     #### FUNCTIONS ####
     def is_candidate(self, insertionCoord, windowSize, maxAlignPerc):
         """
@@ -857,56 +866,109 @@ class contig():
                             
         Output: 
             1) informativeBoolean. Boolean, 1 (informative) and 0 (not informative)
-            2) Sets 'informative' variable. Three elements list:
-                2.1) type (5-prime, 3-prime or none)
-                2.2) breakpoint coordinates (tuple: chrom and pos, 'na' for both if type == none)
-                2.3) info dependent on the type. 5-prime: aligment object iwth contig's alignment in TE sequence info; 
-                     3-prime: PolyA sequence; none: 'na'
-                2.4) alignment object with contig's alignment in the target region info. 
+            2) Sets 'informativeDict' variable. Dictionary key -> value pairs:
+                type -> 5-prime, 3-prime or none
+                bkp -> tuple: chrom and pos, 'na' for both if type == none)
+                info -> 5-prime: aligment object with contig's alignment in TE sequence info; 
+                        3-prime: PolyA sequence; none: 'na'
+                targetRegionAlignObj -> alignment object with contig's alignment in the target region info. 
         """
             
-        # 1) Check if it is an informative candidate contig
+	## Initial status -> no informative	
+	bestInformative5primeDict = "na"
+	bestInformative3primeDict = "na"
+	informative5primeDict = {}
+        informative3primeDict = {}  
+
+	## Determine TraFiC target position
+	# A) Target position for positive cluster
+	if (self.cluster == "+"):
+	    targetPos = int(insertionCoord.split("_")[1])
+	# B) Target position for negative cluster	
+	else:
+	    targetPos = int(insertionCoord.split("_")[2])
+
+        ## Check if it is an informative candidate contig
         candidate, supportingAlignList = self.is_candidate(insertionCoord, int(5000), float(98))
-            
-        # IF Informative contig candidate
+           
+        ## Informative candidate contig:
         if (candidate == 1):
-            
-            # Iterate over the alignments supporting it as an informative contig
+
+	    ## Iterate over the alignments supporting the contig as informative. 
+            # Check if the alignment support the contig as informative 5' and/or 3'. 
+	    # Add alignment to the list of 5' and/or 3' alignments 
             for alignObj in supportingAlignList:  
                 
-                # 2) Check if candidate contig span 3' breakpoint (have polyA tail)
+		## Check if alignment support the contig as informative 5' 
+                is5prime, bkpCoord, TEalignmentObj = self.is_5prime_informative(alignObj)
+                    
+                # Contig informative 5-prime, it has TE sequence 
+                if (is5prime == 1):
+		    
+		    informative5primeDict[alignObj] = {}
+		    informative5primeDict[alignObj]["type"] = "5-prime"
+		    informative5primeDict[alignObj]["bkp"] = bkpCoord
+		    informative5primeDict[alignObj]["info"] = TEalignmentObj
+		    informative5primeDict[alignObj]["targetRegionAlignObj"] = alignObj
+
+		## Check if alignment support the contig as informative 3' 
                 is3prime, bkpCoord, polyASeq = self.is_3prime_informative(alignObj)
                 
-                # 2.A) Candidate contig is informative 3-prime, it has a polyA tail 
+                # Contig informative 3-prime, it has a polyA tail 
                 if (is3prime == 1):
-                    informativeBoolean = 1
-                    self.informative = ["3-prime", bkpCoord, polyASeq, alignObj]
-                    
-                    break
-                
-                # 2.B) Candidate contig is not informative 3-prime
-                else:
-                    
-                    # 3) Check if candidate contig span 5' breakpoint (remaining sequece is maps in L1)
-                    is5prime, bkpCoord, TEalignmentObj = self.is_5prime_informative(alignObj)
-                    
-                    # 3.A) Candidate contig is informative 5-prime, it has TE sequence 
-                    if (is5prime == 1):
-                        informativeBoolean = 1
-                        self.informative = ["5-prime", bkpCoord, TEalignmentObj, alignObj]
-                        
-                        break
-                        
-                    # 3.B) Candidate contig is not informative 3-prime neither. 
-                    # Not informative contig
-                    else:
-                        informativeBoolean = 0
-                        self.informative = ["none", bkpCoord, "na", "na"]
-        else:
-            informativeBoolean = 0
-            self.informative = ["none", ("na", "na"), "na"]
-            
-        return informativeBoolean
+
+		    informative3primeDict[alignObj] = {}
+		    informative3primeDict[alignObj]["type"] = "3-prime"
+		    informative3primeDict[alignObj]["bkp"] = bkpCoord
+		    informative3primeDict[alignObj]["info"] = polyASeq
+		    informative3primeDict[alignObj]["targetRegionAlignObj"] = alignObj
+             
+	## Select the best alignments supporting the contig as 5' and/or 3' informative contigs
+	# Note: Best defined as alignment supporting putative insertion breakpoint closer to the
+	# insertion target region
+	
+	# 1) informative 5-prime 
+	bestDist5Prime = ""
+
+	for alignment in  informative5primeDict:
+	     bkpCoord = informative5primeDict[alignment]["bkp"][1]	
+	     dist = abs(targetPos - bkpCoord)
+
+	     if (bestInformative5primeDict == "na") or (dist < bestDist5Prime):
+		bestInformative5primeDict = informative5primeDict[alignment]
+		bestDist5Prime = dist
+	
+	# 2) informative 3-prime 
+	bestDist3Prime = ""
+
+	for alignment in informative3primeDict:
+	     bkpCoord = informative3primeDict[alignment]["bkp"][1]	
+	     dist = abs(targetPos - bkpCoord)
+
+	     if (bestInformative3primeDict == "na") or (dist < bestDist3Prime):
+		bestInformative3primeDict = informative3primeDict[alignment]
+		bestDist3Prime = dist
+
+	## In case there are alignments supporting the contig is 5' and 3' select the best
+	# Note: Best defined as alignment supporting putative insertion breakpoint closer to the
+	# insertion target region
+
+	# A) Any alignment supporting the contig as 5' or 3' informative
+	if (bestDist5Prime == "") and (bestDist3Prime == ""):
+	    informativeBoolean = 0
+
+	# B) Best 5' 
+	elif (bestDist5Prime <= bestDist3Prime) or ((bestDist5Prime != "") and (bestDist3Prime == "")):
+	    informativeBoolean = 1
+	    self.informativeDict = bestInformative5primeDict
+
+	# C) Best 3'
+	else:
+	    informativeBoolean = 1
+	    self.informativeDict = bestInformative3primeDict
+
+	return informativeBoolean 
+	      
                 
         
     def is_3prime_informative(self, alignObj):
