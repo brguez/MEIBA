@@ -122,18 +122,115 @@ class insertion():
         ## Find informative contig for - cluster
         subHeader("Searching informative contigs for - cluster")
 
-        bestInformative5primeContigMinuaObj, bestInformative3primeContigMinusObj = self.clusterMinusObj.find_informative_contigs(self.coordinates)
+        bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj = self.clusterMinusObj.find_informative_contigs(self.coordinates)
         
-	print "informative-contigs", bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj, bestInformative5primeContigMinuaObj, bestInformative3primeContigMinusObj
-	
+
+	### Determine insertion breakpoints, TS and TE orientation from informative contigs 
+        subHeader("Determining insertion breakpoint, TS and TE orientation from informative contigs")
+
+	## A) Inconsistent 5' insertion
+	if (bestInformative5primeContigPlusObj != "na") and (bestInformative3primeContigPlusObj == "na") and (bestInformative5primeContigMinusObj != "na") and (bestInformative3primeContigMinusObj == "na"): 
+
+	    info("inconsistent 5':")
+	    score = 4
+	    
+	    print "inconsistent 5'", bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj, bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj
+ 
+	## B) Inconsistent 3' insertion
+	elif (bestInformative5primeContigPlusObj == "na") and (bestInformative3primeContigPlusObj != "na") and (bestInformative5primeContigMinusObj == "na") and (bestInformative3primeContigMinusObj != "na"): 
+	    
+	    info("inconsistent 3':")
+	    score = 4
+
+	    print "inconsistent 3'", bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj, bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj
+
+	## C) Insertion without any contig spanning one of the insertion breakpoints
+	elif (bestInformative5primeContigPlusObj == "na") and (bestInformative3primeContigPlusObj == "na") and (bestInformative5primeContigMinusObj == "na") and (bestInformative3primeContigMinusObj == "na"): 
+
+	    info("no-informative-contigs:")
+	    score = 3
+
+	    print "no-informative-contigs: ", bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj, bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj
+
+	## D) Consistent insertion
+	else:
+
+	    info("consistent-insertion:")
+	    print "consistent", bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj, bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj	
+
+	    ## 1. Determine 5' informative contig:
+	    # a) 5' informative contig in + cluster
+	    if (bestInformative5primeContigPlusObj != "na"):
+
+	        informative5primeContigObj = bestInformative5primeContigPlusObj
+
+	    # b) 5' informative contig in - cluster
+            elif (bestInformative5primeContigMinusObj != "na"):
+		informative5primeContigObj = bestInformative5primeContigMinusObj
+	    
+            # c) no 5' informative contig
+	    else:
+         	informative5primeContigObj = "na"
+
+	    ## 2. Determine 3' informative contig:
+	    # a) 3' informative contig in + cluster
+	    if (bestInformative3primeContigPlusObj != "na"):
+
+	        informative3primeContigObj = bestInformative3primeContigPlusObj
+
+	    # b) 3' informative contig in - cluster
+            elif (bestInformative3primeContigMinusObj != "na"):
+		informative3primeContigObj = bestInformative3primeContigMinusObj
+	    
+            # c) no 3' informative contig
+	    else:
+         	informative3primeContigObj = "na"
+
+	    print "informative-5prime-3prime", informative5primeContigObj, informative3primeContigObj
+
+	    ## 3. 
+	    # a) 
+	    if (informative5primeContigObj != "na") and (informative3primeContigObj != "na"):   	    
+		
+		info("5' and 3' informative contigs:")
+		score = 1
+		bkp5prime = informative5primeContigObj.informativeDict["bkp"]
+            	bkp3prime = informative3primeContigObj.informativeDict["bkp"] 
+            	info5prime = informative5primeContigObj.informativeDict["info"]
+            	info3prime = informative3primeContigObj.informativeDict["info"]
+	    	contig5primeId = informative5primeContigObj.ID 
+		contig3primeId = informative3primeContigObj.ID             	
+		contig5primeSeq = informative5primeContigObj.seq
+		contig3primeSeq = informative3primeContigObj.seq
+		
+		# Find Target Site Duplication (TSD) or microdeletion (TSM)
+            	targetSiteSize, targetSiteSeq = self.target_site(informative5primeContigObj, informative3primeContigObj)
+
+	    # b) 
+	    elif (informative5primeContigObj != "na"):
+		info("5' informative contig:")
+		score = 2
+		bkp5prime = informative5primeContigObj.informativeDict["bkp"]
+            	info5prime = informative5primeContigObj.informativeDict["info"]
+	    	contig5primeId = informative5primeContigObj.ID            	
+		contig5primeSeq = informative5primeContigObj.seq
+
+	    # c)
+	    else:
+		info("3' informative contig:")
+		score = 2	
+            	bkp3prime = informative3primeContigObj.informativeDict["bkp"] 
+            	info3prime = informative3primeContigObj.informativeDict["info"]
+		contig3primeId = informative3primeContigObj.ID             	
+		contig3primeSeq = informative3primeContigObj.seq
+
+	    ## 4. TE insertion orientation
+            # ------- Until here --------
+	    orientation = self.insertion_orientation(informative5primeContigObj, informative3primeContigObj)
 
 	return
 
 	# ---------------- until here. Next steps need to be updated... ----------------------
-
-        ### Determine insertion breakpoints, TS and TE orientation from informative contigs 
-        
-        subHeader("Determining insertion breakpoint, TS and TE orientation from informative contigs")
         
         ## Set variables 
         
@@ -143,7 +240,7 @@ class insertion():
         if (informativeContigPlusObj != "") and (informativeContigMinusObj != ""):
             
             info('+ and - informative clusters:') 
-                
+    
             score = 1
             bkpPlus = informativeContigPlusObj.informative[1]
             bkpMinus = informativeContigMinusObj.informative[1]
@@ -262,55 +359,103 @@ class insertion():
         
         # Close output and end
         outFile.close()
+       
+
+    def target_site(self, informative5primeContigObj, informative3primeContigObj):
+        """ 
+            Determine Target Site Duplication (TSD) or Target Site Microdeletion Size (TSM).
+
+	    1) TSD:
+                     
+            --------------------------- bkpPlus
+                    bkpMinus --------------------
+                             <-------->
+                                 TSD (7bp)
+	    2) TSM:
+		      bkpPlus
+	    -----------------          bkpMinus
+                                       --------------------
+                             <-------->
+                                 TSM (7bp)
+
+            Input:
+            1) informative5primeContigObj. 
+            2) informative3primeContigObj
+                     
+            Output:
+            1) targetSiteSize. Target site duplication or microdeletion length
+            2) targetSiteSeq. Target site duplication sequence or 'na' if no TSD or TSM
+        """
         
+	bkpPos5prime = informative5primeContigObj.informativeDict["bkp"][1]
+        bkpPos3prime = informative3primeContigObj.informativeDict["bkp"][1]	
+	alignObj5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"]
         
-    def insertion_orientation(self, typePlus, typeMinus):
+        # A) Target site duplication (TSD)
+        if (bkpPos5prime > bkpPos3prime):
+            
+            ## Compute TSD length
+            targetSiteSize = bkpPos5prime - bkpPos3prime
+        
+            ## Extract TSD sequence
+            # A.a) Begin of the contig sequence aligned in the TE insertion genomic region
+            #   -------------**TSD**######TE#####
+            #   --------------------
+            # qBeg               *qEnd*
+            if (alignObj5prime.alignType == "beg"):
+                beg = alignObj5prime.qEnd - targetSiteSize
+                end = alignObj5prime.qEnd
+                targetSiteSeq = informative5primeContigObj.seq[beg:end]
+        
+            # A.b) End of the contig sequence aligned in the TE insertion genomic region
+            #   ######TE#####AAAAAAA**TSD**-------------
+            #                       --------------------
+            #                    *qBeg*               qEnd
+            elif (alignObj5prime.alignType == "end"):
+                beg = alignObj5prime.qBeg 
+                end = alignObj5prime.qBeg + targetSiteSize
+                targetSiteSeq = informative5primeContigObj.seq[beg:end]           
+
+	# B) Target site microdeletion (TSM)        
+	elif (bkpPos5prime < bkpPos3prime):    
+	    
+	    ## Compute TSM length
+            targetSiteSize =  bkpPos5prime - bkpPos3prime 
+	    targetSiteSeq = "na"
+
+        # C) No TSD or TSM
+        else:
+            targetSiteSize = 0
+            targetSiteSeq = "na"
+    
+        return (targetSiteSize, targetSiteSeq)
+ 
+        
+    def insertion_orientation(self, informative5primeContigObj, informative3primeContigObj):
         """ 
             Determine TE insertion strand/orientation.
             
             1) + orientation:
-                5' informative (+ cluster)      ####TE####---------------
-                3' informative (- cluster)      ---------------AAAAAAAAAA
+                5' informative contig      ####TE####-------end-------
+                3' informative contig      --------beg------AAAAAAAAAA
             
             2) - orientation (the opposite)
-                3' informative (+ cluster)      ---------------AAAAAAAAAA 
-                5' informative (- cluster)      ####TE####---------------
+                3' informative contig      --------beg------AAAAAAAAAA 
+                5' informative contig      ####TE####-------end-------
 
             Input:
-            1) typePlus. One of 'none', '5-prime' or '3-prime'
-            2) typeMinus. One of 'none', '5-prime' or '3-prime'
+            1) informative5primeContigObj 
+            2) informative3primeContigObj
             
             Output:
-            1) orientation. +, -, 'na' or 'inconsistent' (informative 5' or 3' for both + and - clusters)
+            1) orientation. + or -
         """
         
-        # A) No informative contig in + nor - clusters
-        if (typePlus == "none") and (typeMinus == "none"):
-            orientation = "na"
+	print "contigs: ", informative5primeContigObj, informative3primeContigObj
+
         
-        # B) Informative contig of the same type for + and - clusters 
-        elif (typePlus == typeMinus):
-            orientation = "inconsistent"
         
-        # C) 5-prime informative for + cluster and 3-prime informative 
-        # or not informative for - cluster 
-        elif (typePlus == "5-prime"):
-            orientation = "+"
-        
-        # D) 5-prime informative for - cluster and 3-prime informative 
-        # or not informative for + cluster
-        elif (typeMinus == "5-prime"):
-            orientation = "-"
-        
-        # E) 3-prime informative for + cluster and not informative for - cluster
-        elif (typePlus == "3-prime"):
-            orientation = "-"
-        
-        # F) 3-prime informative for - cluster and not informative for + cluster
-        elif (typeMinus == "3-prime"):
-            orientation = "+"
-        
-        return orientation
+        #return orientation
     
     
     def insertion_structure(self, typePlus, infoPlus, typeMinus, infoMinus, orientation):
@@ -437,74 +582,7 @@ class insertion():
             
         return polyA
                   
-    def target_site(self, informativeContigPlusObj, informativeContigMinusObj):
-        """ 
-            Determine Target Site Duplication (TSD) or Target Site Microdeletion Size (TSM).
-
-	    1) TSD:
-                     
-            --------------------------- bkpPlus
-                    bkpMinus --------------------
-                             <-------->
-                                 TSD (7bp)
-	    2) TSM:
-		      bkpPlus
-	    -----------------          bkpMinus
-                                       --------------------
-                             <-------->
-                                 TSM (7bp)
-
-            Input:
-            1) bkpPlus. Breakpoint coordinates according to + cluster informative contig (tuple: chrom and pos).
-            2) bkpMinus. Breakpoint coordinates according to - cluster informative contig (tuple: chrom and pos).
-                     
-            Output:
-            1) targetSiteSize. Target site duplication or microdeletion length
-            2) targetSiteSeq. Target site duplication sequence or 'na' if no TSD or TSM
-        """
-        
-        bkpPosPlus = informativeContigPlusObj.informative[1][1]
-        bkpPosMinus = informativeContigMinusObj.informative[1][1]
-        alignObjPlus = informativeContigPlusObj.informative[3]
-        
-        # A) Target site duplication (TSD)
-        if (bkpPosPlus > bkpPosMinus):
-            
-            ## Compute TSD length
-            targetSiteSize = bkpPosPlus - bkpPosMinus
-        
-            ## Extract TSD sequence
-            # A.a) Begin of the contig sequence aligned in the TE insertion genomic region
-            #   -------------**TSD**######TE#####
-            #   --------------------
-            # qBeg               *qEnd*
-            if (alignObjPlus.alignType == "beg"):
-                beg = alignObjPlus.qEnd - targetSiteSize
-                end = alignObjPlus.qEnd
-                targetSiteSeq = informativeContigPlusObj.seq[beg:end]
-        
-            # A.b) End of the contig sequence aligned in the TE insertion genomic region
-            #   ######TE#####AAAAAAA**TSD**-------------
-            #                       --------------------
-            #                    *qBeg*               qEnd
-            elif (alignObjPlus.alignType == "end"):
-                beg = alignObjPlus.qBeg 
-                end = alignObjPlus.qBeg + targetSiteSize
-                targetSiteSeq = informativeContigPlusObj.seq[beg:end]           
-
-	# B) Target site microdeletion (TSM)        
-	elif (bkpPosPlus < bkpPosMinus):    
-	    
-	    ## Compute TSM length
-            targetSiteSize =  bkpPosPlus - bkpPosMinus 
-	    targetSiteSeq = "na"
-
-        # C) No TSD or TSM
-        else:
-            targetSiteSize = 0
-            targetSiteSeq = "na"
-            
-        return (targetSiteSize, targetSiteSeq)
+    
     
     def imprecise_bkp(self, insertionCoord):
         """ 
@@ -889,7 +967,7 @@ class contig():
 	    targetPos = int(insertionCoord.split("_")[2])
 
         ## Check if it is an informative candidate contig
-        candidate, supportingAlignList = self.is_candidate(insertionCoord, int(5000), float(98))
+        candidate, supportingAlignList = self.is_candidate(insertionCoord, int(500), float(98))
            
         ## Informative candidate contig:
         if (candidate == 1):
@@ -969,8 +1047,7 @@ class contig():
 
 	return informativeBoolean 
 	      
-                
-        
+
     def is_3prime_informative(self, alignObj):
         """
         Check if candidate contig is 3' informative. Defined as contigs spanning 
