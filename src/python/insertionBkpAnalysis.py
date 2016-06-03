@@ -127,6 +127,10 @@ class insertion():
 
 	### Determine insertion breakpoints, TS and TE orientation from informative contigs 
         subHeader("Determining insertion breakpoint, TS and TE orientation from informative contigs")
+        
+	## Set default variables         
+        traficId = self.category + ":" + self.coordinates
+        
 
 	## A) Inconsistent 5' insertion
 	if (bestInformative5primeContigPlusObj != "na") and (bestInformative3primeContigPlusObj == "na") and (bestInformative5primeContigMinusObj != "na") and (bestInformative3primeContigMinusObj == "na"): 
@@ -134,7 +138,7 @@ class insertion():
 	    info("inconsistent 5':")
 	    score = 4
 	    
-	    print "inconsistent 5'", bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj, bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj
+	    print "inconsistent 5'", bestInformative5primeContigPlusObj.informativeDict["bkp"], bestInformative3primeContigPlusObj, bestInformative5primeContigMinusObj.informativeDict["bkp"], bestInformative3primeContigMinusObj
  
 	## B) Inconsistent 3' insertion
 	elif (bestInformative5primeContigPlusObj == "na") and (bestInformative3primeContigPlusObj != "na") and (bestInformative5primeContigMinusObj == "na") and (bestInformative3primeContigMinusObj != "na"): 
@@ -142,7 +146,7 @@ class insertion():
 	    info("inconsistent 3':")
 	    score = 4
 
-	    print "inconsistent 3'", bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj, bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj
+	    print "inconsistent 3'", bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj.informativeDict["bkp"], bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj.informativeDict["bkp"]
 
 	## C) Insertion without any contig spanning one of the insertion breakpoints
 	elif (bestInformative5primeContigPlusObj == "na") and (bestInformative3primeContigPlusObj == "na") and (bestInformative5primeContigMinusObj == "na") and (bestInformative3primeContigMinusObj == "na"): 
@@ -158,7 +162,7 @@ class insertion():
 	    info("consistent-insertion:")
 	    print "consistent", bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj, bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj	
 
-	    ## 1. Determine 5' informative contig:
+	    ## Determine 5' informative contig:
 	    # a) 5' informative contig in + cluster
 	    if (bestInformative5primeContigPlusObj != "na"):
 
@@ -186,10 +190,8 @@ class insertion():
 	    else:
          	informative3primeContigObj = "na"
 
-	    print "informative-5prime-3prime", informative5primeContigObj, informative3primeContigObj
-
-	    ## 3. 
-	    # a) 
+	    ## Check informative contigs:
+	    # a) Both 5' and 3' informative contigs
 	    if (informative5primeContigObj != "na") and (informative3primeContigObj != "na"):   	    
 		
 		info("5' and 3' informative contigs:")
@@ -206,7 +208,7 @@ class insertion():
 		# Find Target Site Duplication (TSD) or microdeletion (TSM)
             	targetSiteSize, targetSiteSeq = self.target_site(informative5primeContigObj, informative3primeContigObj)
 
-	    # b) 
+	    # b) 5' informative contig
 	    elif (informative5primeContigObj != "na"):
 		info("5' informative contig:")
 		score = 2
@@ -215,7 +217,7 @@ class insertion():
 	    	contig5primeId = informative5primeContigObj.ID            	
 		contig5primeSeq = informative5primeContigObj.seq
 
-	    # c)
+	    # c) 3' informative contig
 	    else:
 		info("3' informative contig:")
 		score = 2	
@@ -224,112 +226,14 @@ class insertion():
 		contig3primeId = informative3primeContigObj.ID             	
 		contig3primeSeq = informative3primeContigObj.seq
 
-	    ## 4. TE insertion orientation
-            # ------- Until here --------
+	    ## TE insertion orientation
 	    orientation = self.insertion_orientation(informative5primeContigObj, informative3primeContigObj)
 
+	    ## TE insertion structure
+            self.insertion_structure(informative5primeContigObj)
+	    #structure, length, percLength = self.insertion_structure(informative5primeContigObj)
+
 	return
-
-	# ---------------- until here. Next steps need to be updated... ----------------------
-        
-        ## Set variables 
-        
-        traficId = self.category + ":" + self.coordinates
-        
-        # A) There is an informative contig for both + and - clusters
-        if (informativeContigPlusObj != "") and (informativeContigMinusObj != ""):
-            
-            info('+ and - informative clusters:') 
-    
-            score = 1
-            bkpPlus = informativeContigPlusObj.informative[1]
-            bkpMinus = informativeContigMinusObj.informative[1]
-            typePlus = informativeContigPlusObj.informative[0]
-            infoPlus = informativeContigPlusObj.informative[2]
-            typeMinus = informativeContigMinusObj.informative[0]
-            infoMinus = informativeContigMinusObj.informative[2]
-	    contigPlusId = informativeContigPlusObj.ID 
-            contigPlusSeq = informativeContigPlusObj.seq
-            contigMinusId = informativeContigMinusObj.ID 
-	    contigMinusSeq = informativeContigMinusObj.seq
-            
-            # Find Target Site Duplication (TSD) or microdeletion (TSM)
-            targetSiteSize, targetSiteSeq = self.target_site(informativeContigPlusObj, informativeContigMinusObj)
-                        
-        # B) There is an informative contig for + cluster
-        elif (informativeContigPlusObj != ""):
-           
-            info('+ informative cluster:')
-            
-            score = 2
-            bkpPlus = informativeContigPlusObj.informative[1]
-            bkpMinus = [ "na", "na" ]
-            typePlus = informativeContigPlusObj.informative[0]
-            infoPlus = informativeContigPlusObj.informative[2]
-            typeMinus = "none"
-            infoMinus = "none"
-            targetSiteSize = "na"
-	    targetSiteSeq = "na"
-	    contigPlusId = informativeContigPlusObj.ID 
-            contigPlusSeq = informativeContigPlusObj.seq
-            contigMinusId = "na"
-	    contigMinusSeq = "na"
-            
-        # C) There is an informative contig for - cluster
-        elif (informativeContigMinusObj != ""):
-            
-            info('- informative cluster:')
-            
-            score = 2
-            bkpPlus = [ "na", "na" ]
-            bkpMinus = informativeContigMinusObj.informative[1]
-            typePlus = "none"
-            infoPlus = "none"
-            typeMinus = informativeContigMinusObj.informative[0]
-            infoMinus = informativeContigMinusObj.informative[2]
-            targetSiteSize = "na"
-	    targetSiteSeq = "na"
-	    contigPlusId = "na"
-            contigPlusSeq = "na"
-            contigMinusId = informativeContigMinusObj.ID 
-	    contigMinusSeq = informativeContigMinusObj.seq
-        
-        # D) There are not informative contigs for any of the clusters
-        else:
-            
-            info('no informative clusters:')
-            
-            score = 3
-            bkpPlus = [ "na", "na" ]
-            bkpMinus = [ "na", "na" ]
-            typePlus = "none"
-            infoPlus = "none"
-            typeMinus = "none"
-            infoMinus = "none"
-            targetSiteSize = "na"
-	    targetSiteSeq = "na"
-	    contigPlusId = "na"
-            contigPlusSeq = "na"
-            contigMinusId = "na"
-	    contigMinusSeq = "na"
-        
-        # TE insertion orientation
-        orientation = self.insertion_orientation(typePlus, typeMinus)
-        
-        # TE insertion structure
-        structure, length, percLength = self.insertion_structure(typePlus, infoPlus, typeMinus, infoMinus, orientation)
-        
-        # Poly-A sequence
-        polyA = self.polyA(typePlus, infoPlus, typeMinus, infoMinus)     
-        
-        # Modify score from 1 to 4 if inconsistent orientation
-        if (orientation == 'inconsistent'):    
-            score = 4
-
-	    ## Inconsistent -> no Target Site info available:
-	    targetSiteSize = "na"
-	    targetSiteSeq = "na"
-
 
         ## ------ Provisional -------
         ## Print results into the standard output
@@ -343,18 +247,18 @@ class insertion():
         print "Structure: ", structure
         print "TE-length: ", length
         print "perc-Length: ", percLength
-        print "Poly-A: ", polyA
         print "contig-plus-id: ", contigPlusId
         print "contig-plus-seq: ", contigPlusSeq
         print "contig-minus-id: ", contigMinusId
         print "contig-minus-seq: ", contigMinusSeq
         
+	
         ## Print results into an output file
         fileName = "TEIBA.results.txt"
         outFilePath = outDir + "/" + fileName
         outFile = open( outFilePath, "a" )
 
-        row = traficId + "\t" + str(score) + "\t" + str(bkpPlus) + "\t" + str(bkpMinus) + "\t" + str(targetSiteSize) + "\t" + targetSiteSeq + "\t" + orientation + "\t" + structure + "\t" + str(length) + "\t" + str(percLength) + "\t" + polyA + "\t" + contigPlusId + "\t" + contigPlusSeq + "\t" + contigMinusId + "\t" + contigMinusSeq + "\n"
+        row = traficId + "\t" + str(score) + "\t" + str(bkpPlus) + "\t" + str(bkpMinus) + "\t" + str(targetSiteSize) + "\t" + targetSiteSeq + "\t" + orientation + "\t" + structure + "\t" + str(length) + "\t" + str(percLength) + "\t" + "\t" + contigPlusId + "\t" + contigPlusSeq + "\t" + contigMinusId + "\t" + contigMinusSeq + "\n"
         outFile.write(row)
         
         # Close output and end
@@ -430,14 +334,14 @@ class insertion():
     
         return (targetSiteSize, targetSiteSeq)
  
-        
+       
     def insertion_orientation(self, informative5primeContigObj, informative3primeContigObj):
         """ 
             Determine TE insertion strand/orientation.
             
             1) + orientation:
-                5' informative contig      ####TE####-------end-------
-                3' informative contig      --------beg------AAAAAAAAAA
+                5' informative contig      -------beg-------####TE####
+                3' informative contig      AAAAAAAAAA--------end------
             
             2) - orientation (the opposite)
                 3' informative contig      --------beg------AAAAAAAAAA 
@@ -448,17 +352,60 @@ class insertion():
             2) informative3primeContigObj
             
             Output:
-            1) orientation. + or -
-        """
-        
-	print "contigs: ", informative5primeContigObj, informative3primeContigObj
+            1) orientation. +, -, na or inconsistent dna strand. 
 
+	    Note: Inconsistent when 5' and 3' informative contigs suggest contradictory orientations (should not happen). 
+        """
+	
+	## A) 5' and 3' informative contigs
+	if (informative5primeContigObj != "na") and (informative3primeContigObj != "na"):   	
+            alignType5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"].alignType 
+            alignType3prime = informative3primeContigObj.informativeDict["targetRegionAlignObj"].alignType 
         
-        
-        #return orientation
+	    # a) + strand
+	    if (alignType5prime == "beg") and (alignType3prime == "end"):	 
+		orientation = "+"
+
+            # b) - strand
+            elif (alignType5prime == "end") and (alignType3prime == "beg"):
+		orientation = "-"
+
+	    # c) Contradictory/inconsistent
+            else:   	
+		orientation = "inconsistent"
+
+	## B) 5' informative contig 
+ 	elif (informative5primeContigObj != "na"):
+	    alignType5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"].alignType 
+            
+	    # a) + strand
+	    if (alignType5prime == "beg"):
+		orientation = "+"
+	    
+            # b) - strand
+	    else:
+		orientation = "-"
+
+	## C) 3' informative contig
+	elif (informative3primeContigObj != "na"):
+            alignType3prime = informative3primeContigObj.informativeDict["targetRegionAlignObj"].alignType 	    
+
+	    # a) + strand
+	    if (alignType3prime == "end"):
+		orientation = "+"
+	    
+            # b) - strand
+	    else:
+		orientation = "-"
+     
+	## D) None informative contig
+	else:    
+	    orientation = "na"
+
+	return orientation
     
     
-    def insertion_structure(self, typePlus, infoPlus, typeMinus, infoMinus, orientation):
+    def insertion_structure(self, informative5primeContigObj):
         """
             Determine TE insertion structure.
 
@@ -469,12 +416,14 @@ class insertion():
         	                                            <---->
                                                            inversion 
         	5-prime informative contig              --------- (5'inversion signature: the piece of contig corresponding to L1 
-                                                                   aligns in the opposite DNA strand than the TE insertion orientation)
+                                                                   aligns in the opposite DNA strand than the piece of contig aligning in the target region)
 
 	    2) Full length L1:
 
-                                                       ----#######TE######AAAAA----
-            3) 5' truncated L1:
+                                                     -------#######TE######AAAAA----
+            5-prime informative contig                  ----------
+	
+	    3) 5' truncated L1:
 
 	                                               --------###TE######AAAAA----
          					 	   <-->
@@ -483,106 +432,57 @@ class insertion():
                                                                     aligns in the body of the L1 and not in the 5' extreme) 
 
             Input:
-            1) typePlus. One of 'none', '5-prime' or '3-prime'.
-            2) infoPlus. Poly-A sequence for 3' and TE alignment object for 5' 
-            3) typeMinus. One of 'none', '5-prime' or '3-prime'
-            4) infoMinus. Poly-A sequence for 3' and TE alignment object for 5' 
-            5) orientation. +, -, 'na' or 'inconsistent' 
+            1) informative5primeContigObj
             
             Output:
             1) structure. One of 'na', '5'inverted', '5'truncated' or 'full-length'
             2) length. Inserted TE length, 'na' if not available.
             3) percLength. Percentage of TE consensus sequence inserted, 'na' if not available.  
         """
-        
-        ## 1. Gather information about contig alignment on the TE sequence (L1, Alu or SVA)
-        
-        ## 1.A) Informative 5' contig for + or - cluster
-        if ((typePlus == "5-prime") or (typeMinus == "5-prime")) and (orientation != "inconsistent"):
-        
-            # 1.A.a) + cluster informative 5'
-            if (typePlus == "5-prime"):
-                tSize = infoPlus.tSize
-                tBeg = infoPlus.tBeg 
-                tEnd = infoPlus.tEnd  
-                strand = infoPlus.strand
-                structure = ""
-        
-            # 1.A.b) - cluster informative 5'
-            elif (typeMinus == "5-prime"):
-                tSize = infoMinus.tSize
-                tBeg = infoMinus.tBeg 
-                tEnd = infoMinus.tEnd 
-                strand = infoMinus.strand
-                structure = ""
+
+	## A) 5' informative contig
+	if (informative5primeContigObj != "na"):
+	
+	    print "structure-insertion-info: ", informative5primeContigObj.informativeDict["info"].tName, informative5primeContigObj.informativeDict["info"].tSize, informative5primeContigObj.informativeDict["info"].tBeg, informative5primeContigObj.informativeDict["info"].tEnd, informative5primeContigObj.informativeDict["info"].strand, informative5primeContigObj.informativeDict["targetRegionAlignObj"].strand 
+	
+	    strand = informative5primeContigObj.informativeDict["info"].strand
+
+	    ## Determine TE insertion structure
             
-        ## 1.B) No 5' informative contigs for + nor - clusters or inconsistent orientation (both + and - are 5' informative)
-        else:
-            tSize = "na"
-            tBeg = "na" 
-            tEnd = "na"
-            strand = "na"
-            structure = "na"
+	    # a) TE inverted in its 5'
+	    if (strand == "-"):
+		structure = "5'inverted"
+		length = "na"
+		percLength = "na"
+
+	    # b) Full length or 5' truncated
+	    else:
+	        tBeg = informative5primeContigObj.informativeDict["info"].tBeg
+                tSize = informative5primeContigObj.informativeDict["info"].tSize
+
+                length = tSize - tBeg
+                percLength = float(length) / tSize * 100
+            
+                # b.a) full length TE insertion                  
+            	if (percLength > 95):
+                    # Threshold set for L1 (6021 bp length, first ~300bp correspond to promoter.
+                    # For Alu and SVA we need to put different values (or not...)
+                    structure = "full-length"    
+
+		# b.b) 5' truncated 
+       		else:
+       		    structure = "5'truncated"
+
+	## B) No 5' informative contig
+	else:
+	    print "structure-no5prime", informative5primeContigObj	
+
+	    structure = "na"
             length = "na"
             percLength = "na"
-            
-        ## 2. Determine TE insertion structure
-        ## 2.A) TE inverted in its 5'
-        if (strand != orientation) and (structure != "na"):
-            structure = "5'inverted"
-            length = "na"
-            percLength = "na"
-            
-        ## 2.B) L1 full length or 5' truncated
-        elif (structure != "na"):
-            length = tSize - tBeg
-            percLength = float(length) / tSize * 100
-            
-            # 2.B.a) full length TE insertion                  
-            if (length > 6000):
-                # Threshold set for L1 (6021 bp length, first ~300bp correspond to promoter.
-                # For Alu and SVA we need to put different values
-                structure = "full-length"
-            
-            # 2.B.b) 5' truncated 
-            else:
-                structure = "5'truncated"
-        
-        return (structure, length, percLength)
-            
-    def polyA(self, typePlus, infoPlus, typeMinus, infoMinus):
-        """
-            Report poly-A sequence
-        
-            Input:
-            1) typePlus. One of 'none', '5-prime' or '3-prime'
-            2) infoPlus. Poly-A sequence for 3' and TE alignment object for 5' 
-            3) typeMinus. One of 'none', '5-prime' or '3-prime'
-            4) infoMinus. Poly-A sequence for 3' and TE alignment object for 5' 
-            
-            Output:
-            1) polyA. Poly-A sequence. 
-        """
-        
-        # A) Informative 3-prime + and - clusters 
-        if (typePlus == "3-prime") and (typeMinus == "3-prime"):
-            polyA = "inconsistent"
-            
-        # B) Informative 3-prime + cluster
-        elif (typePlus == "3-prime"):
-            polyA = infoPlus
-            
-        # C)  Informative 3-prime - cluster
-        elif (typeMinus == "3-prime"):
-            polyA = infoMinus
-        
-        # D) No informative 3-prime clusters
-        else:
-            polyA = "na"
-            
-        return polyA
-                  
-    
+
+	return (structure, length, percLength)
+
     
     def imprecise_bkp(self, insertionCoord):
         """ 
@@ -886,6 +786,26 @@ class contig():
         self.informativeDict["targetRegionAlignObj"] = "na"   # targetRegionAlignObj -> alignment object with contig's alignment in the target region info. 
                              
     #### FUNCTIONS ####
+    def rev_complement(self, seq):
+	"""
+	    Make the reverse complementary of a dna sequence
+            
+            Input:
+            1) seq. DNA sequence 
+            
+            Output:
+	    1) revComplementSeq. Reverse complementary of input DNA sequence
+	"""
+    	baseComplementDict = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A', 'N': 'N'}
+ 	seq = seq.upper()
+	revSeq = seq[::-1] # Make reverse sequence
+	letters = list(revSeq) 
+    	letters = [baseComplementDict[base] for base in letters] 
+    	revComplementSeq = ''.join(letters) # Make complement of reverse sequence
+    	
+    	return revComplementSeq
+
+
     def is_candidate(self, insertionCoord, windowSize, maxAlignPerc):
         """
         Check if contig is candidate to be informative about the TE insertion breakpoint. Informative contigs 
@@ -1045,9 +965,33 @@ class contig():
 	    informativeBoolean = 1
 	    self.informativeDict = bestInformative3primeDict
 
+	## Fix contig orientation if necessary (contig aligning in -)
+	if (informativeBoolean == 1):
+	    
+	    print "fix-orientation", self.seq, self.informativeDict["targetRegionAlignObj"].strand, self.informativeDict["targetRegionAlignObj"].tBeg, self.informativeDict["targetRegionAlignObj"].tEnd, self.informativeDict["targetRegionAlignObj"].qBeg, self.informativeDict["targetRegionAlignObj"].qEnd
+
+	    ## Contig aligning in - strand
+	    if (self.informativeDict["targetRegionAlignObj"].strand == "-"):
+
+		## Substitute contig by its reverse complementary sequence		
+		self.seq = self.rev_complement(self.seq)		
+		
+		## Fix contig alignment coordinates on the TE insertion genomic region 
+		switchTypeDict = {'beg': 'end', 'end': 'beg'}
+		alignType = self.informativeDict["targetRegionAlignObj"].alignType
+		self.informativeDict["targetRegionAlignObj"].alignType = switchTypeDict[alignType] 
+		self.informativeDict["targetRegionAlignObj"].rev_complement()
+
+		## If informative 5-prime fix contig alignment coordinates on the transposon sequence
+		if (self.informativeDict["type"] == "5-prime"):
+	
+		    self.informativeDict["info"].rev_complement()
+
+		print "fixed-orientation", self.seq, self.informativeDict["targetRegionAlignObj"].strand
+	    
 	return informativeBoolean 
 	      
-
+                
     def is_3prime_informative(self, alignObj):
         """
         Check if candidate contig is 3' informative. Defined as contigs spanning 
@@ -1315,6 +1259,25 @@ class blat_alignment():
         self.alignType = ""
     
     #### FUNCTIONS ####
+    def rev_complement(self):
+	"""
+	    Make the reverse complementary aligment. This would be the alignment information of the reverse complementary original sequence  
+            
+            Output:
+	    - Update alignment information for reverse complementary alignment. Need to be improved to also update tStarts variable
+	"""
+
+	## Reverse complement strand
+    	switchStrandDict = {'+': '-', '-': '+'}
+	self.strand = switchStrandDict[self.strand]
+
+	## Reverse complement query start and end positions
+	updatedBeg = self.qSize - self.qEnd 
+ 	updatedEnd = self.qSize - self.qBeg 
+
+	self.qBeg = updatedBeg 
+        self.qEnd = updatedEnd
+
     def in_target_region(self, coords, windowSize):
         """ 
             Check if blat alignment within a region of interest:
