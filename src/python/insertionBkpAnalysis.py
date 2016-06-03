@@ -108,7 +108,7 @@ class insertion():
                 2. Informative contig (5' or 3') for only one cluster 1 (+ or -)
                 3. Any informative contig identified.
                 4. Inconsistent insertion. Informative contig for both clusters of the same type (5',5' or 3',3'). 
-            2) breakpoint. Breakpoint coordinates (tuple: chrom and pos)
+            2) breakpoint. Breakpoint coordinates (2 elements list: chrom and pos)
             3) TS. Target site duplication or microdeletion (tuple: TSD size and sequence). 
             4) orientation. TE insertion DNA strand/orientation (+ or -) 
             5) polyA. Poly-A sequence. 
@@ -124,133 +124,181 @@ class insertion():
 
         bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj = self.clusterMinusObj.find_informative_contigs(self.coordinates)
         
-
 	### Determine insertion breakpoints, TS and TE orientation from informative contigs 
         subHeader("Determining insertion breakpoint, TS and TE orientation from informative contigs")
         
 	## Set default variables         
         traficId = self.category + ":" + self.coordinates
         
-
-	## A) Inconsistent 5' insertion
-	if (bestInformative5primeContigPlusObj != "na") and (bestInformative3primeContigPlusObj == "na") and (bestInformative5primeContigMinusObj != "na") and (bestInformative3primeContigMinusObj == "na"): 
-
-	    info("inconsistent 5':")
-	    score = 4
-	    
-	    print "inconsistent 5'", bestInformative5primeContigPlusObj.informativeDict["bkp"], bestInformative3primeContigPlusObj, bestInformative5primeContigMinusObj.informativeDict["bkp"], bestInformative3primeContigMinusObj
- 
-	## B) Inconsistent 3' insertion
-	elif (bestInformative5primeContigPlusObj == "na") and (bestInformative3primeContigPlusObj != "na") and (bestInformative5primeContigMinusObj == "na") and (bestInformative3primeContigMinusObj != "na"): 
-	    
-	    info("inconsistent 3':")
-	    score = 4
-
-	    print "inconsistent 3'", bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj.informativeDict["bkp"], bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj.informativeDict["bkp"]
-
-	## C) Insertion without any contig spanning one of the insertion breakpoints
-	elif (bestInformative5primeContigPlusObj == "na") and (bestInformative3primeContigPlusObj == "na") and (bestInformative5primeContigMinusObj == "na") and (bestInformative3primeContigMinusObj == "na"): 
+	## A) Insertion without any contig spanning one of the insertion breakpoints
+	if (bestInformative5primeContigPlusObj == "na") and (bestInformative3primeContigPlusObj == "na") and (bestInformative5primeContigMinusObj == "na") and (bestInformative3primeContigMinusObj == "na"): 
 
 	    info("no-informative-contigs:")
+	    informative5primeContigObj = "na"
+	    informative3primeContigObj = "na"
+	    bkp5prime = "na"
+	    bkp3prime = "na"
 	    score = 3
+	    targetSiteSize = "na" 
+	    targetSiteSeq = "na"
+	    orientation = "na"
+            structure = "na"
+            length = "na"
+            percLength = "na"
 
 	    print "no-informative-contigs: ", bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj, bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj
 
-	## D) Consistent insertion
+	## B) Insertion with at least one contig spanning one of the insertion breakpoints
 	else:
 
-	    info("consistent-insertion:")
-	    print "consistent", bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj, bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj	
+	    info("informative-contig:")
+	    print "informative-contig", bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj, bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj	
 
-	    ## Determine 5' informative contig:
-	    # a) 5' informative contig in + cluster
-	    if (bestInformative5primeContigPlusObj != "na"):
+	    ## Determine 5' informative contig and insertion breakpoint
+	    # a) 5' informative contigs in + and - clusters:
+	    if (bestInformative5primeContigPlusObj != "na") and (bestInformative5primeContigMinusObj != "na"):
+	        
+		## Evaluate breakpoint consistency between both 5' informative contigs (+ and -)
+		informative5primeContigObj = bestInformative5primeContigPlusObj	
+		
+		bkpPos5primePlus = bestInformative5primeContigPlusObj.informativeDict["bkp"][1]
+		bkpPos5primeMinus = bestInformative5primeContigMinusObj.informativeDict["bkp"][1]
+		
+              	# Compute consensus breakpoint position.
+		# Consensus defined as mean position + confidence interval (CI):
+		#     + bkp                       - bkp	
+		#  -----------*               *------------
+		#              <-----Mean----->
+                #              <-CI-> 
+		bkpPos5prime = int(bkpPos5primePlus + bkpPos5primeMinus) / 2
 
-	        informative5primeContigObj = bestInformative5primeContigPlusObj
+		CI = int(abs(bkpPos5primePlus - bkpPos5primeMinus)) / 2
+		bkp5prime = [ informative5primeContigObj.informativeDict["bkp"][0], bkpPos5prime, CI]
+	
+	    # b) 5' informative contig in + cluster
+            elif (bestInformative5primeContigPlusObj != "na"):
+		informative5primeContigObj = bestInformative5primeContigPlusObj
+		bkp5prime = informative5primeContigObj.informativeDict["bkp"] + [0]
 
-	    # b) 5' informative contig in - cluster
-            elif (bestInformative5primeContigMinusObj != "na"):
-		informative5primeContigObj = bestInformative5primeContigMinusObj
-	    
-            # c) no 5' informative contig
+	    # c) 5' informative contig in - cluster	    
+	    elif (bestInformative5primeContigMinusObj != "na"):
+		informative5primeContigObj = bestInformative5primeContigMinusObj 
+		bkp5prime = informative5primeContigObj.informativeDict["bkp"] + [0] 
+
+            # d) none 5' informative contig
 	    else:
          	informative5primeContigObj = "na"
+		bkp5prime = ["na", "na", "na"]
 
-	    ## 2. Determine 3' informative contig:
-	    # a) 3' informative contig in + cluster
-	    if (bestInformative3primeContigPlusObj != "na"):
+	    ## Determine 3' informative contig and insertion breakpoint
+	    # a) 3' informative contigs in + and - clusters:
+	    if (bestInformative3primeContigPlusObj != "na") and (bestInformative3primeContigMinusObj != "na"):
+	        
+		## Evaluate breakpoint consistency between both 3' informative contigs (+ and -)
+		informative3primeContigObj = bestInformative3primeContigPlusObj	
+		
+		bkpPos3primePlus = bestInformative3primeContigPlusObj.informativeDict["bkp"][1]
+		bkpPos3primeMinus = bestInformative3primeContigMinusObj.informativeDict["bkp"][1]
+		
+              	# Compute consensus breakpoint position.
+		# Consensus defined as mean position + confidence interval (CI):
+		#     + bkp                       - bkp	
+		#  -----------*               *------------
+		#              <-----Mean----->
+                #              <-CI-> 
+		bkpPos3prime = int(bkpPos3primePlus + bkpPos3primeMinus) / 2
 
-	        informative3primeContigObj = bestInformative3primeContigPlusObj
+		CI = int(abs(bkpPos3primePlus - bkpPos3primeMinus)) / 2
+		bkp3prime = [ informative3primeContigObj.informativeDict["bkp"][0], bkpPos3prime, CI]
 
-	    # b) 3' informative contig in - cluster
-            elif (bestInformative3primeContigMinusObj != "na"):
-		informative3primeContigObj = bestInformative3primeContigMinusObj
-	    
-            # c) no 3' informative contig
+	    # b) 3' informative contig in + cluster
+            elif (bestInformative3primeContigPlusObj != "na"):
+		informative3primeContigObj = bestInformative3primeContigPlusObj
+		bkp3prime = informative3primeContigObj.informativeDict["bkp"] + [0]
+
+	    # c) 3' informative contig in - cluster	    
+	    elif (bestInformative3primeContigMinusObj != "na"):
+		informative3primeContigObj = bestInformative3primeContigMinusObj 
+		bkp3prime = informative3primeContigObj.informativeDict["bkp"] + [0] 
+
+            # d) none 3' informative contig
 	    else:
          	informative3primeContigObj = "na"
+		bkp3prime = ["na", "na", "na"]
+	
+	    ## Determine insertion score and Target Site Duplication (TSD) or microdeletion (TSM) if possible:
+	    
+	    CI5prime = bkp5prime[2]
+	    CI3prime = bkp3prime[2]
 
-	    ## Check informative contigs:
-	    # a) Both 5' and 3' informative contigs
-	    if (informative5primeContigObj != "na") and (informative3primeContigObj != "na"):   	    
-		
+	    # a) Inconsistent 5'
+	    if (CI5prime > 8) and (CI5prime != "na"): 
+		info("inconsistent 5':")
+		score = 4
+		targetSiteSize = "na" 
+		targetSiteSeq = "na"
+		orientation = "na"
+		structure = "na"
+		length = "na"
+		percLength = "na"
+
+	    # b) Inconsistent 3'
+	    elif (CI3prime > 8) and (CI3prime != "na"): 
+		info("inconsistent 3':")
+		score = 4
+		targetSiteSize = "na" 
+		targetSiteSeq = "na"
+		orientation = "na"
+		structure = "na"
+		length = "na"
+		percLength = "na"
+
+	    # c) Consistent 5' and 3' informative contigs
+	    elif (informative5primeContigObj != "na") and (informative3primeContigObj != "na"):   	    
 		info("5' and 3' informative contigs:")
-		score = 1
-		bkp5prime = informative5primeContigObj.informativeDict["bkp"]
-            	bkp3prime = informative3primeContigObj.informativeDict["bkp"] 
-            	info5prime = informative5primeContigObj.informativeDict["info"]
-            	info3prime = informative3primeContigObj.informativeDict["info"]
-	    	contig5primeId = informative5primeContigObj.ID 
-		contig3primeId = informative3primeContigObj.ID             	
-		contig5primeSeq = informative5primeContigObj.seq
-		contig3primeSeq = informative3primeContigObj.seq
-		
-		# Find Target Site Duplication (TSD) or microdeletion (TSM)
+		score = 1	
+
+		# Find TSD or TSM
             	targetSiteSize, targetSiteSeq = self.target_site(informative5primeContigObj, informative3primeContigObj)
 
-	    # b) 5' informative contig
+	    # d) 5' informative contig
 	    elif (informative5primeContigObj != "na"):
 		info("5' informative contig:")
 		score = 2
-		bkp5prime = informative5primeContigObj.informativeDict["bkp"]
-            	info5prime = informative5primeContigObj.informativeDict["info"]
-	    	contig5primeId = informative5primeContigObj.ID            	
-		contig5primeSeq = informative5primeContigObj.seq
+		targetSiteSize = "na" 
+		targetSiteSeq = "na"
 
-	    # c) 3' informative contig
+	    # e) 3' informative contig
 	    else:
 		info("3' informative contig:")
-		score = 2	
-            	bkp3prime = informative3primeContigObj.informativeDict["bkp"] 
-            	info3prime = informative3primeContigObj.informativeDict["info"]
-		contig3primeId = informative3primeContigObj.ID             	
-		contig3primeSeq = informative3primeContigObj.seq
+		score = 2
+		targetSiteSize = "na" 
+		targetSiteSeq = "na"	
 
-	    ## TE insertion orientation
-	    orientation = self.insertion_orientation(informative5primeContigObj, informative3primeContigObj)
+	    ## Compute TE insertion orientation and structure if not inconsistent
+	    if (score != 4):
+		    # TE insertion orientation
+		    orientation = self.insertion_orientation(informative5primeContigObj, informative3primeContigObj)
 
-	    ## TE insertion structure
-            self.insertion_structure(informative5primeContigObj)
-	    #structure, length, percLength = self.insertion_structure(informative5primeContigObj)
-
-	return
+	    	    # TE insertion structure
+	    	    structure, length, percLength = self.insertion_structure(informative5primeContigObj)
 
         ## ------ Provisional -------
         ## Print results into the standard output
         print "TraFiC-id: ", traficId
         print "Score: ", score    
-        print "Bkp-plus: ", bkpPlus
-        print "Bkp-minus", bkpMinus
+        print "bkp5prime: ", bkp5prime
+        print "bkp3prime", bkp3prime
         print "TS-length: ", targetSiteSize
         print "TS-seq: ", targetSiteSeq 
         print "Orientation: ", orientation
         print "Structure: ", structure
         print "TE-length: ", length
         print "perc-Length: ", percLength
-        print "contig-plus-id: ", contigPlusId
-        print "contig-plus-seq: ", contigPlusSeq
-        print "contig-minus-id: ", contigMinusId
-        print "contig-minus-seq: ", contigMinusSeq
+        print "informative-5prime: ", informative5primeContigObj
+        print "informative-3prime: ", informative3primeContigObj
+
+	return
         
 	
         ## Print results into an output file
@@ -442,9 +490,7 @@ class insertion():
 
 	## A) 5' informative contig
 	if (informative5primeContigObj != "na"):
-	
-	    print "structure-insertion-info: ", informative5primeContigObj.informativeDict["info"].tName, informative5primeContigObj.informativeDict["info"].tSize, informative5primeContigObj.informativeDict["info"].tBeg, informative5primeContigObj.informativeDict["info"].tEnd, informative5primeContigObj.informativeDict["info"].strand, informative5primeContigObj.informativeDict["targetRegionAlignObj"].strand 
-	
+
 	    strand = informative5primeContigObj.informativeDict["info"].strand
 
 	    ## Determine TE insertion structure
@@ -475,8 +521,6 @@ class insertion():
 
 	## B) No 5' informative contig
 	else:
-	    print "structure-no5prime", informative5primeContigObj	
-
 	    structure = "na"
             length = "na"
             percLength = "na"
@@ -781,7 +825,7 @@ class contig():
         self.alignList = []   # List of blat alignments for this contig
         self.informativeDict = {} # Dictionary key -> value pairs:
         self.informativeDict["type"] = "na"       	      # type -> 5-prime, 3-prime or none
-        self.informativeDict["bkp"] = "na"          	      # bkp -> tuple: chrom and pos, 'na' for both if type == none)
+        self.informativeDict["bkp"] = "na"          	      # bkp -> list: chrom and pos, 'na' for both if type == none)
         self.informativeDict["info"] = "na"        	      # info -> 5-prime: aligment object with contig's alignment in TE sequence info; 3-prime: PolyA sequence; none: 'na'
         self.informativeDict["targetRegionAlignObj"] = "na"   # targetRegionAlignObj -> alignment object with contig's alignment in the target region info. 
                              
@@ -866,7 +910,7 @@ class contig():
             1) informativeBoolean. Boolean, 1 (informative) and 0 (not informative)
             2) Sets 'informativeDict' variable. Dictionary key -> value pairs:
                 type -> 5-prime, 3-prime or none
-                bkp -> tuple: chrom and pos, 'na' for both if type == none)
+                bkp -> list: chrom and pos, 'na' for both if type == none)
                 info -> 5-prime: aligment object with contig's alignment in TE sequence info; 
                         3-prime: PolyA sequence; none: 'na'
                 targetRegionAlignObj -> alignment object with contig's alignment in the target region info. 
