@@ -305,7 +305,6 @@ class insertion():
 			score = '4'
 			targetSiteSize = "na" 
 			targetSiteSeq = "na"
-			orientation = "na"
 			structure = "na"
 			length = "na"
 			percLength = "na"
