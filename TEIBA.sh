@@ -41,7 +41,7 @@ Execute for one dataset (sample).
 	-g 	<FASTA>			Reference Genome in fasta format (RG). Please make sure you provide the same RG version you used to run TraFiC. 
 					Also, make sure the same chromosome naming conventions are used.
 	
-	-c	<FASTA>			Consensus transposable element (TE) sequences in fasta format. Header lines must be named ">L1", ">Alu" and ">SVA" for
+	-c	<FASTA>			Three comma separated fasta files containing the consensus transposable element (TE) sequences for L1, Alu and SVA. Header lines must be named ">L1", ">Alu" and ">SVA" for
 					L1, Alu and SVA TE, respectively.  
 	
 	-s	<STRING>		Sample id. Output file will be named accordingly.	
@@ -92,7 +92,7 @@ do
       c)
 	  if [ -n "$OPTARG" ];
 	  then
-              TEseq=$OPTARG
+              consensusTEs=$OPTARG
 	  fi
 	  ;;    
 
@@ -217,7 +217,17 @@ fi
 if [[ ! -e $input ]]; then log "The TraFiC TE insertion calls file does not exist. Mandatory argument -i\n" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -e $fasta ]]; then log "The TE insertion supporting reads fasta file does not exist. Mandatory argument -f" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -e $genome ]]; then log "The reference genome fasta file does not not exist. Mandatory argument -g" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -e $TEseq ]]; then log "The consensus TE fasta file does not not exist. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
+
+nbConsensusFiles=`echo $consensusTEs | awk '{nb=split($1,a,","); print nb;}'`
+
+read consensusL1 consensusAlu consensusSVA <<<$(echo $consensusTEs | awk '{nb=split($1,files,","); print files[1], files[2], files[3];}')
+
+if [[ $nbConsensusFiles != "3" ]]; then log "Not provided the three required fasta files with consensus L1, Alu and SVA sequences. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -e $consensusL1 ]]; then log "The consensus L1 fasta file does not not exist. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -e $consensusAlu ]]; then log "The consensus Alu fasta file does not not exist. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -e $consensusSVA ]]; then log "The consensus SVA fasta file does not not exist. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
+
+if [[ $nbConsensusFiles != "3" ]]; then log "Do not provided the 3 required fasta files for L1, Alu and SVA. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ $sampleId == "" ]]; then log "The sample id is not provided. Mandatory argument -s\n" "ERROR" >&2; usageDoc; exit -1; fi
 
 
@@ -278,11 +288,14 @@ printf "  %-34s %s\n" "***** MANDATORY ARGUMENTS *****"
 printf "  %-34s %s\n" "input:" "$input"
 printf "  %-34s %s\n" "fasta:" "$fasta"
 printf "  %-34s %s\n" "genome:" "$genome"
-printf "  %-34s %s\n" "consensus-TE:" "$TEseq"
+printf "  %-34s %s\n" "consensus-L1:" "$consensusL1"
+printf "  %-34s %s\n" "consensus-Alu:" "$consensusAlu"
+printf "  %-34s %s\n" "consensus-SVA:" "$consensusSVA"
 printf "  %-34s %s\n\n" "sampleId:" "$sampleId"
 printf "  %-34s %s\n" "***** OPTIONAL ARGUMENTS *****"
 printf "  %-34s %s\n" "K-mer length:" "$kmerLen"
 printf "  %-34s %s\n\n" "outDir:" "$outDir"
+
 
 ##########
 ## START #
@@ -401,9 +414,26 @@ ls $contigsDir | grep '.*fa' | while read bkpContigs;
 do
 	bkpContigsPath=${contigsDir}/${bkpContigs}	
 	bkpId=${bkpContigs%.contigs.fa}
+	category=`echo $bkpId | awk '{split($1,a,":"); print a[1];}'` 	
+
+	# For each insertion, select the corresponding consensus TE sequence to align the contigs into
+	case $category in   	
+            
+	    L1)
+              	consensusTE=$consensusL1
+	       	;;
+      
+            Alu)
+                consensusTE=$consensusAlu
+	       	;;
+
+	    Other)
+		consensusTE=$consensusSVA
+
+	esac
 	
 	log "** ${bkpId} breakpoint **\n" $step
-	run "bash $ALIGN_CONTIGS $bkpContigsPath $bkpId $genome $TEseq 1000 $blatDir 1>> $logsDir/3_blat.out 2>> $logsDir/3_blat.err" "$ECHO"
+	run "bash $ALIGN_CONTIGS $bkpContigsPath $bkpId $genome $consensusTE 1000 $blatDir 1>> $logsDir/3_blat.out 2>> $logsDir/3_blat.err" "$ECHO"
 done 
 
 endTime=$(date +%s)

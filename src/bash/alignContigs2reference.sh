@@ -66,7 +66,7 @@ then
     echo "1) Assembled contigs fasta file. Mandatory" >&2
     echo "2) Transposable element insertion identifier. Format: '${family}:${chr}_${beg}_${end}:${orientation}.fa'. Mandatory" >&2
     echo "3) Reference genome fasta file. Mandatory" >&2
-    echo "4) Consensus transposable element sequence (L1, Alu or SVA depending on the TE's family). Mandatory"  >&2
+    echo "4) Consensus transposable element sequence fasta file (L1, Alu or SVA depending on the TE's family). Mandatory"  >&2
     echo "5) Window size around insertion breakpoints to define blat target region. Default=1000"  >&2
     echo "6) Output directory. Default: current working directory"  >&2
     echo "" >&2
@@ -134,9 +134,9 @@ eval "for i in {1..${#header}};do printf \"-\";done"
 printf "\n\n"
 printf "  %-34s %s\n" "***** MANDATORY ARGUMENTS *****"
 printf "  %-34s %s\n" "contigs:" "$contigs"
-printf "  %-34s %s\n" "insertion identifier:" "$insertionId"
-printf "  %-34s %s\n" "ref. genome:" "$genome"
-printf "  %-34s %s\n\n" "TE ref. sequence :" "$TEseq"
+printf "  %-34s %s\n" "insertionId:" "$insertionId"
+printf "  %-34s %s\n" "genome:" "$genome"
+printf "  %-34s %s\n\n" "consensus-TE:" "$TEseq"
 printf "  %-34s %s\n" "***** OPTIONAL ARGUMENTS *****"
 printf "  %-34s %s\n" "window size:" "$windowSize"
 printf "  %-34s %s\n\n" "outDir:" "$outDir"

@@ -541,7 +541,7 @@ class insertion():
     
     def insertion_structure(self, informative5primeContigObj):
         """
-            Determine TE insertion structure.
+            Determine TE (L1, Alu or SVA) insertion structure.
 
             1) 5'inverted:
 
@@ -549,21 +549,21 @@ class insertion():
                                                             <<<<<<>>>>>>>>>>
         	                                            <---->
                                                            inversion 
-        	5-prime informative contig              --------- (5'inversion signature: the piece of contig corresponding to L1 
+        	5-prime informative contig              --------- (5'inversion signature: the piece of contig corresponding to the TE 
                                                                    aligns in the opposite DNA strand than the piece of contig aligning in the target region)
 
-	    2) Full length L1:
+	    2) Full length insetion:
 
                                                      -------#######TE######AAAAA----
             5-prime informative contig                  ----------
 	
-	    3) 5' truncated L1:
+	    3) 5' truncated insertino:
 
 	                                               --------###TE######AAAAA----
          					 	   <-->
                                                   	 deletion
-                5-prime informative contig              ---____--- (5'truncation signature: the piece of contig corresponding to L1 
-                                                                    aligns in the body of the L1 and not in the 5' extreme) 
+                5-prime informative contig              ---____--- (5'truncation signature: the piece of contig corresponding to TE 
+                                                                    aligns in the body of the TE and not in the 5' extreme) 
 
             Input:
             1) informative5primeContigObj
@@ -1229,7 +1229,7 @@ class contig():
                            'na' if not 5' informative.
         """
         
-        ## Select contig target sequence coordinates to search for alignment in L1. 
+        ## Select contig target sequence coordinates to search for alignment in TE sequence (L1, Alu or SVA)
         # The position of the target coordinates in the contig 
         # will depend on the blat alignment type
         
@@ -1276,8 +1276,8 @@ class contig():
                 
         for alignment in self.alignList:
             
-            # Contig alignment in L1
-            if ( alignment.tName == "L1" ):
+            # Contig alignment in TE sequence (L1, Alu or SVA (SVA need to be included))
+            if ( alignment.tName == "L1" ) or ( alignment.tName == "Alu" ):
                 
                 ## Compute percentage of overlap between: 
                 # Expected alignment ---------------

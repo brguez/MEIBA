@@ -60,7 +60,7 @@ BEGIN{
 	split(tName, name, ":"); 
 	tName=name[1]; 
 	
-	if (tName!="L1")
+	if (tName!="L1" && tName!="Alu")  
 	{
 		# Add offset to template start and end (chromosomic coordenates)	
 		tStart=tStart + offset;
