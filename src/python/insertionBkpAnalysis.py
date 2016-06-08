@@ -278,6 +278,14 @@ class insertion():
 		# Find TSD or TSM
             	targetSiteSize, targetSiteSeq = self.target_site(informative5primeContigObj, informative3primeContigObj)
 
+		# Inconsistent TSD: 
+		if (targetSiteSize == "inconsistent"):
+		    score = '4'
+		    orientation = "na"
+		    structure = "na"
+		    length = "na"
+        	    percLength = "na"
+
 	    # d) 5' bkp/informative_contig
 	    elif (informative5primeContigObj != "na"):
 		info("5' informative contig:")
@@ -452,7 +460,12 @@ class insertion():
             elif (alignObj5prime.alignType == "end"):
                 beg = alignObj5prime.qBeg 
                 end = alignObj5prime.qBeg + targetSiteSize
-                targetSiteSeq = informative5primeContigObj.seq[beg:end]           
+                targetSiteSeq = informative5primeContigObj.seq[beg:end]     
+	    
+	    ## Inconsistent TSD if sequence has not the expected length
+	    if (targetSiteSize != len(targetSiteSeq)):
+		targetSiteSize = "inconsistent"
+		targetSiteSeq = "inconsistent"
 
 	# B) Target site microdeletion (TSM)        
 	elif (bkpPos5prime < bkpPos3prime):    
@@ -557,7 +570,7 @@ class insertion():
                                                      -------#######TE######AAAAA----
             5-prime informative contig                  ----------
 	
-	    3) 5' truncated insertino:
+	    3) 5' truncated insertion:
 
 	                                               --------###TE######AAAAA----
          					 	   <-->
@@ -597,8 +610,8 @@ class insertion():
             
                 # b.a) full length TE insertion                  
             	if (percLength > 95):
-                    # Threshold set for L1 (6021 bp length, first ~300bp correspond to promoter.
-                    # For Alu and SVA we need to put different values (or not...)
+                    # Threshold set for L1 (6021 bp length + 30bp polyA, first ~300bp correspond to promoter)
+                    # and Alu (282 bp length + 30bp polyA). For SVA we need to put different values (or not...)
                     structure = "full-length"    
 
 		# b.b) 5' truncated 
@@ -902,7 +915,8 @@ class contig():
         Check if contig is candidate to be informative about the TE insertion breakpoint. Informative contigs 
         span the insertion breakpoint. 
 
-        Candidate contigs are defined as contigs partially aligning in the TE insertion region
+        Candidate contigs are defined as contigs partially aligning in the TE insertion region. 
+	Contigs completely alignment on the TE sequence (L1, Alu or SVA) are not considered as candidates.
          
         Input:
             1) insertionCoord. Region of interest. Format: ${chrom}_${beg}_${end}. 
@@ -923,19 +937,34 @@ class contig():
         # Iterate over all the contig blat alignments
         for alignment in self.alignList:
             
-            # 1. Check if alignment within the target region
-            insertionRegion = alignment.in_target_region(insertionCoord, windowSize)
+	    alignPerc = float(alignment.qEnd - alignment.qBeg) / alignment.qSize * 100
+    
+	    ## A) Discard contig completely aligning in the TE sequence as informative candidate  
+	    # TE: L1, Alu or SVA (SVA need to be included)
+            if (( alignment.tName == "L1" ) or ( alignment.tName == "Alu" )) and ( alignPerc > 99 ):
+		
+		candidate = 0
+	        supportingAlignList = []
+		break 
+	   
+	    ## B) Contig do not alignining in the TE sequence
+            else:
+	
+	        # 1. Check if alignment within the target region
+	        insertionRegion = alignment.in_target_region(insertionCoord, windowSize)
             
-            # Within target region
-            if (insertionRegion == 1):
+                # Within target region
+                if (insertionRegion == 1):
               
-                # 2. Check if it is a partial alignment
-                partial = alignment.partial_alignment(maxAlignPerc)
+                    # 2. Check if it is a partial alignment
+                    partial = alignment.partial_alignment(maxAlignPerc)
                 
-                # Partial
-                if (partial == 1):            
-                    supportingAlignList.append(alignment)
-                    candidate = 1
+                    # Partial
+                    if (partial == 1):            
+                        supportingAlignList.append(alignment)
+
+			# Informative candidate contig -> partially alignining on the target region and do not aligning completely on the TE sequence                        
+			candidate = 1
                     
         return (candidate, supportingAlignList)
 
