@@ -173,30 +173,38 @@ echo "samtools faidx $genome $targetInterval > $targetRegionPath" >&1
 samtools faidx $genome $targetInterval > $targetRegionPath
 
 
-###########################################################################
-# 2. CONCATENATE TARGET REGION FASTA WITH THE L1 REFERENCE SEQUENCE FASTA #
-###########################################################################
+##########################################################
+# 2. BLAT CONTIGS INTO THE TE SEQUENCE AND TARGET REGION #
+##########################################################
 ## Output:
-# - $outDir/target_sequences.fa
-targetSeqPath=$outDir/target_sequences.fa
+# - $outDir/$insertionId".targetRegion.psl" 
+# - $outDir/$insertionId".consensusTE.psl" 
 
-echo "2. Concatenate target region fasta with TE reference sequence fasta" >&1
+blatTEPath=$outDir/$insertionId".consensusTE.psl" 
+blatTargetRegionPath=$outDir/$insertionId".targetRegion.psl" 
 
-echo "cat $outDir/insertion_region.fa $TEseq > $targetSeqPath" >&1
-cat $outDir/insertion_region.fa $TEseq > $targetSeqPath
+echo "2. Blat contigs into the consensus TE sequence and in the target region" >&1
+
+# 1) Alignment on the TE sequence (Allow gaps in the alignment)
+echo "blat -t=dna -q=dna -stepSize=5 -minScore=20 -out=psl -noHead $TEseq $contigs $blatTEPath" >&1
+blat -t=dna -q=dna -stepSize=5 -minScore=20 -out=psl -noHead $TEseq $contigs $blatTEPath
+
+# 2) Alignment on the target region (do not allow gaps)
+echo "blat -t=dna -q=dna -stepSize=5 -minScore=20 -maxIntron=0 -out=psl -noHead $outDir/insertion_region.fa $contigs $blatTargetRegionPath" >&1
+blat -t=dna -q=dna -stepSize=5 -minScore=20 -maxIntron=0 -out=psl -noHead $outDir/insertion_region.fa $contigs $blatTargetRegionPath
 
 
 ##################################################
-# 3. BLAT CONTIGS INTO THE FASTA GENERATED IN 2. #
+# 2. CONCATENATE TE AND TARGET REGION ALIGNMENTS #
 ##################################################
 ## Output:
-# - $outDir/$insertionId".tmp.psl"
-tmpBlatPath=$outDir/$insertionId".tmp.psl" 
+# - $outDir/$insertionId".all.psl" 
+blatAllPath=$outDir/$insertionId".all.psl" 
 
-echo "3. Blat contigs into the fasta generated in 2." >&1
+echo "3. Concatenate TE and target region contig alignments" >&1
 
-echo "blat -t=dna -q=dna -stepSize=5 -minScore=20 -out=psl -noHead $outDir/target_sequences.fa $contigs $tmpBlatPath" >&1
-blat -t=dna -q=dna -stepSize=5 -minScore=20 -out=psl -noHead $outDir/target_sequences.fa $contigs $tmpBlatPath
+echo "cat $blatTEPath $blatTargetRegionPath > $blatAllPath" >&1
+cat $blatTEPath $blatTargetRegionPath > $blatAllPath
 
 
 ####################################################################
@@ -208,8 +216,8 @@ blatPath=$outDir/$insertionId".psl"
 
 echo "4. Convert psl template coordenates to genomic coordenates (add offset) " >&1
 
-echo "awk -v OFS='\t' -v offset=$offset -f $ADDOFFSET $outDir/$insertionId".tmp.psl" > $blatPath" >&1
-awk -v OFS='\t' -v offset=$offset -f $ADDOFFSET $outDir/$insertionId".tmp.psl" > $blatPath
+echo "awk -v OFS='\t' -v offset=$offset -f $ADDOFFSET $blatAllPath > $blatPath" >&1
+awk -v OFS='\t' -v offset=$offset -f $ADDOFFSET $blatAllPath > $blatPath
 
 
 ######################
@@ -217,8 +225,8 @@ awk -v OFS='\t' -v offset=$offset -f $ADDOFFSET $outDir/$insertionId".tmp.psl" >
 ######################
 echo "5. Cleanup and end" >&1
 echo >&1
-echo "rm $targetRegionPath $targetSeqPath $tmpBlatPath" >&1
-rm $targetRegionPath $targetSeqPath $tmpBlatPath 
+echo "rm $targetRegionPath $blatTEPath $blatTargetRegionPath $blatAllPath" >&1
+# rm $targetRegionPath $blatTEPath $blatTargetRegionPath $blatAllPath
 
 
 
