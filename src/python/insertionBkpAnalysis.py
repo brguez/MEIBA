@@ -429,8 +429,8 @@ class insertion():
             2) informative3primeContigObj
                      
             Output:
-            1) targetSiteSize. Target site duplication or microdeletion length
-            2) targetSiteSeq. Target site duplication sequence or 'na' if no TSD or TSM
+            1) targetSiteSize. Target site duplication or microdeletion length. 'inconsistent' if expected TSD size different to TSD sequence length.
+            2) targetSiteSeq. Target site duplication sequence or 'na' if no TSD or TSM. 'inconsistent' if expected TSD size different to TSD sequence length.
         """
         
 	bkpPos5prime = informative5primeContigObj.informativeDict["bkp"][1]
@@ -1228,8 +1228,8 @@ class contig():
             percA = float(nbA) / (nbA + nbG + nbC + nbT + nbN) * 100
             percT = float(nbT) / (nbA + nbG + nbC + nbT + nbN) * 100
             
-            # A) Classify the slide as poly-A if > 80% are T or A
-            if (percA >= 80) or (percT >= 80):
+            # A) Classify the slide as poly-A if > 90% are T or A
+            if (percA >= 90) or (percT >= 90):
                 
                 # Add sequence slice to the polyA sequence
                 polyASeq = polyASeq + seq 
@@ -1308,6 +1308,7 @@ class contig():
             # Contig alignment in TE sequence (L1, Alu or SVA (SVA need to be included))
             if ( alignment.tName == "L1" ) or ( alignment.tName == "Alu" ):
                 
+		print "--------------"
                 ## Compute percentage of overlap between: 
                 # Expected alignment ---------------
                 #                targetBeg      targetEnd 
@@ -1326,7 +1327,6 @@ class contig():
                     is5prime = 1
                     bkpCoord = [bkpChrom, bkpPos]
                     TEalignmentObj = alignment 
-                    break 
         
         return (is5prime, bkpCoord, TEalignmentObj)
         
