@@ -370,37 +370,6 @@ class insertion():
 		    self.informativeContigBkpA = informative3primeContigObj.seq
 	    	    self.informativeContigBkpB = informative5primeContigObj.seq
 
-
-        ## ------ Provisional -------
-        ## Print results into the standard output
-        print "TraFiC-id: ", self.traficId
-        print "Score: ", self.score    
-        print "bkpA: ", self.bkpA
-        print "bkpB", self.bkpB
-        print "TS-length: ", self.targetSiteSize
-        print "TS-seq: ", self.targetSiteSeq 
-        print "Orientation: ", self.orientation
-        print "Structure: ", self.structure
-        print "TE-length: ", self.length
-        print "perc-Length: ", self.percLength
-        print "bkpAContigId: ", self.informativeContigIdBkpA	
-        print "bkpAContig: ", self.informativeContigBkpA    
-	print "bkpBContigId: ", self.informativeContigIdBkpB	
-        print "bkpBContig: ", self.informativeContigBkpB
-	print "poly-A: ", self.polyA
-	
-        ## Print results into an output file
-        fileName = "TEIBA.results.txt"
-        outFilePath = outDir + "/" + fileName
-        outFile = open( outFilePath, "a" )
-
-        row = self.traficId + "\t" + str(self.score) + "\t" + str(self.bkpA) + "\t" + str(self.bkpB) + "\t" + str(self.targetSiteSize) + "\t" + self.targetSiteSeq + "\t" + self.orientation + "\t" + self.structure + "\t" + str(self.length) + "\t" + str(self.percLength) + "\t" + self.informativeContigIdBkpA + "\t" + self.informativeContigBkpA + "\t" + self.informativeContigIdBkpB + "\t" + self.informativeContigBkpB + "\t" + self.polyA + "\n"
-        outFile.write(row)
-        
-        # Close output and end
-        outFile.close()
-       
-
     def target_site(self, informative5primeContigObj, informative3primeContigObj):
         """ 
             Determine Target Site Duplication (TSD) or Target Site Microdeletion Size (TSM).
