@@ -859,7 +859,7 @@ class contig():
     - is_candidate
     - is_informative
     - is_3prime_bkp
-    - find_polyA
+    - is_polyA
     - is_5prime_bkp
     """
     
@@ -1148,7 +1148,7 @@ class contig():
                 bkpPos = alignObj.tBeg
                 
             ## Search for poly-A in the contig target piece of sequence. 
-            polyASeq = self.find_polyA(targetSeq, 10)
+            polyASeq = self.is_polyA(targetSeq)
         
         # B) End of the contig sequence aligned in the TE insertion genomic region
         #   ....AAAAAAAAAAAA-------------
@@ -1165,8 +1165,8 @@ class contig():
             else:
                 bkpPos = alignObj.tEnd
                 
-            ## Search for poly-A in the contig target piece of sequence. 
-            polyASeq = self.find_polyA(targetSeq, 10)
+            ## Check if the contig target piece of sequence corresponds to polyA 
+            polyASeq = self.is_polyA(targetSeq)
             
             polyASeq = polyASeq[::-1] # Make the reverse to put the poly-A in its original order
             
@@ -1190,53 +1190,39 @@ class contig():
         return (is3prime, bkpCoord, polyASeq)
             
         
-    def find_polyA(self, targetSeq, windowSize):
+    def is_polyA(self, targetSeq):
         """
-        Identify polyA(T) tail in a target sequence. 
+        Check if input sequence is a poly-A tail. 
         
-        Parse the sequence doing consecutive sliding windows and computing the percentage of T and A for each window. 
-        If it is >80 classify window as poly-A and search in the next window. If no poly-A window stop parsing. 
+        Compute the percentage of T and A for the input sequence. 
+        If it is >80 classify sequence as poly-A.
         
         Input:
         1) targetSeq. Target DNA sequence to search for poly A. 
-        2) windowSize (integer). Sliding window size to parse target sequence searching for poly A:
-                                                    
-                                    AAAAAAAAAAAAAAAAAAAAAAAA
-                                    *---W--->---W--->---W--->
         
         Output:
         1) polyASeq. PolyA sequence.            
         """
-        # Convert sequence into upper case:
+        
+	polyASeq = ""
+
+	# Convert sequence into upper case:
         targetSeq = targetSeq.upper()
         
-        ## Search for polyA tails in the target seq. taking consecutive slices of X bases (X = windowSize)
-        polyASeq = ""
-        for beg in range(0, len(targetSeq), windowSize):
-
-            # Take slice
-            end = beg + windowSize
-            seq = targetSeq[beg:end]
-        
-            # Compute percentage of A and T in the given slice
-            nbA = seq.count("A") 
-            nbG = seq.count("G") 
-            nbC = seq.count("C") 
-            nbT = seq.count("T") 
-            nbN = seq.count("N")
+	# Compute percentage of A and T in the given slice
+        nbA = targetSeq.count("A") 
+        nbG = targetSeq.count("G") 
+        nbC = targetSeq.count("C") 
+        nbT = targetSeq.count("T") 
+        nbN = targetSeq.count("N")
        
-            percA = float(nbA) / (nbA + nbG + nbC + nbT + nbN) * 100
-            percT = float(nbT) / (nbA + nbG + nbC + nbT + nbN) * 100
+        percA = float(nbA) / (nbA + nbG + nbC + nbT + nbN) * 100
+        percT = float(nbT) / (nbA + nbG + nbC + nbT + nbN) * 100
             
-            # A) Classify the slide as poly-A if > 90% are T or A
-            if (percA >= 90) or (percT >= 90):
-                
-                # Add sequence slice to the polyA sequence
-                polyASeq = polyASeq + seq 
+        # Classify the input sequence as poly-A if > 80% are T or A
+        if (percA >= 80) or (percT >= 80):    
+            polyASeq = targetSeq
             
-            # B) Stop parsing sequence if the slide is not poly-A 
-            else:
-                    break
                 
         return polyASeq
       
