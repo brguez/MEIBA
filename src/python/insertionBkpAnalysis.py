@@ -65,11 +65,28 @@ class insertion():
             Output:
             - Insertion object variables initialized
         """
-        self.category = category
+        self.TEClass = TEClass
         self.coordinates = coordinates
         self.clusterPlusObj = self.create_cluster("+", contigsPlusPath, blatPlusPath)
         self.clusterMinusObj = self.create_cluster("-", contigsMinusPath, blatMinusPath)
-        
+
+	## Unknown values by default:
+	self.traficId = "unkn"
+	self.score = "unkn"
+	self.bkpA = ["unkn", "unkn", "unkn"] 
+	self.bkpB = ["unkn", "unkn", "unkn"] 
+	self.targetSiteSize = "unkn"
+	self.targetSiteSeq = "unkn"	
+	self.orientation = "unkn"
+	self.structure = "unkn"
+	self.length = "unkn"
+	self.percLength = "unkn"
+	self.informativeContigIdBkpA = "unkn"
+	self.informativeContigBkpA = "unkn"
+	self.informativeContigIdBkpB = "unkn"
+	self.informativeContigBkpB = "unkn"
+	self.polyA = "unkn"
+ 
     #### FUNCTIONS ####
     def create_cluster(self, ID, contigsPath, blatPath):
         """ 
@@ -104,8 +121,8 @@ class insertion():
             Output (Provisional):
             1) score. One of these values:
                 1.  5' and 3' informative contigs 
-                2a. 5' informative contig
-                2b. 3' informative contig 
+                2A. 5' informative contig
+                2B. 3' informative contig 
 		3. No informative contig identified.
                 4. Inconsistent insertion. Contradictory orientation (5' and 3' informative contigs suggest opposite orientation) or breakpoint/s () 
             2) breakpoint. Breakpoint coordinates (3 elements list: chrom, pos and confidence interval (CI))
@@ -128,10 +145,10 @@ class insertion():
         subHeader("Determining insertion breakpoint, TS and TE orientation from informative contigs")
         
 	## Set default variables         
-        traficId = self.category + ":" + self.coordinates
+        self.traficId = self.TEClass + ":" + self.coordinates
         
 	## A) Insertion without any contig spanning one of the insertion breakpoints
-	if (bestInformative5primeContigPlusObj == "na") and (bestInformative3primeContigPlusObj == "na") and (bestInformative5primeContigMinusObj == "na") and (bestInformative3primeContigMinusObj == "na"): 
+	if (bestInformative5primeContigPlusObj == "unkn") and (bestInformative3primeContigPlusObj == "unkn") and (bestInformative5primeContigMinusObj == "unkn") and (bestInformative3primeContigMinusObj == "unkn"): 
 
 	    info("no-informative-contigs:")
 	    
@@ -142,23 +159,9 @@ class insertion():
             end = int(insertionCoordList[2])
 	    
 	    # Output variables
-	    score = '3'
-	    bkpA = [chrom, beg, "na"]
-	    bkpB = [chrom, end, "na"]
-	    targetSiteSize = "na" 
-	    targetSiteSeq = "na"
-	    orientation = "na"
-            structure = "na"
-            length = "na"
-            percLength = "na"
-	    informativeContigBkpA = "na"
-	    informativeContigBkpB = "na"
-	    polyA = "na"
-
-	    # ---- provisional, debug ---
-            informativeContigIdBkpA = "na"
-	    informativeContigIdBkpB = "na" 	
-	    # ---------------------------
+	    self.score = '3'
+	    self.bkpA = [chrom, beg, "unkn"]
+	    self.bkpB = [chrom, end, "unkn"]
 
 	## B) Insertion with at least one contig spanning one of the insertion breakpoints
 	else:
@@ -167,7 +170,7 @@ class insertion():
 
 	    ## 1. Determine 5' informative contig and insertion breakpoint
 	    # a) 5' informative contigs in + and - clusters:
-	    if (bestInformative5primeContigPlusObj != "na") and (bestInformative5primeContigMinusObj != "na"):
+	    if (bestInformative5primeContigPlusObj != "unkn") and (bestInformative5primeContigMinusObj != "unkn"):
 	        
 		## Evaluate breakpoint consistency between both 5' informative contigs (+ and -)
 		informative5primeContigObj = bestInformative5primeContigPlusObj	
@@ -187,23 +190,23 @@ class insertion():
 		bkp5prime = [ informative5primeContigObj.informativeDict["bkp"][0], bkpPos5prime, CI]
 	
 	    # b) 5' informative contig in + cluster
-            elif (bestInformative5primeContigPlusObj != "na"):
+            elif (bestInformative5primeContigPlusObj != "unkn"):
 		informative5primeContigObj = bestInformative5primeContigPlusObj
 		bkp5prime = informative5primeContigObj.informativeDict["bkp"] + [0]
 
 	    # c) 5' informative contig in - cluster	    
-	    elif (bestInformative5primeContigMinusObj != "na"):
+	    elif (bestInformative5primeContigMinusObj != "unkn"):
 		informative5primeContigObj = bestInformative5primeContigMinusObj 
 		bkp5prime = informative5primeContigObj.informativeDict["bkp"] + [0] 
 
             # d) none 5' informative contig
 	    else:
-         	informative5primeContigObj = "na"
-		bkp5prime = ["na", "na", "na"]
+         	informative5primeContigObj = "unkn"
+		bkp5prime = ["unkn", "unkn", "unkn"]
 
 	    ## 2. Determine 3' informative contig and insertion breakpoint
 	    # a) 3' informative contigs in + and - clusters:
-	    if (bestInformative3primeContigPlusObj != "na") and (bestInformative3primeContigMinusObj != "na"):
+	    if (bestInformative3primeContigPlusObj != "unkn") and (bestInformative3primeContigMinusObj != "unkn"):
 	        
 		## Evaluate breakpoint consistency between both 3' informative contigs (+ and -)
 		informative3primeContigObj = bestInformative3primeContigPlusObj	
@@ -223,130 +226,121 @@ class insertion():
 		bkp3prime = [ informative3primeContigObj.informativeDict["bkp"][0], bkpPos3prime, CI]
 
 		## Poly-A
-		polyA = informative3primeContigObj.informativeDict["info"] 
+		self.polyA = informative3primeContigObj.informativeDict["info"] 
 
 	    # b) 3' informative contig in + cluster
-            elif (bestInformative3primeContigPlusObj != "na"):
+            elif (bestInformative3primeContigPlusObj != "unkn"):
 		informative3primeContigObj = bestInformative3primeContigPlusObj
 		bkp3prime = informative3primeContigObj.informativeDict["bkp"] + [0]
-		polyA = informative3primeContigObj.informativeDict["info"] 
+		self.polyA = informative3primeContigObj.informativeDict["info"] 
 
 	    # c) 3' informative contig in - cluster	    
-	    elif (bestInformative3primeContigMinusObj != "na"):
+	    elif (bestInformative3primeContigMinusObj != "unkn"):
 		informative3primeContigObj = bestInformative3primeContigMinusObj 
 		bkp3prime = informative3primeContigObj.informativeDict["bkp"] + [0] 
-		polyA = informative3primeContigObj.informativeDict["info"] 
+		self.polyA = informative3primeContigObj.informativeDict["info"] 
 
-            # d) none 3' informative contig
+	    # d) none 3' informative contig
 	    else:
-         	informative3primeContigObj = "na"
-		bkp3prime = ["na", "na", "na"]
-		polyA = "na"
-	
+         	informative3primeContigObj = "unkn"
+		bkp3prime = ["unkn", "unkn", "unkn"]
+		polyA = "unkn"
+
+
 	    ## 3. Determine insertion score and Target Site Duplication (TSD) or microdeletion (TSM) if possible:
 	    
 	    CI5prime = bkp5prime[2]
 	    CI3prime = bkp3prime[2]
 
 	    # a) Inconsistent bkp 5'
-	    if (CI5prime > 8) and (CI5prime != "na"): 
-		info("inconsistent bkp 5':")
-		score = '4'
-		targetSiteSize = "na" 
-		targetSiteSeq = "na"
-		orientation = "na"
-		structure = "na"
-		length = "na"
-		percLength = "na"
+	    if (CI5prime > 8) and (CI5prime != "unkn"): 
+		info("inconsistent bkp 5'")
+		self.score = '4'
+		self.targetSiteSize = "unkn" 
+		self.targetSiteSeq = "unkn"
+		self.orientation = "unkn"
+		self.structure = "unkn"
+		self.length = "unkn"
+		self.percLength = "unkn"
 
 	    # b) Inconsistent bkp 3'
-	    elif (CI3prime > 8) and (CI3prime != "na"): 
-		info("inconsistent bkp 3':")
-		score = '4'
-		targetSiteSize = "na" 
-		targetSiteSeq = "na"
-		orientation = "na"
-		structure = "na"
-		length = "na"
-		percLength = "na"
+	    elif (CI3prime > 8) and (CI3prime != "unkn"): 
+		info("inconsistent bkp 3'")
+		self.score = '4'
+		self.targetSiteSize = "unkn" 
+		self.targetSiteSeq = "unkn"
+		self.orientation = "unkn"
+		self.structure = "unkn"
+		self.length = "unkn"
+		self.percLength = "unkn"
 
 	    # c) Consistent 5' and 3' bkps/informative_contigs 
-	    elif (informative5primeContigObj != "na") and (informative3primeContigObj != "na"):   	    
+	    elif (informative5primeContigObj != "unkn") and (informative3primeContigObj != "unkn"):   	    
 		info("5' and 3' informative contigs:")
-		score = '1'	
+		self.score = '1'	
 
 		# Find TSD or TSM
-            	targetSiteSize, targetSiteSeq = self.target_site(informative5primeContigObj, informative3primeContigObj)
+            	self.targetSiteSize, self.targetSiteSeq = self.target_site(informative5primeContigObj, informative3primeContigObj)
 
 		# Inconsistent TSD: 
-		if (targetSiteSize == "inconsistent"):
-		    score = '4'
-		    orientation = "na"
-		    structure = "na"
-		    length = "na"
-        	    percLength = "na"
+		if (self.targetSiteSize == "inconsistent"):
+		    self.score = '4'
+		    self.orientation = "unkn"
+		    self.structure = "unkn"
+		    self.length = "unkn"
+        	    self.percLength = "unkn"
 
 	    # d) 5' bkp/informative_contig
-	    elif (informative5primeContigObj != "na"):
+	    elif (informative5primeContigObj != "unkn"):
 		info("5' informative contig:")
-		score = '2a'
-		targetSiteSize = "na" 
-		targetSiteSeq = "na"
+		self.score = '2A'
 
 	    # e) 3' bkp/informative_contig
 	    else:
 		info("3' informative contig:")
-		score = '2b'
-		targetSiteSize = "na" 
-		targetSiteSeq = "na"	
+		self.score = '2B'
 
 	    ## 4. Compute TE insertion orientation and structure if not inconsistent
-	    if (score != '4'):
+	    if (self.score != '4'):
 		    # TE insertion orientation
-		    orientation = self.insertion_orientation(informative5primeContigObj, informative3primeContigObj)
+		    self.orientation = self.insertion_orientation(informative5primeContigObj, informative3primeContigObj)
 
 	    	    # TE insertion structure
-	    	    structure, length, percLength = self.insertion_structure(informative5primeContigObj)
+	    	    self.structure, self.length, self.percLength = self.insertion_structure(informative5primeContigObj)
 
 		    # Inconsistent orientation: 
-		    if (orientation == "inconsistent"):
-			score = '4'
-			targetSiteSize = "na" 
-			targetSiteSeq = "na"
-			structure = "na"
-			length = "na"
-			percLength = "na"
-		
+		    if (self.orientation == "inconsistent"):
+			self.score = '4'
+			self.targetSiteSize = "unkn" 
+			self.targetSiteSeq = "unkn"
+			self.structure = "unkn"
+			self.length = "unkn"
+			self.percLength = "unkn"
+
 	    ## 5. Order breakpoints by coordinates
 	    bkpCoord5prime  = bkp5prime[1]
 	    bkpCoord3prime  = bkp3prime[1]
 	    
 	    # a) 5' bkp characterized
-	    if (bkpCoord3prime == "na"):
+	    if (bkpCoord3prime == "unkn"):
 		
 		# ---- provisional, debug ---
-		informativeContigIdBkpA = informative5primeContigObj.ID
-	    	informativeContigIdBkpB = "na"
+		self.informativeContigIdBkpA = informative5primeContigObj.ID
 		# ---------------------------		
 	
-		bkpA = bkp5prime
-	    	bkpB = ["na", "na", "na"]
-		informativeContigBkpA = informative5primeContigObj.seq
-	    	informativeContigBkpB = "na"
-		
+		self.bkpA = bkp5prime
+		self.informativeContigBkpA = informative5primeContigObj.seq
+	    		
 	    # b) 3' bkp characterized
-	    elif (bkpCoord5prime == "na"):
+	    elif (bkpCoord5prime == "unkn"):
 
 		# ---- provisional, debug ---
-		informativeContigIdBkpA = informative3primeContigObj.ID
-	    	informativeContigIdBkpB = "na"  	
-		# ---------------------------
+		self.informativeContigIdBkpA = informative3primeContigObj.ID
+	   	# ---------------------------
 
-	    	bkpA = bkp3prime
-	    	bkpB = ["na", "na", "na"]
-		informativeContigBkpA = informative3primeContigObj.seq
-	    	informativeContigBkpB = "na"
-
+	    	self.bkpA = bkp3prime
+		self.informativeContigBkpA = informative3primeContigObj.seq
+	    	
 	    # c) 5' and 3' bkp characterized
 	    else:
 
@@ -354,53 +348,53 @@ class insertion():
 		if (bkpCoord5prime < bkpCoord3prime):
 		
 		    # ---- provisional, debug ---
-		    informativeContigIdBkpA = informative5primeContigObj.ID
-	    	    informativeContigIdBkpB = informative3primeContigObj.ID
+		    self.informativeContigIdBkpA = informative5primeContigObj.ID
+	    	    self.informativeContigIdBkpB = informative3primeContigObj.ID
 		    # ---------------------------
 
-   	    	    bkpA = bkp5prime
-	    	    bkpB = bkp3prime
-		    informativeContigBkpA = informative5primeContigObj.seq
-	    	    informativeContigBkpB = informative3primeContigObj.seq
+   	    	    self.bkpA = bkp5prime
+	    	    self.bkpB = bkp3prime
+		    self.informativeContigBkpA = informative5primeContigObj.seq
+	    	    self.informativeContigBkpB = informative3primeContigObj.seq
 	
 		# c.b) 3' bkp < 5' bkp
 		else:
 
 		    # ---- provisional, debug ---
-		    informativeContigIdBkpA = informative3primeContigObj.ID
-	    	    informativeContigIdBkpB = informative5primeContigObj.ID
+		    self.informativeContigIdBkpA = informative3primeContigObj.ID
+	    	    self.informativeContigIdBkpB = informative5primeContigObj.ID
 		    # ---------------------------
 
-   	    	    bkpA = bkp3prime
-	    	    bkpB = bkp5prime
-		    informativeContigBkpA = informative3primeContigObj.seq
-	    	    informativeContigBkpB = informative5primeContigObj.seq
+   	    	    self.bkpA = bkp3prime
+	    	    self.bkpB = bkp5prime
+		    self.informativeContigBkpA = informative3primeContigObj.seq
+	    	    self.informativeContigBkpB = informative5primeContigObj.seq
 
 
         ## ------ Provisional -------
         ## Print results into the standard output
-        print "TraFiC-id: ", traficId
-        print "Score: ", score    
-        print "bkpA: ", bkpA
-        print "bkpB", bkpB
-        print "TS-length: ", targetSiteSize
-        print "TS-seq: ", targetSiteSeq 
-        print "Orientation: ", orientation
-        print "Structure: ", structure
-        print "TE-length: ", length
-        print "perc-Length: ", percLength
-        print "bkpAContigId: ", informativeContigIdBkpA	
-        print "bkpAContig: ", informativeContigBkpA    
-	print "bkpBContigId: ", informativeContigIdBkpB	
-        print "bkpBContig: ", informativeContigBkpB
-	print "poly-A: ", polyA
+        print "TraFiC-id: ", self.traficId
+        print "Score: ", self.score    
+        print "bkpA: ", self.bkpA
+        print "bkpB", self.bkpB
+        print "TS-length: ", self.targetSiteSize
+        print "TS-seq: ", self.targetSiteSeq 
+        print "Orientation: ", self.orientation
+        print "Structure: ", self.structure
+        print "TE-length: ", self.length
+        print "perc-Length: ", self.percLength
+        print "bkpAContigId: ", self.informativeContigIdBkpA	
+        print "bkpAContig: ", self.informativeContigBkpA    
+	print "bkpBContigId: ", self.informativeContigIdBkpB	
+        print "bkpBContig: ", self.informativeContigBkpB
+	print "poly-A: ", self.polyA
 	
         ## Print results into an output file
         fileName = "TEIBA.results.txt"
         outFilePath = outDir + "/" + fileName
         outFile = open( outFilePath, "a" )
 
-        row = traficId + "\t" + str(score) + "\t" + str(bkpA) + "\t" + str(bkpB) + "\t" + str(targetSiteSize) + "\t" + targetSiteSeq + "\t" + orientation + "\t" + structure + "\t" + str(length) + "\t" + str(percLength) + "\t" + informativeContigIdBkpA + "\t" + informativeContigBkpA + "\t" + informativeContigIdBkpB + "\t" + informativeContigBkpB + "\t" + polyA + "\n"
+        row = self.traficId + "\t" + str(self.score) + "\t" + str(self.bkpA) + "\t" + str(self.bkpB) + "\t" + str(self.targetSiteSize) + "\t" + self.targetSiteSeq + "\t" + self.orientation + "\t" + self.structure + "\t" + str(self.length) + "\t" + str(self.percLength) + "\t" + self.informativeContigIdBkpA + "\t" + self.informativeContigBkpA + "\t" + self.informativeContigIdBkpB + "\t" + self.informativeContigBkpB + "\t" + self.polyA + "\n"
         outFile.write(row)
         
         # Close output and end
@@ -462,8 +456,8 @@ class insertion():
                 end = alignObj5prime.qBeg + targetSiteSize
                 targetSiteSeq = informative5primeContigObj.seq[beg:end]     
 	    
-	    ## Inconsistent TSD if sequence has not the expected length
-	    if (targetSiteSize != len(targetSiteSeq)):
+	    ## Inconsistent TSD if sequence has not the expected length or TSD > 100 bp or TSD 
+	    if (targetSiteSize != len(targetSiteSeq)) or (targetSiteSize > 100):
 		targetSiteSize = "inconsistent"
 		targetSiteSeq = "inconsistent"
 
@@ -472,12 +466,17 @@ class insertion():
 	    
 	    ## Compute TSM length
             targetSiteSize =  bkpPos5prime - bkpPos3prime 
-	    targetSiteSeq = "na"
+	    targetSiteSeq = "unkn"
+
+	    ## Inconsistent TSM if TSM < -100 bp
+	    if (targetSiteSize < -100):
+		targetSiteSize = "inconsistent"
+		targetSiteSeq = "inconsistent"
 
         # C) No TSD or TSM
         else:
             targetSiteSize = 0
-            targetSiteSeq = "na"
+            targetSiteSeq = "unkn"
     
         return (targetSiteSize, targetSiteSeq)
  
@@ -505,7 +504,7 @@ class insertion():
         """
 	
 	## A) 5' and 3' informative contigs
-	if (informative5primeContigObj != "na") and (informative3primeContigObj != "na"):   	
+	if (informative5primeContigObj != "unkn") and (informative3primeContigObj != "unkn"):   	
             alignType5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"].alignType 
             alignType3prime = informative3primeContigObj.informativeDict["targetRegionAlignObj"].alignType 
         
@@ -522,7 +521,7 @@ class insertion():
 		orientation = "inconsistent"
 
 	## B) 5' informative contig 
- 	elif (informative5primeContigObj != "na"):
+ 	elif (informative5primeContigObj != "unkn"):
 	    alignType5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"].alignType 
             
 	    # a) + strand
@@ -534,7 +533,7 @@ class insertion():
 		orientation = "-"
 
 	## C) 3' informative contig
-	elif (informative3primeContigObj != "na"):
+	elif (informative3primeContigObj != "unkn"):
             alignType3prime = informative3primeContigObj.informativeDict["targetRegionAlignObj"].alignType 	    
 
 	    # a) + strand
@@ -547,7 +546,7 @@ class insertion():
      
 	## D) None informative contig
 	else:    
-	    orientation = "na"
+	    orientation = "unkn"
 
 	return orientation
     
@@ -588,7 +587,7 @@ class insertion():
         """
 
 	## A) 5' informative contig
-	if (informative5primeContigObj != "na"):
+	if (informative5primeContigObj != "unkn"):
 
 	    strand = informative5primeContigObj.informativeDict["info"].strand
 
@@ -597,8 +596,8 @@ class insertion():
 	    # a) TE inverted in its 5'
 	    if (strand == "-"):
 		structure = "5'inverted"
-		length = "na"
-		percLength = "na"
+		length = "unkn"
+		percLength = "unkn"
 
 	    # b) Full length or 5' truncated
 	    else:
@@ -620,9 +619,9 @@ class insertion():
 
 	## B) No 5' informative contig
 	else:
-	    structure = "na"
-            length = "na"
-            percLength = "na"
+	    structure = "unkn"
+            length = "unkn"
+            percLength = "unkn"
 
 	return (structure, length, percLength)
 
@@ -770,8 +769,8 @@ class cluster():
         """
         
 	## Initial status -> none informative contig 
-	bestInformative5primeContigObj = "na"
-	bestInformative3primeContigObj = "na"
+	bestInformative5primeContigObj = "unkn"
+	bestInformative3primeContigObj = "unkn"
 
 	informative5primeContigObjList = []
 	informative3primeContigObjList = []
@@ -827,7 +826,7 @@ class cluster():
 	    bkpCoord = contigObj.informativeDict["bkp"][1]
 	    dist = abs(targetPos - bkpCoord)
 
-	    if (bestInformative5primeContigObj == "na") or (dist < bestDist):
+	    if (bestInformative5primeContigObj == "unkn") or (dist < bestDist):
 			
 		bestInformative5primeContigObj = contigObj
 		bestDist = dist
@@ -841,7 +840,7 @@ class cluster():
             bkpCoord = contigObj.informativeDict["bkp"][1]
 	    dist = abs(targetPos - bkpCoord)
 
-	    if (bestInformative3primeContigObj == "na") or (dist < bestDist):
+	    if (bestInformative3primeContigObj == "unkn") or (dist < bestDist):
 			
 		bestInformative3primeContigObj = contigObj
 		bestDist = dist
@@ -884,10 +883,10 @@ class contig():
         # Contig alignment information
         self.alignList = []   # List of blat alignments for this contig
         self.informativeDict = {} # Dictionary key -> value pairs:
-        self.informativeDict["type"] = "na"       	      # type -> 5-prime, 3-prime or none
-        self.informativeDict["bkp"] = "na"          	      # bkp -> list: chrom and pos, 'na' for both if type == none)
-        self.informativeDict["info"] = "na"        	      # info -> 5-prime: aligment object with contig's alignment in TE sequence info; 3-prime: PolyA sequence; none: 'na'
-        self.informativeDict["targetRegionAlignObj"] = "na"   # targetRegionAlignObj -> alignment object with contig's alignment in the target region info. 
+        self.informativeDict["type"] = "unkn"       	      # type -> 5-prime, 3-prime or none
+        self.informativeDict["bkp"] = "unkn"          	      # bkp -> list: chrom and pos, 'na' for both if type == none)
+        self.informativeDict["info"] = "unkn"        	      # info -> 5-prime: aligment object with contig's alignment in TE sequence info; 3-prime: PolyA sequence; none: 'na'
+        self.informativeDict["targetRegionAlignObj"] = "unkn"   # targetRegionAlignObj -> alignment object with contig's alignment in the target region info. 
                              
     #### FUNCTIONS ####
     def rev_complement(self, seq):
@@ -993,8 +992,8 @@ class contig():
         """
             
 	## Initial status -> no informative	
-	bestInformative5primeDict = "na"
-	bestInformative3primeDict = "na"
+	bestInformative5primeDict = "unkn"
+	bestInformative3primeDict = "unkn"
 	informative5primeDict = {}
         informative3primeDict = {}  
 
@@ -1052,7 +1051,7 @@ class contig():
 	     bkpCoord = informative5primeDict[alignment]["bkp"][1]	
 	     dist = abs(targetPos - bkpCoord)
 
-	     if (bestInformative5primeDict == "na") or (dist < bestDist5Prime):
+	     if (bestInformative5primeDict == "unkn") or (dist < bestDist5Prime):
 		bestInformative5primeDict = informative5primeDict[alignment]
 		bestDist5Prime = dist
 	
@@ -1063,7 +1062,7 @@ class contig():
 	     bkpCoord = informative3primeDict[alignment]["bkp"][1]	
 	     dist = abs(targetPos - bkpCoord)
 
-	     if (bestInformative3primeDict == "na") or (dist < bestDist3Prime):
+	     if (bestInformative3primeDict == "unkn") or (dist < bestDist3Prime):
 		bestInformative3primeDict = informative3primeDict[alignment]
 		bestDist3Prime = dist
 
@@ -1183,8 +1182,8 @@ class contig():
         ## B) No poly-A sequence
         else:    
             is3prime = 0
-            bkpCoord = ["na", "na"]
-            polyASeq = "na"
+            bkpCoord = ["unkn", "unkn"]
+            polyASeq = "unkn"
             
             
         return (is3prime, bkpCoord, polyASeq)
@@ -1286,8 +1285,8 @@ class contig():
         
         ## Default
         is5prime = 0
-        bkpCoord = ["na", "na"]
-        TEalignmentObj = "na" 
+        bkpCoord = ["unkn", "unkn"]
+        TEalignmentObj = "unkn" 
                 
         for alignment in self.alignList:
             
@@ -1521,7 +1520,7 @@ for line in inputFile:
     line = line.split("\t")
     
     # Get TE insertion info and files
-    category, insertionCoord = line[0].split(":")
+    TEClass, insertionCoord = line[0].split(":")
     contigsPlusPath, contigsMinusPath = line[1].split(",")
     blatPlusPath, blatMinusPath = line[2].split(",")
 
@@ -1530,7 +1529,7 @@ for line in inputFile:
     
     # A) All the input files exist 
     if os.path.isfile(contigsPlusPath) and os.path.isfile(blatPlusPath) and os.path.isfile(contigsMinusPath) and os.path.isfile(blatMinusPath):  
-        insertionObj = insertion(category, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath)
+        insertionObj = insertion(TEClass, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath)
         insertionObj.find_insertionBkp(outDir)
     else:
         message = "Input files for " + insertionCoord + " insertion do not exist"
