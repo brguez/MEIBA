@@ -34,6 +34,269 @@ def log(label, string):
 
 #### CLASSES ####
 
+class VCF():
+    """ 
+	.....................
+    
+	Methods:
+	- 
+
+    """
+
+    def __init__(self):
+	""" 
+	    ...
+            
+	    Output:
+            - 
+	"""
+	self.lineList = []  # List of VCFline objects
+        	
+    #### METHODS ####
+    def addLine(self, VCFlineObj):
+	""" 
+	    ...
+            
+	    Input:
+	    1) ...
+            
+	    Output:
+	    1) ...
+	"""
+	self.lineList.append(VCFlineObj)
+
+
+    def print_header(self, outFilePath):
+	""" 
+	    ...
+            
+	    Input:
+	    1) ...
+            
+	    Output:
+	    1) ...
+	"""
+		
+	## 1. Define variables 
+	date = time.strftime("%Y%m%d")
+		
+	context = {
+	 "date":date, 
+	 } 
+
+	## 2. Header template
+  	template = """##fileformat=VCFv4.2
+##fileDate={date} 
+##source=TraFiCvX 
+##reference=hs37d5
+##contig=<ID=1,assembly=GRCh37,length=249250621,species=human>
+##contig=<ID=2,assembly=GRCh37,length=243199373,species=human>
+##contig=<ID=3,assembly=GRCh37,length=198022430,species=human>
+##contig=<ID=4,assembly=GRCh37,length=191154276,species=human>
+##contig=<ID=5,assembly=GRCh37,length=180915260,species=human>
+##contig=<ID=6,assembly=GRCh37,length=171115067,species=human>
+##contig=<ID=7,assembly=GRCh37,length=159138663,species=human>
+##contig=<ID=8,assembly=GRCh37,length=146364022,species=human>
+##contig=<ID=9,assembly=GRCh37,length=141213431,species=human>
+##contig=<ID=10,assembly=GRCh37,length=135534747,species=human>
+##contig=<ID=11,assembly=GRCh37,length=135006516,species=human>
+##contig=<ID=12,assembly=GRCh37,length=133851895,species=human>
+##contig=<ID=13,assembly=GRCh37,length=115169878,species=human>
+##contig=<ID=14,assembly=GRCh37,length=107349540,species=human>
+##contig=<ID=15,assembly=GRCh37,length=102531392,species=human>
+##contig=<ID=16,assembly=GRCh37,length=90354753,species=human>
+##contig=<ID=17,assembly=GRCh37,length=81195210,species=human>
+##contig=<ID=18,assembly=GRCh37,length=78077248,species=human>
+##contig=<ID=19,assembly=GRCh37,length=59128983,species=human>
+##contig=<ID=20,assembly=GRCh37,length=63025520,species=human>
+##contig=<ID=21,assembly=GRCh37,length=48129895,species=human>
+##contig=<ID=22,assembly=GRCh37,length=51304566,species=human>
+##contig=<ID=hs37d5,assembly=GRCh37,length=35477943,species=human>
+##contig=<ID=GL000191.1,assembly=GRCh37,length=106433,species=human>
+##contig=<ID=GL000192.1,assembly=GRCh37,length=547496,species=human>
+##contig=<ID=GL000193.1,assembly=GRCh37,length=189789,species=human>
+##contig=<ID=GL000194.1,assembly=GRCh37,length=191469,species=human>
+##contig=<ID=GL000195.1,assembly=GRCh37,length=182896,species=human>
+##contig=<ID=GL000196.1,assembly=GRCh37,length=38914,species=human>
+##contig=<ID=GL000197.1,assembly=GRCh37,length=37175,species=human>
+##contig=<ID=GL000198.1,assembly=GRCh37,length=90085,species=human>
+##contig=<ID=GL000199.1,assembly=GRCh37,length=169874,species=human>
+##contig=<ID=GL000200.1,assembly=GRCh37,length=187035,species=human>
+##contig=<ID=GL000201.1,assembly=GRCh37,length=36148,species=human>
+##contig=<ID=GL000202.1,assembly=GRCh37,length=40103,species=human>
+##contig=<ID=GL000203.1,assembly=GRCh37,length=37498,species=human>
+##contig=<ID=GL000204.1,assembly=GRCh37,length=81310,species=human>
+##contig=<ID=GL000205.1,assembly=GRCh37,length=174588,species=human>
+##contig=<ID=GL000206.1,assembly=GRCh37,length=41001,species=human>
+##contig=<ID=GL000207.1,assembly=GRCh37,length=4262,species=human>
+##contig=<ID=GL000208.1,assembly=GRCh37,length=92689,species=human>
+##contig=<ID=GL000209.1,assembly=GRCh37,length=159169,species=human>
+##contig=<ID=GL000210.1,assembly=GRCh37,length=27682,species=human>
+##contig=<ID=GL000211.1,assembly=GRCh37,length=166566,species=human>
+##contig=<ID=GL000212.1,assembly=GRCh37,length=186858,species=human>
+##contig=<ID=GL000213.1,assembly=GRCh37,length=164239,species=human>
+##contig=<ID=GL000214.1,assembly=GRCh37,length=137718,species=human>
+##contig=<ID=GL000215.1,assembly=GRCh37,length=172545,species=human>
+##contig=<ID=GL000216.1,assembly=GRCh37,length=172294,species=human>
+##contig=<ID=GL000217.1,assembly=GRCh37,length=172149,species=human>
+##contig=<ID=GL000218.1,assembly=GRCh37,length=161147,species=human>
+##contig=<ID=GL000219.1,assembly=GRCh37,length=179198,species=human>
+##contig=<ID=GL000220.1,assembly=GRCh37,length=161802,species=human>
+##contig=<ID=GL000221.1,assembly=GRCh37,length=155397,species=human>
+##contig=<ID=GL000222.1,assembly=GRCh37,length=186861,species=human>
+##contig=<ID=GL000223.1,assembly=GRCh37,length=180455,species=human>
+##contig=<ID=GL000224.1,assembly=GRCh37,length=179693,species=human>
+##contig=<ID=GL000225.1,assembly=GRCh37,length=211173,species=human>
+##contig=<ID=GL000226.1,assembly=GRCh37,length=15008,species=human>
+##contig=<ID=GL000227.1,assembly=GRCh37,length=128374,species=human>
+##contig=<ID=GL000228.1,assembly=GRCh37,length=129120,species=human>
+##contig=<ID=GL000229.1,assembly=GRCh37,length=19913,species=human>
+##contig=<ID=GL000230.1,assembly=GRCh37,length=43691,species=human>
+##contig=<ID=GL000231.1,assembly=GRCh37,length=27386,species=human>
+##contig=<ID=GL000232.1,assembly=GRCh37,length=40652,species=human>
+##contig=<ID=GL000233.1,assembly=GRCh37,length=45941,species=human>
+##contig=<ID=GL000234.1,assembly=GRCh37,length=40531,species=human>
+##contig=<ID=GL000235.1,assembly=GRCh37,length=34474,species=human>
+##contig=<ID=GL000236.1,assembly=GRCh37,length=41934,species=human>
+##contig=<ID=GL000237.1,assembly=GRCh37,length=45867,species=human>
+##contig=<ID=GL000238.1,assembly=GRCh37,length=39939,species=human>
+##contig=<ID=GL000239.1,assembly=GRCh37,length=33824,species=human>
+##contig=<ID=GL000240.1,assembly=GRCh37,length=41933,species=human>
+##contig=<ID=GL000241.1,assembly=GRCh37,length=42152,species=human>
+##contig=<ID=GL000242.1,assembly=GRCh37,length=43523,species=human>
+##contig=<ID=GL000243.1,assembly=GRCh37,length=43341,species=human>
+##contig=<ID=GL000244.1,assembly=GRCh37,length=39929,species=human>
+##contig=<ID=GL000245.1,assembly=GRCh37,length=36651,species=human>
+##contig=<ID=GL000246.1,assembly=GRCh37,length=38154,species=human>
+##contig=<ID=GL000247.1,assembly=GRCh37,length=36422,species=human>
+##contig=<ID=GL000248.1,assembly=GRCh37,length=39786,species=human>
+##contig=<ID=GL000249.1,assembly=GRCh37,length=38502,species=human>
+##contig=<ID=MT,assembly=GRCh37,length=16569,species=human>
+##contig=<ID=NC_007605,assembly=GRCh37,length=171823,species=human>
+##contig=<ID=X,assembly=GRCh37,length=155270560,species=human>
+##contig=<ID=Y,assembly=GRCh37,length=59373566,species=human>
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant. (All sequence is on the plus strand and in the forward direction).">            
+##INFO=<ID=CLASS,Number=4,Type=String,Description="Transposable element class (L1, ALU, SVA or HERVK)">
+##INFO=<ID=TYPE,Number=3,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction)">
+##INFO=<ID=SCORE,Number=4,Type=String,Description="Insertion score (1: 5' and 3' breakpoints (bkp) assembled, 2A: 5'bkp assembled, 2B: 3'bkp assembled, 3: no bkp assembled, 4: inconsistent (contradictory orientation, bkp or TSD))">
+##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around POS (insertion breakpoint)">
+##INFO=<ID=STRAND,Number=2,Type=String,Description="Insertion DNA strand (+ or -)">
+##INFO=<ID=STRUCT,Number=3,Type=String,Description="Transposable element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
+##INFO=<ID=LEN,Number=1,Type=Integer,Description="Transposable element length">
+##INFO=<ID=PLEN,Number=1,Type=Float,Description="Percentage of consensus transposable element sequence inserted">
+##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site length (+: target site duplication, -: target site microdeletion)">
+##INFO=<ID=TSDSEQ,Number=1,Type=Integer,Description="Target site duplication sequence">
+##INFO=<ID=POLYA,Number=1,Type=Integer,Description="Poly-A sequence">
+##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the transposable element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
+##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
+##INFO=<ID=TID,Number=1,Type=String,Description="Transcript id for transcript associated with insertion breakpoint">
+##INFO=<ID=SAT,Number=1,Type=String,Description="Satellite region overlapping insertion breakpoint">
+##INFO=<ID=REP,Number=1,Type=String,Description="Repetitive element overlapping insertion breakpoint">
+##INFO=<ID=CONTIG5,Number=1,Type=String,Description="Assembled contig sequence spanning 5' bkp">
+##INFO=<ID=CONTIG3,Number=1,Type=String,Description="Assembled contig sequence spanning 3' bkp">
+##INFO=<ID=TRDS,Number=.,Type=String,Description="Reads from the tumour sample (X) that contribute to this insertion">
+##FILTER=<ID=SAT,Description="Insertion breakpoint overlapping a satellite region">
+##FILTER=<ID=FAM,Description="Insertion breakpoint overlapping a repetive element of the same family">
+##FILTER=<ID=SCORE,Description="Insertion with an score > 2">
+##FORMAT=<ID=RC,Number=1,Type=Integer,Description="Count of countributing reads">
+##SAMPLE=<ID=NORMAL,Description="Normal",Accession=.,Platform=ILLUMINA,Protocol=WGS,SampleName=X,Source=.>
+##SAMPLE=<ID=TUMOUR,Description="Tumour",Accession=.,Platform=ILLUMINA,Protocol=WGS,SampleName=X,Source=.>
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    	
+""" 
+	## 3. Replace variables into the template and save into an output file
+	with  open(outFilePath,'w') as outFile:
+	    outFile.write(template.format(**context))
+
+
+    def print_lines(self, outFilePath):
+	""" 
+	    ...
+            
+	    Input:
+	    1) ...
+            
+	    Output:
+	    1) ...
+	"""
+
+	## For each VCF line (each line contains information about an insertion)
+	for VCFline in self.lineList:
+	   print VCFline.chrom, VCFline.pos, VCFline.id, VCFline.ref, VCFline.alt, VCFline.qual, VCFline.filter, VCFline.info
+	 
+
+class VCFline():
+    """ 
+	.....................
+    
+	Methods:
+	- 
+
+    """
+
+    def __init__(self, insertionObj):
+	""" 
+	    ...
+            
+	    Output:
+            - 
+	"""
+	self.chrom = insertionObj.bkpA[0]
+	self.pos = insertionObj.bkpA[1]
+	self.id = "."
+	self.ref = "X"
+	self.alt = "<MEI>"
+	self.qual = "."
+	self.filter = "."
+	self.info = self.make_info(insertionObj)
+	
+    def make_info(self, insertionObj):
+	""" 
+	    ...
+            
+	    Output:
+            - 
+	"""
+	
+	## 
+	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSDSEQ", "POLYA", "REGION", "GENE", "TID", "SAT", "REP", "CONTIG5", "CONTIG3", "TRDS" ] 
+
+	##
+	infoDict = {}
+	infoDict["SVTYPE"] = "<MEI>"
+	infoDict["CLASS"] = insertionObj.TEClass
+	infoDict["TYPE"] = "TD0"
+	infoDict["SCORE"] = insertionObj.score
+	infoDict["CIPOS"] = insertionObj.bkpA[2]
+	infoDict["STRAND"] = insertionObj.orientation
+	infoDict["STRUCT"] = insertionObj.structure
+	infoDict["LEN"] = insertionObj.length
+	infoDict["TSLEN"] = insertionObj.targetSiteSize
+	infoDict["TSDSEQ"] = insertionObj.targetSiteSeq
+	infoDict["POLYA"] = insertionObj.polyA
+	infoDict["REGION"] = "unkn"
+	infoDict["GENE"] = "unkn"
+	infoDict["TID"] = "unkn"
+	infoDict["SAT"] = "unkn"
+	infoDict["REP"] = "unkn"
+	infoDict["CONTIG5"] = insertionObj.informativeContigBkpA
+	infoDict["CONTIG3"] = insertionObj.informativeContigBkpB
+	infoDict["TRDS"] = "unkn"
+
+	##
+	infoList = []
+
+	for info in infoOrder:
+		
+	    if (infoDict[info] != "unkn"):
+  
+		infoField = info + "=" +str(infoDict[info])  
+		infoList.append(infoField)
+	    
+	info = ';'.join(infoList)
+	  
+	return(info)
+
+
 class insertion():
     """ 
     Transposable element insertion class. 
@@ -248,7 +511,6 @@ class insertion():
 
 
 	    ## 3. Determine insertion score and Target Site Duplication (TSD) or microdeletion (TSM) if possible:
-	    
 	    CI5prime = bkp5prime[2]
 	    CI3prime = bkp3prime[2]
 
@@ -324,20 +586,14 @@ class insertion():
 	    # a) 5' bkp characterized
 	    if (bkpCoord3prime == "unkn"):
 		
-		# ---- provisional, debug ---
 		self.informativeContigIdBkpA = informative5primeContigObj.ID
-		# ---------------------------		
-	
 		self.bkpA = bkp5prime
 		self.informativeContigBkpA = informative5primeContigObj.seq
 	    		
 	    # b) 3' bkp characterized
 	    elif (bkpCoord5prime == "unkn"):
 
-		# ---- provisional, debug ---
 		self.informativeContigIdBkpA = informative3primeContigObj.ID
-	   	# ---------------------------
-
 	    	self.bkpA = bkp3prime
 		self.informativeContigBkpA = informative3primeContigObj.seq
 	    	
@@ -347,11 +603,8 @@ class insertion():
 		# c.a) 5' bkp < 3' bkp
 		if (bkpCoord5prime < bkpCoord3prime):
 		
-		    # ---- provisional, debug ---
 		    self.informativeContigIdBkpA = informative5primeContigObj.ID
 	    	    self.informativeContigIdBkpB = informative3primeContigObj.ID
-		    # ---------------------------
-
    	    	    self.bkpA = bkp5prime
 	    	    self.bkpB = bkp3prime
 		    self.informativeContigBkpA = informative5primeContigObj.seq
@@ -360,11 +613,8 @@ class insertion():
 		# c.b) 3' bkp < 5' bkp
 		else:
 
-		    # ---- provisional, debug ---
 		    self.informativeContigIdBkpA = informative3primeContigObj.ID
 	    	    self.informativeContigIdBkpB = informative5primeContigObj.ID
-		    # ---------------------------
-
    	    	    self.bkpA = bkp3prime
 	    	    self.bkpB = bkp5prime
 		    self.informativeContigBkpA = informative3primeContigObj.seq
@@ -1154,7 +1404,6 @@ class contig():
             bkpCoord = ["unkn", "unkn"]
             polyASeq = "unkn"
             
-            
         return (is3prime, bkpCoord, polyASeq)
             
         
@@ -1190,7 +1439,6 @@ class contig():
         # Classify the input sequence as poly-A if > 80% are T or A
         if (percA >= 80) or (percT >= 80):    
             polyASeq = targetSeq
-            
                 
         return polyASeq
       
@@ -1262,7 +1510,6 @@ class contig():
             # Contig alignment in TE sequence (L1, Alu or SVA (SVA need to be included))
             if ( alignment.tName == "L1" ) or ( alignment.tName == "Alu" ):
                 
-		print "--------------"
                 ## Compute percentage of overlap between: 
                 # Expected alignment ---------------
                 #                targetBeg      targetEnd 
@@ -1458,11 +1705,15 @@ import os.path
 
 ## Get user's input ## 
 parser = argparse.ArgumentParser(description= """""")
-parser.add_argument('paths2bkpAnalysis', help='...')
+parser.add_argument('inputPaths', help='...')
+parser.add_argument('donorId', help='...')
+parser.add_argument('genome', help='...')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
-inputPath = args.paths2bkpAnalysis
+inputPaths = args.inputPaths
+donorId = args.donorId
+genome = args.genome
 outDir = args.outDir
 
 scriptName = os.path.basename(sys.argv[0])
@@ -1470,7 +1721,9 @@ scriptName = os.path.basename(sys.argv[0])
 ## Display configuration to standard output ##
 print
 print "***** ", scriptName, " configuration *****"
-print "paths2bkpAnalysis: ", inputPath
+print "paths2bkpAnalysis: ", inputPaths
+print "donorId: ", donorId
+print "genome: ", genome
 print "outDir: ", outDir
 print 
 print "***** Executing ", scriptName, " *****"
@@ -1479,9 +1732,19 @@ print "..."
 print 
 
 
-## Per each insertion perform breakpoint analysis ## 
+## Start ## 
 
-inputFile = open(inputPath, 'r')
+outFilePath = outDir + '/' + donorId + '.vcf'
+
+## 1. Create VCF output file and print VCF header
+
+VCFObj = VCF()
+
+VCFObj.print_header(outFilePath)
+
+## 2. Per each insertion perform breakpoint analysis 
+
+inputFile = open(inputPaths, 'r')
 
 # Analyze one insertion per iteration
 for line in inputFile:
@@ -1498,15 +1761,34 @@ for line in inputFile:
     
     # A) All the input files exist 
     if os.path.isfile(contigsPlusPath) and os.path.isfile(blatPlusPath) and os.path.isfile(contigsMinusPath) and os.path.isfile(blatMinusPath):  
-        insertionObj = insertion(TEClass, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath)
+
+	## Create insertion object and identify breakpoints from assembled contigs        
+	insertionObj = insertion(TEClass, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath)
         insertionObj.find_insertionBkp(outDir)
+
+	## Create VCF line object 
+	VCFlineObj = VCFline(insertionObj)
+	VCFObj.addLine(VCFlineObj)
+
     else:
         message = "Input files for " + insertionCoord + " insertion do not exist"
         log("ERROR", message)
+
+
+print 
+print 
+print "****************************"
+
+print VCFObj.print_lines(outFilePath)
+
 
 ## Finish ##
 print 
 print "***** Finished! *****"
 print 
+
+
+
+
 
 
