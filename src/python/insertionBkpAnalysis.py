@@ -66,6 +66,21 @@ class VCF():
 	self.lineList.append(VCFlineObj)
 
 
+    def sort(self):
+	""" 
+	    ...
+            
+	    Input:
+	    1) ...
+            
+	    Output:
+	    1) ...
+	"""
+
+	lineListSorted = sorted(self.lineList, key=lambda line: (line.chrom, line.pos))
+
+	return lineListSorted
+	
     def print_header(self, outFilePath):
 	""" 
 	    ...
@@ -77,14 +92,14 @@ class VCF():
 	    1) ...
 	"""
 		
-	## 1. Define variables 
+	## Define variables 
 	date = time.strftime("%Y%m%d")
 		
 	context = {
 	 "date":date, 
 	 } 
 
-	## 2. Header template
+	## Header template
   	template = """##fileformat=VCFv4.2
 ##fileDate={date} 
 ##source=TraFiCvX 
@@ -183,17 +198,16 @@ class VCF():
 ##INFO=<ID=STRAND,Number=2,Type=String,Description="Insertion DNA strand (+ or -)">
 ##INFO=<ID=STRUCT,Number=3,Type=String,Description="Transposable element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
 ##INFO=<ID=LEN,Number=1,Type=Integer,Description="Transposable element length">
-##INFO=<ID=PLEN,Number=1,Type=Float,Description="Percentage of consensus transposable element sequence inserted">
-##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site length (+: target site duplication, -: target site microdeletion)">
-##INFO=<ID=TSDSEQ,Number=1,Type=Integer,Description="Target site duplication sequence">
+##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site length (+: target site duplication, -: target site deletion)">
+##INFO=<ID=TSSEQ,Number=1,Type=Integer,Description="Target site duplication or deletion sequence">
 ##INFO=<ID=POLYA,Number=1,Type=Integer,Description="Poly-A sequence">
 ##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the transposable element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
 ##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
 ##INFO=<ID=TID,Number=1,Type=String,Description="Transcript id for transcript associated with insertion breakpoint">
 ##INFO=<ID=SAT,Number=1,Type=String,Description="Satellite region overlapping insertion breakpoint">
 ##INFO=<ID=REP,Number=1,Type=String,Description="Repetitive element overlapping insertion breakpoint">
-##INFO=<ID=CONTIG5,Number=1,Type=String,Description="Assembled contig sequence spanning 5' bkp">
-##INFO=<ID=CONTIG3,Number=1,Type=String,Description="Assembled contig sequence spanning 3' bkp">
+##INFO=<ID=CONTIGA,Number=1,Type=String,Description="Assembled contig sequence spanning 1st bkp (lowest genomic position)">
+##INFO=<ID=CONTIGB,Number=1,Type=String,Description="Assembled contig sequence spanning 2nd bkp (highest genomic position) ">
 ##INFO=<ID=TRDS,Number=.,Type=String,Description="Reads from the tumour sample (X) that contribute to this insertion">
 ##FILTER=<ID=SAT,Description="Insertion breakpoint overlapping a satellite region">
 ##FILTER=<ID=FAM,Description="Insertion breakpoint overlapping a repetive element of the same family">
@@ -203,7 +217,7 @@ class VCF():
 ##SAMPLE=<ID=TUMOUR,Description="Tumour",Accession=.,Platform=ILLUMINA,Protocol=WGS,SampleName=X,Source=.>
 #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    	
 """ 
-	## 3. Replace variables into the template and save into an output file
+	## Replace variables into the template and print header into the output file
 	with  open(outFilePath,'w') as outFile:
 	    outFile.write(template.format(**context))
 
@@ -219,10 +233,22 @@ class VCF():
 	    1) ...
 	"""
 
-	## For each VCF line (each line contains information about an insertion)
-	for VCFline in self.lineList:
-	   print VCFline.chrom, VCFline.pos, VCFline.id, VCFline.ref, VCFline.alt, VCFline.qual, VCFline.filter, VCFline.info
-	 
+	## Open outfile
+	outFile = open(outFilePath, 'a')
+
+	## Sort VCF lines		
+	#lineListSorted = self.sort()
+	lineListSorted = self.lineList
+
+	## Iterate and print each VCF line into the output VCF file
+	for VCFline in lineListSorted:
+
+	   row = VCFline.chrom + "\t" + str(VCFline.pos) + "\t" + VCFline.id + "\t" + VCFline.ref + "\t" + VCFline.alt + "\t" + VCFline.qual + "\t" + VCFline.filter + "\t" + VCFline.info + "\n"
+           outFile.write(row)
+
+	## Close output file
+	outFile.close()
+
 
 class VCFline():
     """ 
@@ -233,7 +259,7 @@ class VCFline():
 
     """
 
-    def __init__(self, insertionObj):
+    def __init__(self, insertionObj, genomeObj):
 	""" 
 	    ...
             
@@ -241,9 +267,9 @@ class VCFline():
             - 
 	"""
 	self.chrom = insertionObj.bkpA[0]
-	self.pos = insertionObj.bkpA[1]
+	self.pos = insertionObj.bkpA[1] 
 	self.id = "."
-	self.ref = "X"
+	self.ref = genomeObj.fastaDict[self.chrom][insertionObj.bkpA[1] - 1]  # Substract 1 since python string coordinates start in 0 while bkp position in 1. 
 	self.alt = "<MEI>"
 	self.qual = "."
 	self.filter = "."
@@ -258,7 +284,7 @@ class VCFline():
 	"""
 	
 	## 
-	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSDSEQ", "POLYA", "REGION", "GENE", "TID", "SAT", "REP", "CONTIG5", "CONTIG3", "TRDS" ] 
+	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "REGION", "GENE", "TID", "SAT", "REP", "CONTIGA", "CONTIGB", "TRDS" ] 
 
 	##
 	infoDict = {}
@@ -271,15 +297,16 @@ class VCFline():
 	infoDict["STRUCT"] = insertionObj.structure
 	infoDict["LEN"] = insertionObj.length
 	infoDict["TSLEN"] = insertionObj.targetSiteSize
-	infoDict["TSDSEQ"] = insertionObj.targetSiteSeq
+	infoDict["TSSEQ"] = insertionObj.targetSiteSeq
 	infoDict["POLYA"] = insertionObj.polyA
 	infoDict["REGION"] = "unkn"
 	infoDict["GENE"] = "unkn"
 	infoDict["TID"] = "unkn"
 	infoDict["SAT"] = "unkn"
 	infoDict["REP"] = "unkn"
-	infoDict["CONTIG5"] = insertionObj.informativeContigBkpA
-	infoDict["CONTIG3"] = insertionObj.informativeContigBkpB
+	infoDict["CONTIGA"] = insertionObj.informativeContigBkpA
+	infoDict["CONTIGB"] = insertionObj.informativeContigBkpB	
+
 	infoDict["TRDS"] = "unkn"
 
 	##
@@ -786,7 +813,7 @@ class insertion():
 	    2) Full length insetion:
 
                                                      -------#######TE######AAAAA----
-            5-prime informative contig                  ----------
+            5-prime informative contig                  ---------
 	
 	    3) 5' truncated insertion:
 
@@ -800,7 +827,7 @@ class insertion():
             1) informative5primeContigObj
             
             Output:
-            1) structure. One of 'na', '5'inverted', '5'truncated' or 'full-length'
+            1) structure. One of 'na', 'INV', 'DEL' or 'FULL'
             2) length. Inserted TE length, 'na' if not available.
             3) percLength. Percentage of TE consensus sequence inserted, 'na' if not available.  
         """
@@ -814,7 +841,7 @@ class insertion():
             
 	    # a) TE inverted in its 5'
 	    if (strand == "-"):
-		structure = "5'inverted"
+		structure = "INV"
 		length = "unkn"
 		percLength = "unkn"
 
@@ -830,11 +857,11 @@ class insertion():
             	if (percLength > 95):
                     # Threshold set for L1 (6021 bp length + 30bp polyA, first ~300bp correspond to promoter)
                     # and Alu (282 bp length + 30bp polyA). For SVA we need to put different values (or not...)
-                    structure = "full-length"    
+                    structure = "FULL"    
 
 		# b.b) 5' truncated 
        		else:
-       		    structure = "5'truncated"
+       		    structure = "DEL"
 
 	## B) No 5' informative contig
 	else:
@@ -1363,7 +1390,7 @@ class contig():
             if (alignObj.strand == "+"):
                 bkpPos = alignObj.tEnd
             else:
-                bkpPos = alignObj.tBeg
+                bkpPos = alignObj.tBeg + 1     # Convert from 0-based (PSL) to 1-based (VCF) coordinate system
                 
             ## Search for poly-A in the contig target piece of sequence. 
             polyASeq = self.is_polyA(targetSeq)
@@ -1379,7 +1406,7 @@ class contig():
             bkpChrom = alignObj.tName
             
             if (alignObj.strand == "+"):
-                bkpPos = alignObj.tBeg
+                bkpPos = alignObj.tBeg + 1     # Convert from 0-based (PSL) to 1-based (VCF) coordinate system
             else:
                 bkpPos = alignObj.tEnd
                 
@@ -1477,7 +1504,7 @@ class contig():
             if (alignObj.strand == "+"):
                 bkpPos = alignObj.tEnd
             else:
-                bkpPos = alignObj.tBeg
+                bkpPos = alignObj.tBeg + 1     # Convert from 0-based (PSL) to 1-based (VCF) coordinate system 
                 
         # B) End of the contig sequence aligned in the TE insertion genomic region
         #   ******TE******-------------
@@ -1490,7 +1517,7 @@ class contig():
             bkpChrom = alignObj.tName
             
             if (alignObj.strand == "+"):
-                bkpPos = alignObj.tBeg   
+                bkpPos = alignObj.tBeg + 1     # Convert from 0-based (PSL) to 1-based (VCF) coordinate system 
             else:
                 bkpPos = alignObj.tEnd
                 
@@ -1692,7 +1719,65 @@ class blat_alignment():
             self.alignType = "none"
         
         return partial
-                
+     
+
+           
+class fasta():
+    """ 
+    .... class. 
+    
+    ..... 
+    
+    Methods:
+    - fasta_reader
+    
+    """
+    
+    def __init__(self, fastaFile):
+        """ 
+            Initialize fasta object.
+            
+            Input:
+            1) 
+            
+            Output:
+            - 
+        """
+        self.fastaDict = self.fasta_reader(fastaFile)
+	           
+    #### FUNCTIONS ####
+    def fasta_reader(self, fastaFile):
+        """ 
+            
+            
+            Input:
+            1) 
+            
+            Output:
+            1) 
+        """
+	fastaDict = {}	
+
+
+        fh = open(fastaFile)
+        # ditch the boolean (x[0]) and just keep the header or sequence since
+        # we know they alternate.
+        faiter = (x[1] for x in groupby(fh, lambda line: line[0] == ">"))
+        for header in faiter:
+            # drop the ">"
+            header = header.next()[1:].strip()
+	   
+	    # drop the info
+	    header = header.split(" ")[0]
+
+	    info("Reading " + header + "...")
+            # join all sequence lines to one.
+            seq = "".join(s.strip() for s in faiter.next())
+            fastaDict[header] = seq
+	
+	return fastaDict
+
+
 
 #### MAIN ####
 
@@ -1728,18 +1813,21 @@ print "outDir: ", outDir
 print 
 print "***** Executing ", scriptName, " *****"
 print 
-print "..."
-print 
 
 
 ## Start ## 
 
 outFilePath = outDir + '/' + donorId + '.vcf'
 
-## 1. Create VCF output file and print VCF header
+## 0. Create reference genome fasta object
 
+header("Creating reference genome fasta object")
+genomeObj = fasta(genome)
+
+## 1. Create VCF object and print VCF header
+
+header("Creating VCF object and printing VCF header into the output file")
 VCFObj = VCF()
-
 VCFObj.print_header(outFilePath)
 
 ## 2. Per each insertion perform breakpoint analysis 
@@ -1766,8 +1854,10 @@ for line in inputFile:
 	insertionObj = insertion(TEClass, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath)
         insertionObj.find_insertionBkp(outDir)
 
-	## Create VCF line object 
-	VCFlineObj = VCFline(insertionObj)
+	## Create VCFline object 
+	VCFlineObj = VCFline(insertionObj, genomeObj)
+
+	## Add VCFline to the list in VCF object
 	VCFObj.addLine(VCFlineObj)
 
     else:

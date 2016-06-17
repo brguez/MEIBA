@@ -32,8 +32,6 @@ print
 print "..."
 print 
 
-exit
-
 ## Open input files
 insertions = open(insertionsPath, 'r')
 fasta = open(fastaPath, 'r')
