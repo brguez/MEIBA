@@ -283,10 +283,10 @@ class VCFline():
             - 
 	"""
 	
-	## 
+	## Create list containing the order of info fields
 	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "REGION", "GENE", "TID", "SAT", "REP", "CONTIGA", "CONTIGB", "TRDS" ] 
 
-	##
+	## Build dictionary with info tags as keys 
 	infoDict = {}
 	infoDict["SVTYPE"] = "<MEI>"
 	infoDict["CLASS"] = insertionObj.TEClass
@@ -309,7 +309,7 @@ class VCFline():
 
 	infoDict["TRDS"] = "unkn"
 
-	##
+	## Create info string in the correct order from dictionary 
 	infoList = []
 
 	for info in infoOrder:
@@ -401,7 +401,7 @@ class insertion():
         return clusterObj
 
 
-    def find_insertionBkp(self, outDir):
+    def find_insertionBkp(self, genomeObj, outDir):
         """ 
             Identify TE insertion breakpoints, TSD, orientation and poly-A sequence from assembled contigs 
             
@@ -416,7 +416,7 @@ class insertion():
 		3. No informative contig identified.
                 4. Inconsistent insertion. Contradictory orientation (5' and 3' informative contigs suggest opposite orientation) or breakpoint/s () 
             2) breakpoint. Breakpoint coordinates (3 elements list: chrom, pos and confidence interval (CI))
-            3) TS. Target site duplication or microdeletion (tuple: TSD size and sequence). 
+            3) TS. Target site duplication or deletion (tuple: TSD size and sequence). 
             4) orientation. TE insertion DNA strand/orientation (+ or -) 
             5) polyA. Poly-A sequence. 
         """
@@ -442,16 +442,10 @@ class insertion():
 
 	    info("no-informative-contigs:")
 	    
-	    # No informative contigs -> Use TraFiC + and - cluster coordinates
-	    insertionCoordList = self.coordinates.split("_")
-	    chrom = str(insertionCoordList[0])
-            beg = int(insertionCoordList[1])
-            end = int(insertionCoordList[2])
-	    
-	    # Output variables
+	    # No informative contigs, imprecise breakpoint
 	    self.score = '3'
-	    self.bkpA = [chrom, beg, "unkn"]
-	    self.bkpB = [chrom, end, "unkn"]
+	    self.bkpA = self.imprecise_bkp(self.coordinates)
+	    self.bkpB = ["unkn", "unkn", "unkn"]
 
 	## B) Insertion with at least one contig spanning one of the insertion breakpoints
 	else:
@@ -537,7 +531,7 @@ class insertion():
 		polyA = "unkn"
 
 
-	    ## 3. Determine insertion score and Target Site Duplication (TSD) or microdeletion (TSM) if possible:
+	    ## 3. Determine insertion score and Target Site Duplication or Deletion (TSD) if possible:
 	    CI5prime = bkp5prime[2]
 	    CI3prime = bkp3prime[2]
 
@@ -568,8 +562,8 @@ class insertion():
 		info("5' and 3' informative contigs:")
 		self.score = '1'	
 
-		# Find TSD or TSM
-            	self.targetSiteSize, self.targetSiteSeq = self.target_site(informative5primeContigObj, informative3primeContigObj)
+		# Find Target site Duplication or Deletion
+            	self.targetSiteSize, self.targetSiteSeq = self.target_site(informative5primeContigObj, informative3primeContigObj, genomeObj)
 
 		# Inconsistent TSD: 
 		if (self.targetSiteSize == "inconsistent"):
@@ -647,43 +641,74 @@ class insertion():
 		    self.informativeContigBkpA = informative3primeContigObj.seq
 	    	    self.informativeContigBkpB = informative5primeContigObj.seq
 
-    def target_site(self, informative5primeContigObj, informative3primeContigObj):
-        """ 
-            Determine Target Site Duplication (TSD) or Target Site Microdeletion Size (TSM).
+        ## Print results into the standard output
+        print "TraFiC-id: ", self.traficId
+        print "Score: ", self.score    
+        print "bkpA: ", self.bkpA
+        print "bkpB", self.bkpB
+        print "TS-length: ", self.targetSiteSize
+        print "TS-seq: ", self.targetSiteSeq 
+        print "Orientation: ", self.orientation
+        print "Structure: ", self.structure
+        print "TE-length: ", self.length
+        print "perc-Length: ", self.percLength
+        print "bkpAContigId: ", self.informativeContigIdBkpA	
+        print "bkpAContig: ", self.informativeContigBkpA    
+	print "bkpBContigId: ", self.informativeContigIdBkpB	
+        print "bkpBContig: ", self.informativeContigBkpB
+	print "poly-A: ", self.polyA
 
-	    1) TSD:
+	## ------ Provisional -------	
+        ## Print results into an output file
+        fileName = "TEIBA.results.txt"
+        outFilePath = outDir + "/" + fileName
+        outFile = open( outFilePath, "a" )
+
+        row = self.traficId + "\t" + str(self.score) + "\t" + str(self.bkpA) + "\t" + str(self.bkpB) + "\t" + str(self.targetSiteSize) + "\t" + self.targetSiteSeq + "\t" + self.orientation + "\t" + self.structure + "\t" + str(self.length) + "\t" + str(self.percLength) + "\t" + self.informativeContigIdBkpA + "\t" + self.informativeContigBkpA + "\t" + self.informativeContigIdBkpB + "\t" + self.informativeContigBkpB + "\t" + self.polyA + "\n"
+        outFile.write(row)
+        
+        # Close output and end
+        outFile.close()
+
+
+    def target_site(self, informative5primeContigObj, informative3primeContigObj, genomeObj):
+        """ 
+            Determine Target Site Duplication or Target Site Deletion Size (TSD).
+
+	    1) Duplication:
                      
             --------------------------- bkpPlus
                     bkpMinus --------------------
                              <-------->
-                                 TSD (7bp)
-	    2) TSM:
+                             duplication (7bp)
+	    2) Deletion:
 		      bkpPlus
 	    -----------------          bkpMinus
                                        --------------------
                              <-------->
-                                 TSM (7bp)
+                              deletion (7bp)
 
             Input:
             1) informative5primeContigObj. 
             2) informative3primeContigObj
                      
             Output:
-            1) targetSiteSize. Target site duplication or microdeletion length. 'inconsistent' if expected TSD size different to TSD sequence length.
-            2) targetSiteSeq. Target site duplication sequence or 'na' if no TSD or TSM. 'inconsistent' if expected TSD size different to TSD sequence length.
+            1) targetSiteSize. Target site duplication or deletion length. 'inconsistent' if expected TSD size different to TSD sequence length.
+            2) targetSiteSeq. Target site duplication or deletion sequence or 'na' if no TSD. 'inconsistent' if expected TSD size different to TSD sequence length.
         """
         
 	bkpPos5prime = informative5primeContigObj.informativeDict["bkp"][1]
+	bkpChrom5prime = informative5primeContigObj.informativeDict["bkp"][0]
         bkpPos3prime = informative3primeContigObj.informativeDict["bkp"][1]	
 	alignObj5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"]
         
-        # A) Target site duplication (TSD)
+        # A) Target site duplication 
         if (bkpPos5prime > bkpPos3prime):
             
-            ## Compute TSD length
-            targetSiteSize = bkpPos5prime - bkpPos3prime
+            ## Compute length
+            targetSiteSize = bkpPos5prime - bkpPos3prime + 1 # add 1, since bkp coordinates are 1-based as VCF 
         
-            ## Extract TSD sequence
+            ## Extract sequence
             # A.a) Begin of the contig sequence aligned in the TE insertion genomic region
             #   -------------**TSD**######TE#####
             #   --------------------
@@ -698,28 +723,34 @@ class insertion():
             #                       --------------------
             #                    *qBeg*               qEnd
             elif (alignObj5prime.alignType == "end"):
-                beg = alignObj5prime.qBeg 
+                beg = alignObj5prime.qBeg    # (no substract 1 since psl coordinates are 0-based as python strings)
                 end = alignObj5prime.qBeg + targetSiteSize
                 targetSiteSeq = informative5primeContigObj.seq[beg:end]     
 	    
-	    ## Inconsistent TSD if sequence has not the expected length or TSD > 100 bp or TSD 
+	    ## Inconsistent TSD if sequence has not the expected length or longer than 100 bp  
 	    if (targetSiteSize != len(targetSiteSeq)) or (targetSiteSize > 100):
 		targetSiteSize = "inconsistent"
 		targetSiteSeq = "inconsistent"
 
-	# B) Target site microdeletion (TSM)        
+	# B) Target site deletion      
 	elif (bkpPos5prime < bkpPos3prime):    
 	    
-	    ## Compute TSM length
-            targetSiteSize =  bkpPos5prime - bkpPos3prime 
-	    targetSiteSeq = "unkn"
+	    ## Compute length
+            targetSiteSize =  bkpPos5prime - bkpPos3prime - 1 # substract 1, since it is a negative value and bkp coordinates are 1-based as VCF 
 
-	    ## Inconsistent TSM if TSM < -100 bp
+	    ## Extract sequence 
+	    beg = bkpPos5prime - 1 # (substract 1 since bkp coordinates are 1-based while python strings are 0-based)
+	    end = bkpPos3prime 
+
+	    targetSiteSeq = genomeObj.fastaDict[bkpChrom5prime][ beg : end ]
+
+
+	    ## Inconsistent target site deletion if longer than 100 bp
 	    if (targetSiteSize < -100):
 		targetSiteSize = "inconsistent"
 		targetSiteSeq = "inconsistent"
 
-        # C) No TSD or TSM
+        # C) No target site duplication nor deletion
         else:
             targetSiteSize = 0
             targetSiteSeq = "unkn"
@@ -871,6 +902,41 @@ class insertion():
 
 	return (structure, length, percLength)
 
+
+    def imprecise_bkp(self, insertionCoord):
+        """ 
+            Compute confidence interval for imprecise breakpoints from + and - TraFiC cluster coordinates. 
+            
+            Imprecise breakpoints are those that do not have any
+            any informative contig associated
+            
+              + cluster                      - cluster
+            -------------->              <---------------                   
+                          <-----Mean----->
+                          d/2    d      d/2
+        
+            Input:
+            1) insertionCoord. TraFiC insertion coordinates. Format: ${chrom}_${beg}_${end}. 
+                               Example: 10_108820680_108820678.
+            
+            Output:
+            1) breakpoint. Three elements list (chromosome, mean_position and confidence interval)
+        """
+        
+        insertionCoordList = insertionCoord.split("_")
+                
+        chrom = str(insertionCoordList[0])
+        beg = int(insertionCoordList[1])
+        end = int(insertionCoordList[2])
+        
+        meanPos = (beg + end)/2
+        dist = abs(end - beg)
+        CI = dist/2
+        
+        breakpoint = [chrom, meanPos, CI]
+    
+        return breakpoint
+
 class cluster():
     """ 
     Transposable element insertion cluster class. 
@@ -879,7 +945,6 @@ class cluster():
     reads identified by TraFiC.  
     
     Methods:
-    - fasta_reader
     - blat_alignment_reader
     - create_contigs_dict
     - add_alignments
@@ -900,27 +965,6 @@ class cluster():
         self.contigsDict = self.create_contigs_dict(contigsFasta)
 	           
     #### FUNCTIONS ####
-    def fasta_reader(self, contigsFasta):
-        """ 
-            Read fasta file and produce an object generator of tuples (sequenceId,sequence).
-            
-            Input:
-            1) contigsFasta. Fasta file containing the assembled contigs for the given cluster
-            
-            Output:
-            1) object generator of tuples (sequenceId, sequence)
-        """
-        fh = open(contigsFasta)
-        # ditch the boolean (x[0]) and just keep the header or sequence since
-        # we know they alternate.
-        faiter = (x[1] for x in groupby(fh, lambda line: line[0] == ">"))
-        for header in faiter:
-            # drop the ">"
-            header = header.next()[1:].strip()
-            # join all sequence lines to one.
-            seq = "".join(s.strip() for s in faiter.next())
-            yield header, seq
-    
     def blat_alignment_reader(self, blatPath):
         """
             Read a psl file containing the contig blat aligments on the reference genome, generate a blat alignment
@@ -964,19 +1008,21 @@ class cluster():
             1) contigsDict. Dictionary containing the contig ids as keys and the corresponding 
             contig objects as values. 
         """
-        contigs = self.fasta_reader(contigsFasta)
- 
+        fastaObj = fasta(contigsFasta)
+ 	
         contigsDict = {}
     
         ### For each contig create a contig object and add it to the dictionary
         # using the contig id as key
-        for contigTuple in contigs:
+        for contigId in fastaObj.fastaDict:
             
+	    contigSeq = fastaObj.fastaDict[contigId]
+
             # Create contig object
-            contigObj = contig(contigTuple)
+            contigObj = contig(contigId, contigSeq)
             
             # Add contig object to the dictionary 
-            contigsDict[contigObj.ID] = contigObj
+            contigsDict[contigId] = contigObj
         
         return contigsDict
     
@@ -1108,7 +1154,7 @@ class contig():
     - is_5prime_bkp
     """
     
-    def __init__(self, contigTuple):
+    def __init__(self, contigId, contigSeq):
         """ 
             Initialize contig object.
             
@@ -1119,8 +1165,8 @@ class contig():
             - Contig object variables initialized
         """
         # Contig id and sequence
-        self.ID = contigTuple[0]
-        self.seq = contigTuple[1]
+        self.ID = contigId
+        self.seq = contigSeq
         self.length = int(len(self.seq))
 
 	# Cluster the contig belongs to
@@ -1758,6 +1804,7 @@ class fasta():
         """
 	fastaDict = {}	
 
+	subHeader("Fasta reader")
 
         fh = open(fastaFile)
         # ditch the boolean (x[0]) and just keep the header or sequence since
@@ -1852,7 +1899,7 @@ for line in inputFile:
 
 	## Create insertion object and identify breakpoints from assembled contigs        
 	insertionObj = insertion(TEClass, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath)
-        insertionObj.find_insertionBkp(outDir)
+        insertionObj.find_insertionBkp(genomeObj, outDir)
 
 	## Create VCFline object 
 	VCFlineObj = VCFline(insertionObj, genomeObj)
@@ -1864,12 +1911,8 @@ for line in inputFile:
         message = "Input files for " + insertionCoord + " insertion do not exist"
         log("ERROR", message)
 
-
-print 
-print 
-print "****************************"
-
-print VCFObj.print_lines(outFilePath)
+## 3. Write lines describing the TE insertions into the VCF file
+VCFObj.print_lines(outFilePath)
 
 
 ## Finish ##
