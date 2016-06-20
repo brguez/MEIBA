@@ -429,9 +429,9 @@ do
 
 	    Other)
 		consensusTE=$consensusSVA
-
 	esac
 	
+	# Align contigs into the insertion target region and TE sequence
 	log "** ${bkpId} breakpoint **\n" $step
 	run "bash $ALIGN_CONTIGS $bkpContigsPath $bkpId $genome $consensusTE 1000 $blatDir 1>> $logsDir/3_blat.out 2>> $logsDir/3_blat.err" "$ECHO"
 done 
@@ -482,7 +482,7 @@ then
 	startTime=$(date +%s)
 	printHeader "Performing TE insertion breakpoint analysis"
 	log "Identifying insertion breakpoints, TSD, TE length, TE orientation and TE structure" $step  
-	run "python $BKP_ANALYSIS $paths2bkpAnalysis -o $outDir" "$ECHO"
+	run "python $BKP_ANALYSIS $paths2bkpAnalysis $sampleId $genome -o $outDir" "$ECHO"
 	
 	if [ ! -s $TEIBAout ]; 
 	then	
