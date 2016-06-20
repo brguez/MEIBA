@@ -237,8 +237,7 @@ class VCF():
 	outFile = open(outFilePath, 'a')
 
 	## Sort VCF lines		
-	#lineListSorted = self.sort()
-	lineListSorted = self.lineList
+	lineListSorted = self.sort()
 
 	## Iterate and print each VCF line into the output VCF file
 	for VCFline in lineListSorted:
