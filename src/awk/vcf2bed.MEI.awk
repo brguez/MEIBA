@@ -44,7 +44,7 @@
 	pos = $2;
 	info = $8;
 	
-	# Parse info field and select CIPOS (confindence interval around position)
+	# Parse info field and select class and CIPOS fields
 	split(info, infoList, ";");
 
 	for (field in infoList)
@@ -54,10 +54,18 @@
 		tag = fieldList[1];
 		value = fieldList[2];
 
-		if (tag == "CIPOS")
+		# A) Class
+		if (tag == "CLASS")
+		{
+			class = value
+		}
+		
+		# B) CIPOS (confindence interval around position)
+		else if (tag == "CIPOS")
 		{
 			CIPOS = value;	
-		}	
+		}
+	
 	}	
 
 	# Compute beg and end
@@ -65,6 +73,6 @@
 	end = pos + CIPOS;
 
 	# Print bed row
-	row=chrom"\t"beg"\t"end;		
+	row=chrom"\t"beg"\t"end"\t"class;		
 	print row;
 }
