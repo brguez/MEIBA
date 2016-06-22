@@ -203,7 +203,6 @@ class VCF():
 ##INFO=<ID=POLYA,Number=1,Type=Integer,Description="Poly-A sequence">
 ##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the transposable element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
 ##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
-##INFO=<ID=TID,Number=1,Type=String,Description="Transcript id for transcript associated with insertion breakpoint">
 ##INFO=<ID=SAT,Number=1,Type=String,Description="Satellite region overlapping insertion breakpoint">
 ##INFO=<ID=REP,Number=1,Type=String,Description="Repetitive element overlapping insertion breakpoint">
 ##INFO=<ID=CONTIGA,Number=1,Type=String,Description="Assembled contig sequence spanning 1st bkp (lowest genomic position)">
