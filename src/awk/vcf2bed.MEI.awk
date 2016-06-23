@@ -38,6 +38,10 @@
 # 10       7440548 7440548
 #  1        246817003       246817063
 
+function abs(v) {
+	return v < 0 ? -v : v
+}
+
 ! /^#/ {
 	# Get input 
 	chrom = $1;
@@ -59,18 +63,41 @@
 		{
 			class = value
 		}
-		
-		# B) CIPOS (confindence interval around position)
+
+		# B) Score
+		else if (tag == "SCORE")
+		{
+			score = value
+
+		}		
+	
+		# C) CIPOS (confindence interval around position)
 		else if (tag == "CIPOS")
 		{
 			CIPOS = value;	
 		}
-	
+
+		# C) TSLEN (target site length)
+		else if (tag == "TSLEN")
+		{
+			targetSiteLen = abs(value); # Absolute value (deletion length -> positive integer)	
+		}
 	}	
 
-	# Compute beg and end
-	beg = pos - CIPOS - 1;    # Substract 1 to convert from 1-based (VCF) to 0-based (bed) coordinate system
-	end = pos + CIPOS;
+	# A) Target site identified
+	if ( score == "1")
+	{
+		# Compute beg and end
+		beg = pos - 1;    # Substract 1 to convert from 1-based (VCF) to 0-based (bed) coordinate system
+		end = pos + targetSiteLen;				
+	}
+	# B) Target site not identified
+	else
+	{
+		# Compute beg and end
+		beg = pos - CIPOS - 1;    # Substract 1 to convert from 1-based (VCF) to 0-based (bed) coordinate system
+		end = pos + CIPOS;
+	}
 
 	# Print bed row
 	row=chrom"\t"beg"\t"end"\t"class;		

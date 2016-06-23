@@ -68,8 +68,20 @@ for line in repeatAnnotFile:
 	
 
         VCFlineObj =  VCFObj.lineList[counter]
-	exBeg = VCFlineObj.pos - int(VCFlineObj.infoDict["CIPOS"]) - 1 
-	exEnd = VCFlineObj.pos + int(VCFlineObj.infoDict["CIPOS"])
+
+	# A) Target site identified
+	if ( VCFlineObj.infoDict["SCORE"] == "1"):
+
+		# Compute expected beg and end
+		exBeg = VCFlineObj.pos - 1
+		exEnd = VCFlineObj.pos + abs(int(VCFlineObj.infoDict["TSLEN"]))
+
+	# B) Target site not identified
+	else:
+
+		# Compute expected beg and end
+		exBeg = VCFlineObj.pos - int(VCFlineObj.infoDict["CIPOS"]) - 1 
+		exEnd = VCFlineObj.pos + int(VCFlineObj.infoDict["CIPOS"])
 
 	## Insertion overlapping a repetitive sequence
 	if (REP != "."):
