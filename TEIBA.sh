@@ -180,6 +180,9 @@ version=0.1
 # Enable extended pattern matching 
 shopt -s extglob
 
+# Exit if error
+set -e -o pipefail
+
 # 1. Root directory
 ##############################
 # to set the path to the bin and python directories. 
@@ -263,11 +266,14 @@ pyDir=$srcDir/python
 bashDir=$srcDir/bash 
 
 ## Output files directories
+logsDir=$outDir/Logs
 fastaDir=$outDir/Fasta
 contigsDir=$outDir/Contigs
-blatDir=$outDir/Blat
-logsDir=$outDir/Logs
 assemblyLogsDir=$logsDir/2_assembly
+blatDir=$outDir/Blat
+bkpAnalysisDir=$outDir/BkpAnalysis
+annotDir=$outDir/Annot
+
 
 # 5. Programs/Scripts
 ######################
@@ -276,6 +282,7 @@ ALIGN_CONTIGS=$bashDir/alignContigs2reference.sh
 VELVETH=$binDir/velveth
 VELVETG=$binDir/velvetg
 BKP_ANALYSIS=$pyDir/insertionBkpAnalysis.py
+ANNOTATOR=$bashDir/variants_annotator.sh
 
 ## DISPLAY PROGRAM CONFIGURATION  
 ##################################
@@ -321,6 +328,12 @@ if [[ ! -d $contigsDir ]]; then mkdir $contigsDir; fi
 # Contigs alignment with Blat:
 if [[ ! -d $blatDir ]]; then mkdir $blatDir; fi
 
+# MEI breakpoint analysis directory
+if [[ ! -d $bkpAnalysisDir ]]; then mkdir $bkpAnalysisDir; fi
+
+# MEI annotation directory:
+if [[ ! -d $annotDir ]]; then mkdir $annotDir; fi
+
 # Log directories:
 if [[ ! -d $logsDir ]]; then mkdir $logsDir; fi
 if [[ ! -d $assemblyLogsDir ]]; then mkdir $assemblyLogsDir; fi
@@ -343,7 +356,7 @@ if [[ ! -d $assemblyLogsDir ]]; then mkdir $assemblyLogsDir; fi
 step="CLUSTERS2FASTA"
 startTime=$(date +%s)
 printHeader "Prepare fasta for assembly"  
-log "Producing per TE insertion two fasta for insertion bkp assembly" $step
+log "Producing per TE insertion two fasta for insertion bkp assembly\n" $step
 run "python $CLUSTERS2FASTA $input $fasta --outDir $fastaDir 1> $logsDir/1_clusters2fasta.out 2> $logsDir/1_clusters2fasta.err" "$ECHO"	
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
@@ -451,14 +464,14 @@ printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs
 ## 4.1 Make a list with the TE insertion ids:
 # Output:
 # - $outDir/insertions_list.txt
-insertionsList=$outDir/insertions_list.txt
+insertionsList=$bkpAnalysisDir/insertions_list.txt
 
 ls $blatDir | grep '.*psl' | grep -v "allContigs"| awk '{split($1,a,":"); print a[1]":"a[2];}' | sort | uniq > $insertionsList
 
 ## 4.2 Prepare input file for insertion breakpoint analysis
 # Output:
 # - $outDir/paths2bkpAnalysis.txt
-paths2bkpAnalysis=$outDir/paths2bkpAnalysis.txt
+paths2bkpAnalysis=$bkpAnalysisDir/paths2bkpAnalysis.txt
 echo -n "" > $paths2bkpAnalysis
  
 cat $insertionsList | while read insertionId; 
@@ -473,18 +486,18 @@ done
 
 ## 4.3 Perform breakpoint analysis
 # Output:
-# - $outDir/TEIBA.results.txt 
-TEIBAout=$outDir/TEIBA.results.txt 
+# - $bkpAnalysisDir/$sampleId.vcf 
+rawVCF=$bkpAnalysisDir/$sampleId.vcf 
 
-if [ ! -s $TEIBAout ]; 
+if [ ! -s $rawVCF ]; 
 then
 	step="BKP-ANALYSIS"
 	startTime=$(date +%s)
-	printHeader "Performing TE insertion breakpoint analysis"
-	log "Identifying insertion breakpoints, TSD, TE length, TE orientation and TE structure" $step  
-	run "python $BKP_ANALYSIS $paths2bkpAnalysis $sampleId $genome -o $outDir" "$ECHO"
+	printHeader "Performing MEI breakpoint analysis"
+	log "Identifying insertion breakpoints, TSD, TE length, TE orientation and TE structure\n" $step  
+	run "python $BKP_ANALYSIS $paths2bkpAnalysis $sampleId $genome --outDir $bkpAnalysisDir 1>> $logsDir/4_bkpAnalysis.out 2>> $logsDir/4_bkpAnalysis.err" "$ECHO"
 	
-	if [ ! -s $TEIBAout ]; 
+	if [ ! -s $rawVCF ]; 
 	then	
 		log "Error performing breakpoint analysis\n" "ERROR" 
         	exit -1
@@ -496,10 +509,47 @@ else
 	printHeader "Output file already exists... skipping step"
 fi
 
-######################
-# 5) CLEANUP AND END #
-######################
 
+# 5) Annotate mobile elements insertions
+##########################################
+## Output:
+# -  $outDir/$sampleId.annotated.vcf
+annotVCF=$annotDir/$sampleId.annotated.vcf 
+
+if [ ! -s $annotVCF ]; 
+then
+	step="ANNOTATION"
+	startTime=$(date +%s)
+	printHeader "Performing MEI breakpoint annotation"
+	log "Annotating MEI\n" $step  
+	run "bash $ANNOTATOR $rawVCF $sampleId $annotDir 1>> $logsDir/5_annotation.out 2>> $logsDir/5_annotation.err" "$ECHO"
+	
+	if [ ! -s $annotVCF ]; 
+	then	
+		log "Error performing annotation\n" "ERROR" 
+        	exit -1
+	else
+		endTime=$(date +%s)
+		printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
+	fi
+else
+	printHeader "Output file already exists... skipping step"
+fi
+
+
+######################################
+# 6) MAKE OUTPUT GZ, CLEANUP AND END #
+######################################
+
+## Produce a compressed vcf as output
+finalVCF=$outDir/$sampleId.vcf
+
+cp $annotVCF $finalVCF
+
+## Cleaning
+# rm -r $fastaDir $contigsDir $assemblyLogsDir $blatDir $bkpAnalysisDir $annotDir
+
+## End
 end=$(date +%s)
 printHeader "TEIBA for $sampleId completed in $(echo "($end-$start)/60" | bc -l | xargs printf "%.2f\n") min "
 
