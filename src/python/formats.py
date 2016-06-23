@@ -106,7 +106,7 @@ class VCFline():
 	"""
 
 	self.chrom = VCFlineList[0]
-	self.pos = VCFlineList[1]
+	self.pos = int(VCFlineList[1])
 	self.id = VCFlineList[2]
 	self.ref = VCFlineList[3]  
 	self.alt = VCFlineList[4]
@@ -135,7 +135,7 @@ class VCFline():
 	"""
 	
 	## Create list containing the order of info fields (provisional)
-	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "REGION", "GENE", "SAT", "REP", "CONTIGA", "CONTIGB", "TRDS" ] 
+	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "REGION", "GENE", "REP", "DIV", "CONTIGA", "CONTIGB", "TRDS" ] 
 
 	## Create info string in the correct order from dictionary 
 	infoList = []

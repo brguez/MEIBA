@@ -72,6 +72,8 @@ donorId=$2
 if [ ! -n "$3" ]
 then
 	outDir=.
+else
+	outDir=$3
 fi	
 
 
@@ -98,18 +100,26 @@ pyDir=$rootDir/../python
 ## Annovar directory
 annovarDir=$rootDir/../../apps/annovar
 
-# Programs and scripts
-########################
+## Databases directory
+dbDir=$rootDir/../../databases
+
+# Programs, scripts and databases
+##################################
 
 ## Awk
 VCF2ANNOVAR=$awkDir/vcf2annovar.MEI.awk
+VCF2BED=$awkDir/vcf2bed.MEI.awk
 
 ## Python
-ADD_GENE_ANNOT2VCF=$pyDir/addGnAnnot2VCF.py
+ADD_GENE2VCF=$pyDir/addGnAnnot2VCF.py
+ADD_REPEAT2VCF=$pyDir/addRepeatAnnot2VCF.py
 
 ## Annovar:
 ANNOVAR=$annovarDir/annotate_variation.pl
 ANNOVAR_DB=$annovarDir/humandb/
+
+## Databases:
+REPEATS_DB=$dbDir/repeats_repeatMasker_hg19.bed
 
 ## DISPLAY PROGRAM CONFIGURATION  
 ##################################
@@ -140,6 +150,8 @@ printf "\n\n"
 # 1. GENE ANNOTATION # 
 ######################
 
+echo "1. Gene annotation" >&1
+
 # 1.1 Convert variants into annovar input format
 #################################################
 
@@ -150,7 +162,7 @@ annovarInputPath=$outDir/annovar.input.txt
 echo "1.1 Convert variants into annovar input format" >&1
 
 echo "awk -f $VCF2ANNOVAR $inputVCF > $annovarInputPath" >&1
-#awk -f $VCF2ANNOVAR $inputVCF > $annovarInputPath
+awk -f $VCF2ANNOVAR $inputVCF > $annovarInputPath
 
 
 # 1.2 Annotate variants with annovar
@@ -168,18 +180,60 @@ perl $ANNOVAR -build hg19 -out $outDir/annovar -dbtype wgEncodeGencodeBasicV19 $
 ## 1.3 Add annotation information to the VCF
 #############################################
 ## Output:
-# -  $outDir/$donorId".gnAnnotated.vcf"
+# -  $outDir/$donorId".gnAnnot.vcf"
 
 echo "1.3 Add annotation information to the VCF" >&1
 
-echo "python $ADD_GENE_ANNOT2VCF $inputVCF $annovarOut $donorId" >&1
-python $ADD_GENE_ANNOT2VCF $inputVCF $annovarOut $donorId 1> $outDir/addGnAnnot.out 2> $outDir/addGnAnnot.err
+echo "python $ADD_GENE2VCF $inputVCF $annovarOut $donorId $outDir" >&1
+python $ADD_GENE2VCF $inputVCF $annovarOut $donorId --outDir $outDir 1> $outDir/addGnAnnot.out 2> $outDir/addGnAnnot.err
 
 
+#########################
+# 2. REPEATS ANNOTATION # 
+#########################
+
+echo "2. Repeat annotation" >&1
+
+# 2.1 Convert MEI calls into bed format
+########################################
+
+## Output:
+# - $outDir/$donorId.bed
+insertionsBed=$outDir/$donorId.bed
+
+echo "2.1 Convert MEI calls into bed format" >&1
+
+echo "awk -f $VCF2BED $outDir/$donorId.gnAnnot.vcf  > $insertionsBed" >&1
+awk -f $VCF2BED $outDir/$donorId.gnAnnot.vcf  > $insertionsBed
+
+
+# 2.2  Interserct MEI with repeats database
+#####################################################
+## Output:
+# - $outDir/insertions_repeatAnnot.txt
+
+repeatAnnot=$outDir/insertions_repeatAnnot.txt
+
+echo "2.2  Interserct MEI with repeats database" >&1
+
+echo "bedtools intersect -wao -a $insertionsBed -b $REPEATS_DB | awk -v OFS='\t' '{print $1, $2, $3, $4, $8, $9}' > $repeatAnnot"  >&1
+bedtools intersect -wao -a $insertionsBed -b $REPEATS_DB | awk -v OFS='\t' '{print $1, $2, $3, $4, $8, $9}' > $repeatAnnot
+
+
+## 2.3 Add repeats annotation information to the VCF
+#####################################################
+## Output:
+# -  $outDir/$donorId.annotated.vcf
+
+echo "2.3 Add repeats annotation information to the VCF" >&1
+
+echo "python $ADD_REPEAT2VCF $outDir/$donorId.gnAnnot.vcf $repeatAnnot $donorId $outDir 1> $outDir/addRepeatAnnot.out 2> $outDir/addRepeatAnnot.err" >&1
+python $ADD_REPEAT2VCF $outDir/$donorId.gnAnnot.vcf $repeatAnnot $donorId --outDir $outDir 1> $outDir/addRepeatAnnot.out 2> $outDir/addRepeatAnnot.err
+
 ######################
-# 4. CLEANUP AND END #
+# 3. CLEANUP AND END #
 ######################
-echo "X. Cleanup and end" >&1
+echo "3. Cleanup and end" >&1
 echo >&1
 # echo "rm " >&1
 
