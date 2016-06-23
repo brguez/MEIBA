@@ -191,7 +191,7 @@ class VCF():
 ##contig=<ID=X,assembly=GRCh37,length=155270560,species=human>
 ##contig=<ID=Y,assembly=GRCh37,length=59373566,species=human>
 ##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant. (All sequence is on the plus strand and in the forward direction).">            
-##INFO=<ID=CLASS,Number=1,Type=String,Description="Transposable element class (L1, ALU, SVA or HERVK)">
+##INFO=<ID=CLASS,Number=1,Type=String,Description="Transposable element class (L1, ALU, SVA or ERVK)">
 ##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction)">
 ##INFO=<ID=SCORE,Number=1,Type=String,Description="Insertion score (1: 5' and 3' breakpoints (bkp) assembled, 2A: 5'bkp assembled, 2B: 3'bkp assembled, 3: no bkp assembled, 4: inconsistent (contradictory orientation, bkp or TSD))">
 ##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around POS (insertion breakpoint)">
@@ -341,7 +341,7 @@ class insertion():
             Initialize insertion object.
             
             Input:
-            1) family. TE family (L1, Alu or SVA)
+            1) family. TE family (L1, Alu, SVA or ERVK)
             2) coordinates. 
             3) contigsPlusPath. Fasta file containing the assembled contigs for the positive cluster. 
             4) blatPlusPath. psl file containing the blat aligments for the positive cluster's assembled contigs.
@@ -826,7 +826,7 @@ class insertion():
     
     def insertion_structure(self, informative5primeContigObj):
         """
-            Determine TE (L1, Alu or SVA) insertion structure.
+            Determine TE (L1, Alu, SVA or ERVK) insertion structure.
 
             1) 5'inverted:
 
@@ -882,8 +882,10 @@ class insertion():
             
                 # b.a) full length TE insertion                  
             	if (percLength > 95):
-                    # Threshold set for L1 (6021 bp length + 30bp polyA, first ~300bp correspond to promoter)
-                    # and Alu (282 bp length + 30bp polyA). For SVA we need to put different values (or not...)
+                    # L1 (6021 bp length + 30bp polyA, first ~300bp correspond to promoter)
+                    # Alu (282 bp length + 30bp polyA). 
+		    # SVA (X bp length + 30bp polyA). 
+		    # ERVK (X bp length + 30bp polyA). 
                     structure = "FULL"    
 
 		# b.b) 5' truncated 
@@ -1227,8 +1229,8 @@ class contig():
 	    alignPerc = float(alignment.qEnd - alignment.qBeg) / alignment.qSize * 100
     
 	    ## A) Discard contig completely aligning in the TE sequence as informative candidate  
-	    # TE: L1, Alu or SVA (SVA need to be included)
-            if (( alignment.tName == "L1" ) or ( alignment.tName == "Alu" )) and ( alignPerc > 99 ):
+	    # TE: L1, Alu, SVA or ERVK
+            if (( alignment.tName == "L1" ) or ( alignment.tName == "Alu" ) or ( alignment.tName == "SVA" ) or ( alignment.tName == "ERVK" )) and ( alignPerc > 99 ):
 		
 		candidate = 0
 	        supportingAlignList = []
@@ -1576,8 +1578,8 @@ class contig():
                 
         for alignment in self.alignList:
             
-            # Contig alignment in TE sequence (L1, Alu or SVA (SVA need to be included))
-            if ( alignment.tName == "L1" ) or ( alignment.tName == "Alu" ):
+            # Contig alignment in TE sequence (L1, Alu, SVA or ERVK)
+            if ( alignment.tName == "L1" ) or ( alignment.tName == "Alu" ) or ( alignment.tName == "SVA" ) or ( alignment.tName == "ERVK" ):
                 
                 ## Compute percentage of overlap between: 
                 # Expected alignment ---------------

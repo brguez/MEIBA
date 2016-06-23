@@ -97,6 +97,15 @@ for line in insertions:
     familyMinus = line[10]
     readPairListMinus = line[11].split(",")
     
+    ## Rename "Other" family insertions as SVA 
+    # Plus
+    if (familyPlus == "Other"):
+	familyPlus = "SVA"
+	
+    # Minus
+    if (familyMinus == "Other"):
+	familyMinus = "SVA"
+	
     ## Generate an insertion id for + and - clusters (insertion coordinates defined by the end 
     # of + cluster and beg of - cluster)    
     insertionIdPlus = familyPlus + ":" + chrPlus + "_" + str(endPlus) + "_" + begMinus + ":" + "+"

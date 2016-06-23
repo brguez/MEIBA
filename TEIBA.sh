@@ -41,8 +41,8 @@ Execute for one dataset (sample).
 	-g 	<FASTA>			Reference Genome in fasta format (RG). Please make sure you provide the same RG version you used to run TraFiC. 
 					Also, make sure the same chromosome naming conventions are used.
 	
-	-c	<FASTA>			Three comma separated fasta files containing the consensus transposable element (TE) sequences for L1, Alu and SVA. Header lines must be named ">L1", ">Alu" and ">SVA" for
-					L1, Alu and SVA TE, respectively.  
+	-c	<FASTA>			Four comma separated fasta files containing the consensus transposable element (TE) sequences for L1, Alu, SVA and ERVK. Header lines must be named ">L1", ">Alu", ">SVA" and ">ERVK" for
+					L1, Alu, SVA and ERVK retrotransposons, respectively.  
 	
 	-s	<STRING>		Sample id. Output file will be named accordingly.	
 		
@@ -223,14 +223,15 @@ if [[ ! -e $genome ]]; then log "The reference genome fasta file does not not ex
 
 nbConsensusFiles=`echo $consensusTEs | awk '{nb=split($1,a,","); print nb;}'`
 
-read consensusL1 consensusAlu consensusSVA <<<$(echo $consensusTEs | awk '{nb=split($1,files,","); print files[1], files[2], files[3];}')
+read consensusL1 consensusAlu consensusSVA consensusERVK <<<$(echo $consensusTEs | awk '{nb=split($1,files,","); print files[1], files[2], files[3], files[4];}')
 
-if [[ $nbConsensusFiles != "3" ]]; then log "Not provided the three required fasta files with consensus L1, Alu and SVA sequences. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ $nbConsensusFiles != "4" ]]; then log "Do not provided the 4 required fasta files for L1, Alu, SVA and ERVK. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -e $consensusL1 ]]; then log "The consensus L1 fasta file does not not exist. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -e $consensusAlu ]]; then log "The consensus Alu fasta file does not not exist. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -e $consensusSVA ]]; then log "The consensus SVA fasta file does not not exist. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -e $consensusERVK ]]; then log "The consensus ERVK fasta file does not not exist. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
 
-if [[ $nbConsensusFiles != "3" ]]; then log "Do not provided the 3 required fasta files for L1, Alu and SVA. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
+
 if [[ $sampleId == "" ]]; then log "The sample id is not provided. Mandatory argument -s\n" "ERROR" >&2; usageDoc; exit -1; fi
 
 
@@ -298,6 +299,7 @@ printf "  %-34s %s\n" "genome:" "$genome"
 printf "  %-34s %s\n" "consensus-L1:" "$consensusL1"
 printf "  %-34s %s\n" "consensus-Alu:" "$consensusAlu"
 printf "  %-34s %s\n" "consensus-SVA:" "$consensusSVA"
+printf "  %-34s %s\n" "consensus-ERVK:" "$consensusERVK"
 printf "  %-34s %s\n\n" "sampleId:" "$sampleId"
 printf "  %-34s %s\n" "***** OPTIONAL ARGUMENTS *****"
 printf "  %-34s %s\n" "K-mer length:" "$kmerLen"
@@ -440,8 +442,13 @@ do
                 consensusTE=$consensusAlu
 	       	;;
 
-	    Other)
-		consensusTE=$consensusSVA
+	    SVA)
+		consensusTE=$consensusSVA	
+		;;
+
+ 	    ERVK)
+		consensusTE=$consensusERVK
+		;;
 	esac
 	
 	# Align contigs into the insertion target region and TE sequence
