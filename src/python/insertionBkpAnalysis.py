@@ -191,30 +191,29 @@ class VCF():
 ##contig=<ID=X,assembly=GRCh37,length=155270560,species=human>
 ##contig=<ID=Y,assembly=GRCh37,length=59373566,species=human>
 ##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant. (All sequence is on the plus strand and in the forward direction).">            
-##INFO=<ID=CLASS,Number=4,Type=String,Description="Transposable element class (L1, ALU, SVA or HERVK)">
-##INFO=<ID=TYPE,Number=3,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction)">
-##INFO=<ID=SCORE,Number=4,Type=String,Description="Insertion score (1: 5' and 3' breakpoints (bkp) assembled, 2A: 5'bkp assembled, 2B: 3'bkp assembled, 3: no bkp assembled, 4: inconsistent (contradictory orientation, bkp or TSD))">
+##INFO=<ID=CLASS,Number=1,Type=String,Description="Transposable element class (L1, ALU, SVA or HERVK)">
+##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction)">
+##INFO=<ID=SCORE,Number=1,Type=String,Description="Insertion score (1: 5' and 3' breakpoints (bkp) assembled, 2A: 5'bkp assembled, 2B: 3'bkp assembled, 3: no bkp assembled, 4: inconsistent (contradictory orientation, bkp or TSD))">
 ##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around POS (insertion breakpoint)">
-##INFO=<ID=STRAND,Number=2,Type=String,Description="Insertion DNA strand (+ or -)">
-##INFO=<ID=STRUCT,Number=3,Type=String,Description="Transposable element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
+##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
+##INFO=<ID=STRUCT,Number=1,Type=String,Description="Transposable element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
 ##INFO=<ID=LEN,Number=1,Type=Integer,Description="Transposable element length">
 ##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site length (+: target site duplication, -: target site deletion)">
-##INFO=<ID=TSSEQ,Number=1,Type=Integer,Description="Target site duplication or deletion sequence">
-##INFO=<ID=POLYA,Number=1,Type=Integer,Description="Poly-A sequence">
+##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication or deletion sequence">
+##INFO=<ID=POLYA,Number=1,Type=String,Description="Poly-A sequence">
 ##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the transposable element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
 ##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
-##INFO=<ID=SAT,Number=1,Type=String,Description="Satellite region overlapping insertion breakpoint">
-##INFO=<ID=REP,Number=1,Type=String,Description="Repetitive element overlapping insertion breakpoint">
+##INFO=<ID=REP,Number=1,Type=String,Description="Repetitive element overlapping the insertion breakpoint">
+##INFO=<ID=DIV,Number=1,Type=Integer,Description="Millidivergence of the overlapping repetitive element with respect a consensus sequence">
 ##INFO=<ID=CONTIGA,Number=1,Type=String,Description="Assembled contig sequence spanning 1st bkp (lowest genomic position)">
-##INFO=<ID=CONTIGB,Number=1,Type=String,Description="Assembled contig sequence spanning 2nd bkp (highest genomic position) ">
+##INFO=<ID=CONTIGB,Number=1,Type=String,Description="Assembled contig sequence spanning 2nd bkp (highest genomic position)">
 ##INFO=<ID=TRDS,Number=.,Type=String,Description="Reads from the tumour sample (X) that contribute to this insertion">
-##FILTER=<ID=SAT,Description="Insertion breakpoint overlapping a satellite region">
-##FILTER=<ID=FAM,Description="Insertion breakpoint overlapping a repetive element of the same family">
-##FILTER=<ID=SCORE,Description="Insertion with an score > 2">
+##FILTER=<ID=REP,Description="Insertion overlapping a satellite region or a repetitive element of the same class">
+##FILTER=<ID=SCORE,Description="Insertion with an score > threshold">
 ##FORMAT=<ID=RC,Number=1,Type=Integer,Description="Count of countributing reads">
 ##SAMPLE=<ID=NORMAL,Description="Normal",Accession=.,Platform=ILLUMINA,Protocol=WGS,SampleName=X,Source=.>
 ##SAMPLE=<ID=TUMOUR,Description="Tumour",Accession=.,Platform=ILLUMINA,Protocol=WGS,SampleName=X,Source=.>
-#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    	
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
 """ 
 	## Replace variables into the template and print header into the output file
 	with  open(outFilePath,'w') as outFile:
@@ -282,7 +281,7 @@ class VCFline():
 	"""
 	
 	## Create list containing the order of info fields
-	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "REGION", "GENE", "TID", "SAT", "REP", "CONTIGA", "CONTIGB", "TRDS" ] 
+	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "REGION", "GENE", "REP", "DIV", "CONTIGA", "CONTIGB", "TRDS" ] 
 
 	## Build dictionary with info tags as keys 
 	infoDict = {}
@@ -299,9 +298,8 @@ class VCFline():
 	infoDict["POLYA"] = insertionObj.polyA
 	infoDict["REGION"] = "unkn"
 	infoDict["GENE"] = "unkn"
-	infoDict["TID"] = "unkn"
-	infoDict["SAT"] = "unkn"
 	infoDict["REP"] = "unkn"
+	infoDict["DIV"] = "unkn"
 	infoDict["CONTIGA"] = insertionObj.informativeContigBkpA
 	infoDict["CONTIGB"] = insertionObj.informativeContigBkpB	
 
@@ -658,15 +656,15 @@ class insertion():
 
 	## ------ Provisional -------	
         ## Print results into an output file
-        fileName = "TEIBA.results.txt"
-        outFilePath = outDir + "/" + fileName
-        outFile = open( outFilePath, "a" )
+        #fileName = "TEIBA.results.txt"
+        #outFilePath = outDir + "/" + fileName
+        #outFile = open( outFilePath, "a" )
 
-        row = self.traficId + "\t" + str(self.score) + "\t" + str(self.bkpA) + "\t" + str(self.bkpB) + "\t" + str(self.targetSiteSize) + "\t" + self.targetSiteSeq + "\t" + self.orientation + "\t" + self.structure + "\t" + str(self.length) + "\t" + str(self.percLength) + "\t" + self.informativeContigIdBkpA + "\t" + self.informativeContigBkpA + "\t" + self.informativeContigIdBkpB + "\t" + self.informativeContigBkpB + "\t" + self.polyA + "\n"
-        outFile.write(row)
+        #row = self.traficId + "\t" + str(self.score) + "\t" + str(self.bkpA) + "\t" + str(self.bkpB) + "\t" + str(self.targetSiteSize) + "\t" + self.targetSiteSeq + "\t" + self.orientation + "\t" + self.structure + "\t" + str(self.length) + "\t" + str(self.percLength) + "\t" + self.informativeContigIdBkpA + "\t" + self.informativeContigBkpA + "\t" + self.informativeContigIdBkpB + "\t" + self.informativeContigBkpB + "\t" + self.polyA + "\n"
+        #outFile.write(row)
         
         # Close output and end
-        outFile.close()
+        #outFile.close()
 
 
     def target_site(self, informative5primeContigObj, informative3primeContigObj, genomeObj):
