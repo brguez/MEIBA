@@ -51,23 +51,53 @@ outFilePath = outDir + '/' + donorId + ".annotated.vcf"
 VCFObj = formats.VCF()
 VCFObj.read_VCF(inputVCF)
 
-## 2. Add repeat annotation to VCF file
+## 2. Remove duplicities. For each insertion select a single overlapping repeat
 repeatAnnotFile = open(repeatAnnot, 'r')
-
 counter = 0
 
+repeatDict = {}
+
 for line in repeatAnnotFile:
+
 	line = line.rstrip('\n')
+
 	lineList = line.split('\t')
 	chrom = lineList[0] 
-	beg = int(lineList[1])
-	end = int(lineList[2])
+	beg = lineList[1]
+	end = lineList[2]
 	category = lineList[3]
 	REP = lineList[4]
 	DIV = lineList[5]
-	
 
-        VCFlineObj =  VCFObj.lineList[counter]
+	insertionId = category + ":" + chrom + "_" + beg + "_" + end
+
+	annotDict = {}
+	annotDict["REP"] = REP
+
+	# Divergence applicable, not applicable (na) only for satellite repeats
+	if (DIV != "na"):		
+		annotDict["DIV"] = DIV
+
+	# A) First annotation appearance for a given insertion 
+	if insertionId not in repeatDict:
+       		
+		repeatDict[insertionId] = annotDict
+	
+	# B) Already annotation appearance for a given insertion 
+	else:
+		# B.1) Overlapping satellite region or repeat of the same family while previus not
+		if (DIV == "na") or ((category == REP) and (category != repeatDict[insertionId]["REP"])):
+			repeatDict[insertionId] = annotDict
+
+		# B.2) Overlapping repeat with higher millidivergence than previous one
+		elif (int(DIV) > int(repeatDict[insertionId]["DIV"])):
+			repeatDict[insertionId] = annotDict
+			
+	       
+
+## 3. Add repeat annotation to VCF file	
+
+for VCFlineObj in VCFObj.lineList:
 
 	# A) Target site identified
 	if ( VCFlineObj.infoDict["SCORE"] == "1"):
@@ -83,29 +113,14 @@ for line in repeatAnnotFile:
 		exBeg = VCFlineObj.pos - int(VCFlineObj.infoDict["CIPOS"]) - 1 
 		exEnd = VCFlineObj.pos + int(VCFlineObj.infoDict["CIPOS"])
 
+	insertionId = VCFlineObj.infoDict["CLASS"] + ":" + VCFlineObj.chrom + "_" + str(exBeg) + "_" + str(exEnd)
+
 	## Insertion overlapping a repetitive sequence
-	if (REP != "."):
-	
-		# A) VCF line correctly paired with repeat annotation file
-		if (VCFlineObj.chrom == chrom) and (beg == exBeg) and (end == exEnd):
-		
-			annotDict = {}
-			annotDict["REP"] = REP
+	if (repeatDict[insertionId]["REP"] != "."):
 
-			# Divergence applicable, not applicable (na) only for satellite repeats
-			if (DIV != "na"):		
-		
-				annotDict["DIV"] = DIV		
-			
-			VCFlineObj.infoDict.update(annotDict)
-			VCFlineObj.info = VCFlineObj.make_info()
-
-		# A) VCF line unpaired with repeat annotation file
-	    	else:
-			print "ERROR. Unpaired VCF and repetitive sequences"
-
-	counter += 1	    
-
+		# Add overlapping repeat information to info 
+		VCFlineObj.infoDict.update(repeatDict[insertionId])
+		VCFlineObj.info = VCFlineObj.make_info()
 
 repeatAnnotFile.close()
 
