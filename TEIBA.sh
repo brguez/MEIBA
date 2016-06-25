@@ -276,12 +276,10 @@ bkpAnalysisDir=$outDir/BkpAnalysis
 annotDir=$outDir/Annot
 
 
-# 5. Programs/Scripts
-######################
+# 5. Scripts
+##############
 CLUSTERS2FASTA=$pyDir/clusters2fasta.py
 ALIGN_CONTIGS=$bashDir/alignContigs2reference.sh
-VELVETH=$binDir/velveth
-VELVETG=$binDir/velvetg
 BKP_ANALYSIS=$pyDir/insertionBkpAnalysis.py
 ANNOTATOR=$bashDir/variants_annotator.sh
 
@@ -390,9 +388,9 @@ do
 		
 	log "** ${bkpId} breakpoint **\n" $step
 	log "1. Preparing files for assembly\n" $step
-	run "$VELVETH $contigsDir $kmerLen -fasta -short $fastaPath 1>> $logsDir/2_assembly.out 2>> $logsDir/2_assembly.err" "$ECHO"
+	run "velveth $contigsDir $kmerLen -fasta -short $fastaPath 1>> $logsDir/2_assembly.out 2>> $logsDir/2_assembly.err" "$ECHO"
 	log "2. Breakpoint assembly with velvet\n" $step
-	run "$VELVETG $contigsDir -exp_cov auto -cov_cutoff auto 1>> $logsDir/2_assembly.out 2>> $logsDir/2_assembly.err" "$ECHO"
+	run "velvetg $contigsDir -exp_cov auto -cov_cutoff auto 1>> $logsDir/2_assembly.out 2>> $logsDir/2_assembly.err" "$ECHO"
 	log "3. Rename output files\n" $step
 	run "mv ${contigsDir}/Log $assemblyLogsDir/${bkpId}.log" "$ECHO"
 	run "mv ${contigsDir}/contigs.fa ${contigsDir}/${bkpId}.contigs.fa" "$ECHO"
