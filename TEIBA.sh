@@ -44,6 +44,9 @@ Execute for one dataset (sample).
 	-c	<FASTA>			Four comma separated fasta files containing the consensus transposable element (TE) sequences for L1, Alu, SVA and ERVK. Header lines must be named ">L1", ">Alu", ">SVA" and ">ERVK" for
 					L1, Alu, SVA and ERVK retrotransposons, respectively.  
 	
+	-d      <BED>			Database of repetitive sequences according to RepeatMasker in BED format. 
+
+	
 	-s	<STRING>		Sample id. Output file will be named accordingly.	
 		
 *** [OPTIONS] can be:
@@ -63,7 +66,7 @@ help
 ################################
 function getoptions {
 
-while getopts ":i:f:g:c:s:k:o:h" opt "$@"; 
+while getopts ":i:f:g:c:d:s:k:o:h" opt "$@"; 
 do
    case $opt in   	
       
@@ -95,6 +98,13 @@ do
               consensusTEs=$OPTARG
 	  fi
 	  ;;    
+
+      d)
+	  if [ -n "$OPTARG" ];
+	  then
+              repeatsDb=$OPTARG
+	  fi
+	  ;; 	
 
       s)
 	  if [ -n "$OPTARG" ];
@@ -230,7 +240,7 @@ if [[ ! -e $consensusL1 ]]; then log "The consensus L1 fasta file does not not e
 if [[ ! -e $consensusAlu ]]; then log "The consensus Alu fasta file does not not exist. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -e $consensusSVA ]]; then log "The consensus SVA fasta file does not not exist. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -e $consensusERVK ]]; then log "The consensus ERVK fasta file does not not exist. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
-
+if [[ ! -e $repeatsDb ]]; then log "The RepeatMasker repeats database does not exist. Mandatory argument -d" "ERROR" >&2; usageDoc; exit -1; fi 
 
 if [[ $sampleId == "" ]]; then log "The sample id is not provided. Mandatory argument -s\n" "ERROR" >&2; usageDoc; exit -1; fi
 
@@ -275,7 +285,6 @@ blatDir=$outDir/Blat
 bkpAnalysisDir=$outDir/BkpAnalysis
 annotDir=$outDir/Annot
 
-
 # 5. Scripts
 ##############
 CLUSTERS2FASTA=$pyDir/clusters2fasta.py
@@ -298,6 +307,7 @@ printf "  %-34s %s\n" "consensus-L1:" "$consensusL1"
 printf "  %-34s %s\n" "consensus-Alu:" "$consensusAlu"
 printf "  %-34s %s\n" "consensus-SVA:" "$consensusSVA"
 printf "  %-34s %s\n" "consensus-ERVK:" "$consensusERVK"
+printf "  %-34s %s\n" "repeats-db:" "$repeatsDb"
 printf "  %-34s %s\n\n" "sampleId:" "$sampleId"
 printf "  %-34s %s\n" "***** OPTIONAL ARGUMENTS *****"
 printf "  %-34s %s\n" "K-mer length:" "$kmerLen"
@@ -527,7 +537,7 @@ then
 	startTime=$(date +%s)
 	printHeader "Performing MEI breakpoint annotation"
 	log "Annotating MEI\n" $step  
-	run "bash $ANNOTATOR $rawVCF $sampleId $annotDir 1>> $logsDir/5_annotation.out 2>> $logsDir/5_annotation.err" "$ECHO"
+	run "bash $ANNOTATOR $rawVCF $repeatsDb $sampleId $annotDir 1>> $logsDir/5_annotation.out 2>> $logsDir/5_annotation.err" "$ECHO"
 	
 	if [ ! -s $annotVCF ]; 
 	then	

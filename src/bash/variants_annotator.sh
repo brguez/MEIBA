@@ -21,8 +21,8 @@ authors
 
 # usage
 #######
-# Usage:    bash variants_annotator.sh sample.vcf sampleId [outDir]  
-# Example:  bash variants_annotator.sh e52ffa79-557a-4024-81f3-f3826c227ec5.vcf e52ffa79-557a-4024-81f3-f3826c227ec5 variant_annotation_dir
+# Usage:    bash variants_annotator.sh sample.vcf repeatsDb.bed sampleId [outDir]  
+# Example:  bash variants_annotator.sh e52ffa79-557a-4024-81f3-f3826c227ec5.vcf repeats_repeatMasker_hg19.bed e52ffa79-557a-4024-81f3-f3826c227ec5 variant_annotation_dir
 
 # Input
 ########
@@ -39,21 +39,22 @@ set -e -o pipefail
 
 # In case the user does not provide any input file
 ###################################################
-if [[ ! -e "$1" ]] || [[ "$2" == "" ]] 
+if [[ ! -e "$1" ]] || [[ ! -e "$2" ]] || [[ "$3" == "" ]] 
 then
     echo "" >&2
     echo "*** variants_annotator ***" >&2
     echo "" >&2
-    echo "Usage:    bash variants_annotator.sh sample.vcf sampleId [outDir] " >&2
+    echo "Usage:    bash variants_annotator.sh sample.vcf repeatsDb.bed sampleId [outDir] " >&2
     echo "" >&2
-    echo "Example:  bash variants_annotator.sh e52ffa79-557a-4024-81f3-f3826c227ec5.vcf e52ffa79-557a-4024-81f3-f3826c227ec5 variant_annotation_dir" >&2
+    echo "Example:  bash variants_annotator.sh e52ffa79-557a-4024-81f3-f3826c227ec5.vcf repeats_repeatMasker_hg19.bed e52ffa79-557a-4024-81f3-f3826c227ec5 variant_annotation_dir" >&2
     echo "" >&2
     echo "...description..." >&2
     echo "" >&2
     echo "Input:" >&2
     echo "1) VCF" >&2
-    echo "2) Sample identifier" >&2
-    echo "3) Output directory" >&2
+    echo "2) RepeatMasker repeats database in bed format" >&2	
+    echo "3) Sample identifier" >&2
+    echo "4) Output directory" >&2
     echo "" >&2
     echo "Output:" >&2 
     echo "1) VCF with annotated variants (overlapping region, gene, repeat, satellite region...)" >&2
@@ -67,13 +68,15 @@ fi
 # provide default values
 ########################
 inputVCF=$1
-donorId=$2
+repeatsDb=$2
+donorId=$3
 
-if [ ! -n "$3" ]
+
+if [ ! -n "$4" ]
 then
 	outDir=.
 else
-	outDir=$3
+	outDir=$4
 fi	
 
 
@@ -100,9 +103,6 @@ pyDir=$rootDir/../python
 ## Annovar directory
 annovarDir=$rootDir/../../apps/annovar
 
-## Databases directory
-dbDir=$rootDir/../../databases
-
 # Programs, scripts and databases
 ##################################
 
@@ -118,9 +118,6 @@ ADD_REPEAT2VCF=$pyDir/addRepeatAnnot2VCF.py
 ANNOVAR=$annovarDir/annotate_variation.pl
 ANNOVAR_DB=$annovarDir/humandb/
 
-## Databases:
-REPEATS_DB=$dbDir/repeats_repeatMasker_hg19.bed
-
 ## DISPLAY PROGRAM CONFIGURATION  
 ##################################
 printf "\n"
@@ -130,6 +127,7 @@ eval "for i in {1..${#header}};do printf \"-\";done"
 printf "\n\n"
 printf "  %-34s %s\n" "***** MANDATORY ARGUMENTS *****"
 printf "  %-34s %s\n" "inputVCF:" "$inputVCF"
+printf "  %-34s %s\n" "repeatsDb:" "$repeatsDb"
 printf "  %-34s %s\n\n" "donorId:" "$donorId"
 printf "  %-34s %s\n" "***** OPTIONAL ARGUMENTS *****"
 printf "  %-34s %s\n\n" "outDir:" "$outDir"
@@ -216,8 +214,8 @@ repeatAnnot=$outDir/insertions_repeatAnnot.txt
 
 echo "2.2  Interserct MEI with repeats database" >&1
 
-echo "bedtools intersect -wao -a $insertionsBed -b $REPEATS_DB | awk -v OFS='\t' '{print $1, $2, $3, $4, $8, $9}' > $repeatAnnot"  >&1
-bedtools intersect -wao -a $insertionsBed -b $REPEATS_DB | awk -v OFS='\t' '{print $1, $2, $3, $4, $8, $9}' > $repeatAnnot
+echo "bedtools intersect -wao -a $insertionsBed -b $repeatsDb | awk -v OFS='\t' '{print $1, $2, $3, $4, $8, $9}' > $repeatAnnot"  >&1
+bedtools intersect -wao -a $insertionsBed -b $repeatsDb | awk -v OFS='\t' '{print $1, $2, $3, $4, $8, $9}' > $repeatAnnot
 
 
 ## 2.3 Add repeats annotation information to the VCF
