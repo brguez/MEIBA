@@ -236,8 +236,8 @@ class annovarLine():
 	self.region = annovarLineList[0]
 	self.genes = re.sub('\(.*?\)', '', annovarLineList[1]) # remove not necesary information enclosed by slashes (.*)
 	self.chrom = annovarLineList[2]
-	self.beg = annovarLineList[3]
-	self.end = annovarLineList[4]
+	self.beg = int(annovarLineList[3])
+	self.end = int(annovarLineList[4])
 	self.ref = annovarLineList[5]
 	self.alt = annovarLineList[6]
 
