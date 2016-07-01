@@ -175,6 +175,12 @@ echo "1.2 Annotate variants with annovar" >&1
 echo "perl $ANNOVAR -build hg19 -out $outDir/annovar -dbtype wgEncodeGencodeBasicV19 $annovarInputPath $ANNOVAR_DB 1> $outDir/annovar.out 2> $outDir/annovar.err"  >&1
 perl $ANNOVAR -build hg19 -out $outDir/annovar -dbtype wgEncodeGencodeBasicV19 $annovarInputPath $ANNOVAR_DB 1> $outDir/annovar.out 2> $outDir/annovar.err
 
+# Replace ; by , to avoid problems in 1.3 for insertions overlappinng multiple regions 
+# (e.g insertion overlapping both upstream as downstream regions of two different genes)
+annovarOutOk="$outDir/annovar.variant_function.ok"
+
+sed 's/;/,/g' $annovarOut > $annovarOutOk
+
 ## 1.3 Add annotation information to the VCF
 #############################################
 ## Output:
@@ -183,7 +189,7 @@ perl $ANNOVAR -build hg19 -out $outDir/annovar -dbtype wgEncodeGencodeBasicV19 $
 echo "1.3 Add annotation information to the VCF" >&1
 
 echo "python $ADD_GENE2VCF $inputVCF $annovarOut $donorId $outDir" >&1
-python $ADD_GENE2VCF $inputVCF $annovarOut $donorId --outDir $outDir 1> $outDir/addGnAnnot.out 2> $outDir/addGnAnnot.err
+python $ADD_GENE2VCF $inputVCF $annovarOutOk $donorId --outDir $outDir 1> $outDir/addGnAnnot.out 2> $outDir/addGnAnnot.err
 
 
 #########################
@@ -229,9 +235,9 @@ echo "python $ADD_REPEAT2VCF $outDir/$donorId.gnAnnot.vcf $repeatAnnot $donorId 
 python $ADD_REPEAT2VCF $outDir/$donorId.gnAnnot.vcf $repeatAnnot $donorId --outDir $outDir 1> $outDir/addRepeatAnnot.out 2> $outDir/addRepeatAnnot.err
 
 ######################
-# 3. CLEANUP AND END #
+# 4. CLEANUP AND END #
 ######################
-echo "3. Cleanup and end" >&1
+echo "4. Cleanup and end" >&1
 echo >&1
 # echo "rm " >&1
 
