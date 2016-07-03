@@ -100,7 +100,7 @@ for line in repeatAnnotFile:
 for VCFlineObj in VCFObj.lineList:
 
 	# A) Target site identified
-	if ( VCFlineObj.infoDict["SCORE"] == "1"):
+	if ( VCFlineObj.infoDict["SCORE"] == "5"):
 
 		# Compute expected beg and end
 		exBeg = VCFlineObj.pos - 1

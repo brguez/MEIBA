@@ -409,12 +409,13 @@ class insertion():
             
             Output (Provisional):
             1) score. One of these values:
-                1.  5' and 3' informative contigs 
-                2A. 5' informative contig
-                2B. 3' informative contig 
-		3. No informative contig identified.
-                4. Inconsistent insertion. Contradictory orientation (5' and 3' informative contigs suggest opposite orientation) or breakpoint/s () 
-            2) breakpoint. Breakpoint coordinates (3 elements list: chrom, pos and confidence interval (CI))
+                5: 5' and 3' breakpoints (bkp) assembled
+		4: 3'bkp assembled 
+		3: 5'bkp assembled 
+		2: no bkp assembled
+		1: inconsistent (contradictory orientation, bkp or TSD)
+            
+	    2) breakpoint. Breakpoint coordinates (3 elements list: chrom, pos and confidence interval (CI))
             3) TS. Target site duplication or deletion (tuple: TSD size and sequence). 
             4) orientation. TE insertion DNA strand/orientation (+ or -) 
             5) polyA. Poly-A sequence. 
@@ -442,7 +443,7 @@ class insertion():
 	    info("no-informative-contigs:")
 	    
 	    # No informative contigs, imprecise breakpoint
-	    self.score = '3'
+	    self.score = '2'
 	    self.bkpA = self.imprecise_bkp(self.coordinates)
 	    self.bkpB = ["unkn", "unkn", "unkn"]
 
@@ -537,7 +538,7 @@ class insertion():
 	    # a) Inconsistent bkp 5'
 	    if (CI5prime > 8) and (CI5prime != "unkn"): 
 		info("inconsistent bkp 5'")
-		self.score = '4'
+		self.score = '1'
 		self.targetSiteSize = "unkn" 
 		self.targetSiteSeq = "unkn"
 		self.orientation = "unkn"
@@ -548,7 +549,7 @@ class insertion():
 	    # b) Inconsistent bkp 3'
 	    elif (CI3prime > 8) and (CI3prime != "unkn"): 
 		info("inconsistent bkp 3'")
-		self.score = '4'
+		self.score = '1'
 		self.targetSiteSize = "unkn" 
 		self.targetSiteSeq = "unkn"
 		self.orientation = "unkn"
@@ -559,14 +560,14 @@ class insertion():
 	    # c) Consistent 5' and 3' bkps/informative_contigs 
 	    elif (informative5primeContigObj != "unkn") and (informative3primeContigObj != "unkn"):   	    
 		info("5' and 3' informative contigs:")
-		self.score = '1'	
+		self.score = '5'	
 
 		# Find Target site Duplication or Deletion
             	self.targetSiteSize, self.targetSiteSeq = self.target_site(informative5primeContigObj, informative3primeContigObj, genomeObj)
 
 		# Inconsistent TSD: 
 		if (self.targetSiteSize == "inconsistent"):
-		    self.score = '4'
+		    self.score = '1'
 		    self.orientation = "unkn"
 		    self.structure = "unkn"
 		    self.length = "unkn"
@@ -575,15 +576,15 @@ class insertion():
 	    # d) 5' bkp/informative_contig
 	    elif (informative5primeContigObj != "unkn"):
 		info("5' informative contig:")
-		self.score = '2A'
+		self.score = '3'
 
 	    # e) 3' bkp/informative_contig
 	    else:
 		info("3' informative contig:")
-		self.score = '2B'
+		self.score = '4'
 
 	    ## 4. Compute TE insertion orientation and structure if not inconsistent
-	    if (self.score != '4'):
+	    if (self.score != '1'):
 		    # TE insertion orientation
 		    self.orientation = self.insertion_orientation(informative5primeContigObj, informative3primeContigObj)
 
@@ -592,7 +593,7 @@ class insertion():
 
 		    # Inconsistent orientation: 
 		    if (self.orientation == "inconsistent"):
-			self.score = '4'
+			self.score = '1'
 			self.targetSiteSize = "unkn" 
 			self.targetSiteSeq = "unkn"
 			self.structure = "unkn"

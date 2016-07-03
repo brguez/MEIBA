@@ -68,7 +68,6 @@ function abs(v) {
 		else if (tag == "SCORE")
 		{
 			score = value
-
 		}		
 	
 		# C) CIPOS (confindence interval around position)
@@ -85,7 +84,7 @@ function abs(v) {
 	}	
 
 	# A) Target site identified
-	if ( score == "1")
+	if ( score == "5")
 	{
 		# Compute beg and end
 		beg = pos - 1;    # Substract 1 to convert from 1-based (VCF) to 0-based (bed) coordinate system
