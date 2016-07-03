@@ -120,13 +120,14 @@ class VCFline():
 
 	"""	
 	infoDict = {}
+	
 	infoList = self.info.split(';')
 	
 	for field in infoList:
 	    fieldList = field.split('=')
 	    key = fieldList[0]
 	    value = fieldList[1]
- 	    infoDict[key] = value
+	    infoDict[key] = value
 
         return infoDict
 
@@ -135,18 +136,32 @@ class VCFline():
 	"""
 	
 	## Create list containing the order of info fields (provisional)
-	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "REGION", "GENE", "REP", "DIV", "CONTIGA", "CONTIGB", "TRDS" ] 
+	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "TRDS" ] 
+	flagList = ["COSMIC", "CPG" ]
 
 	## Create info string in the correct order from dictionary 
 	infoList = []
 
+	# Iterate over all possible info field keys
 	for info in infoOrder:
 		
+	    # Information about current info field available
 	    if (info in self.infoDict.keys()) and (self.infoDict[info] != "unkn"):
-  
-		infoField = info + "=" +str(self.infoDict[info])  
-		infoList.append(infoField)
-	    
+
+		# A) Flag 
+		if (info in flagList):
+		
+			# Flag with positive value
+			if (self.infoDict[info] == "1"):
+				infoField = info
+				infoList.append(infoField)
+
+		# B) Key-value pair
+		else:
+			infoField = info + "=" + str(self.infoDict[info])  		
+			infoList.append(infoField)
+
+	# Concatenate elements in a single string separated by commas
 	info = ';'.join(infoList)
 	  
 	return(info)

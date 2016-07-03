@@ -45,7 +45,7 @@ print
 
 ## Start ## 
 
-outFilePath = outDir + '/' + donorId + ".annotated.vcf"
+outFilePath = outDir + '/' + donorId + ".repeatAnnot.vcf"
 
 ## 1. Create VCF object and read input VCF
 VCFObj = formats.VCF()
