@@ -41,9 +41,6 @@ Execute for one dataset (sample).
 	-g 	<FASTA>			Reference Genome in fasta format (RG). Please make sure you provide the same RG version you used to run TraFiC. 
 					Also, make sure the same chromosome naming conventions are used.
 	
-	-c	<FASTA>			Four comma separated fasta files containing the consensus transposable element (TE) sequences for L1, Alu, SVA and ERVK. Header lines must be named ">L1", ">Alu", ">SVA" and ">ERVK" for
-					L1, Alu, SVA and ERVK retrotransposons, respectively.  
-	
 	-d      <BED>			Database of repetitive sequences according to RepeatMasker in BED format. 
 
 	
@@ -66,7 +63,7 @@ help
 ################################
 function getoptions {
 
-while getopts ":i:f:g:c:d:s:k:o:h" opt "$@"; 
+while getopts ":i:f:g:d:s:k:o:h" opt "$@"; 
 do
    case $opt in   	
       
@@ -89,13 +86,6 @@ do
 	  if [ -n "$OPTARG" ];
 	  then
               genome=$OPTARG
-	  fi
-	  ;;    
-
-      c)
-	  if [ -n "$OPTARG" ];
-	  then
-              consensusTEs=$OPTARG
 	  fi
 	  ;;    
 
@@ -230,16 +220,6 @@ fi
 if [[ ! -e $input ]]; then log "The TraFiC TE insertion calls file does not exist. Mandatory argument -i\n" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -e $fasta ]]; then log "The TE insertion supporting reads fasta file does not exist. Mandatory argument -f" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -e $genome ]]; then log "The reference genome fasta file does not not exist. Mandatory argument -g" "ERROR" >&2; usageDoc; exit -1; fi
-
-nbConsensusFiles=`echo $consensusTEs | awk '{nb=split($1,a,","); print nb;}'`
-
-read consensusL1 consensusAlu consensusSVA consensusERVK <<<$(echo $consensusTEs | awk '{nb=split($1,files,","); print files[1], files[2], files[3], files[4];}')
-
-if [[ $nbConsensusFiles != "4" ]]; then log "Do not provided the 4 required fasta files for L1, Alu, SVA and ERVK. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -e $consensusL1 ]]; then log "The consensus L1 fasta file does not not exist. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -e $consensusAlu ]]; then log "The consensus Alu fasta file does not not exist. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -e $consensusSVA ]]; then log "The consensus SVA fasta file does not not exist. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -e $consensusERVK ]]; then log "The consensus ERVK fasta file does not not exist. Mandatory argument -c" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -e $repeatsDb ]]; then log "The RepeatMasker repeats database does not exist. Mandatory argument -d" "ERROR" >&2; usageDoc; exit -1; fi 
 
 if [[ $sampleId == "" ]]; then log "The sample id is not provided. Mandatory argument -s\n" "ERROR" >&2; usageDoc; exit -1; fi
@@ -276,6 +256,9 @@ srcDir=$rootDir/src
 pyDir=$srcDir/python
 bashDir=$srcDir/bash 
 
+## references:
+refDir=$rootDir/ref
+
 ## Output files directories
 logsDir=$outDir/Logs
 fastaDir=$outDir/Fasta
@@ -285,12 +268,20 @@ blatDir=$outDir/Blat
 bkpAnalysisDir=$outDir/BkpAnalysis
 annotDir=$outDir/Annot
 
-# 5. Scripts
-##############
+# 5. Scripts/references
+########################
+# scripts
 CLUSTERS2FASTA=$pyDir/clusters2fasta.py
 ALIGN_CONTIGS=$bashDir/alignContigs2reference.sh
 BKP_ANALYSIS=$pyDir/insertionBkpAnalysis.py
 ANNOTATOR=$bashDir/variants_annotator.sh
+
+# references
+driverDb=$refDir/driverDb_COSMIC_CPG.20162706.tsv
+consensusL1=$refDir/L1_consensus.fa 
+consensusAlu=$refDir/Alu_consensus.fa
+consensusSVA=$refDir/SVA_consensus.fa
+consensusERVK=$refDir/ERVK_consensus.fa
 
 ## DISPLAY PROGRAM CONFIGURATION  
 ##################################
@@ -303,10 +294,6 @@ printf "  %-34s %s\n" "***** MANDATORY ARGUMENTS *****"
 printf "  %-34s %s\n" "input:" "$input"
 printf "  %-34s %s\n" "fasta:" "$fasta"
 printf "  %-34s %s\n" "genome:" "$genome"
-printf "  %-34s %s\n" "consensus-L1:" "$consensusL1"
-printf "  %-34s %s\n" "consensus-Alu:" "$consensusAlu"
-printf "  %-34s %s\n" "consensus-SVA:" "$consensusSVA"
-printf "  %-34s %s\n" "consensus-ERVK:" "$consensusERVK"
 printf "  %-34s %s\n" "repeats-db:" "$repeatsDb"
 printf "  %-34s %s\n\n" "sampleId:" "$sampleId"
 printf "  %-34s %s\n" "***** OPTIONAL ARGUMENTS *****"
@@ -537,7 +524,7 @@ then
 	startTime=$(date +%s)
 	printHeader "Performing MEI breakpoint annotation"
 	log "Annotating MEI\n" $step  
-	run "bash $ANNOTATOR $rawVCF $repeatsDb $sampleId $annotDir 1>> $logsDir/5_annotation.out 2>> $logsDir/5_annotation.err" "$ECHO"
+	run "bash $ANNOTATOR $rawVCF $repeatsDb $driverDb $sampleId $annotDir 1>> $logsDir/5_annotation.out 2>> $logsDir/5_annotation.err" "$ECHO"
 	
 	if [ ! -s $annotVCF ]; 
 	then	
@@ -562,7 +549,7 @@ finalVCF=$outDir/$sampleId.vcf
 cp $annotVCF $finalVCF
 
 ## Cleaning
-# rm -r $fastaDir $contigsDir $assemblyLogsDir $blatDir $bkpAnalysisDir $annotDir
+# rm -r $fastaDir $contigsDir $blatDir $bkpAnalysisDir $annotDir
 
 ## End
 end=$(date +%s)
