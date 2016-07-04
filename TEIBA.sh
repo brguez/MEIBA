@@ -397,6 +397,9 @@ do
 	run "rm ${contigsDir}/Sequences ${contigsDir}/Roadmaps ${contigsDir}/PreGraph ${contigsDir}/stats.txt ${contigsDir}/LastGraph ${contigsDir}/Graph2" "$ECHO"
 done
 
+## Remove temporary fasta directory
+rm -r $fastaDir
+
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
@@ -520,6 +523,8 @@ else
 	printHeader "Output file already exists... skipping step"
 fi
 
+## Remove temporary contigs and blat directories
+rm -r $contigsDir $blatDir
 
 # 5) Annotate mobile elements insertions
 ##########################################
@@ -547,18 +552,22 @@ else
 	printHeader "Output file already exists... skipping step"
 fi
 
+## Remove temporary bkp analysis directory
+rm -r $bkpAnalysisDir 
 
-######################################
-# 6) MAKE OUTPUT GZ, CLEANUP AND END #
-######################################
+
+#############################
+# 6) MAKE OUTPUT GZ AND END #
+#############################
 
 ## Produce a compressed vcf as output
 finalVCF=$outDir/$sampleId.vcf
 
 cp $annotVCF $finalVCF
 
-## Cleaning
-# rm -r $fastaDir $contigsDir $blatDir $bkpAnalysisDir $annotDir
+## Remove annotation directory
+rm -r $annotDir 
+
 
 ## End
 end=$(date +%s)
