@@ -210,13 +210,13 @@ class VCF():
 ##INFO=<ID=DIV,Number=1,Type=Integer,Description="Millidivergence of the overlapping repetitive element with respect a consensus sequence">
 ##INFO=<ID=CONTIGA,Number=1,Type=String,Description="Assembled contig sequence spanning 1st bkp (lowest genomic position)">
 ##INFO=<ID=CONTIGB,Number=1,Type=String,Description="Assembled contig sequence spanning 2nd bkp (highest genomic position)">
-##INFO=<ID=TRDS,Number=.,Type=String,Description="Reads from the tumour sample (X) that contribute to this insertion">
+##INFO=<ID=TRP,Number=.,Type=String,Description="Reads from the tumour sample and positive cluster that support this insertion">
+##INFO=<ID=TRN,Number=.,Type=String,Description="Reads from the tumour sample and positive cluster that support this insertion">
 ##FILTER=<ID=REP,Description="Insertion overlapping a satellite region or a repetitive element of the same class">
 ##FILTER=<ID=SCORE,Description="Insertion with an score > threshold">
-##FORMAT=<ID=RC,Number=1,Type=Integer,Description="Count of countributing reads">
-##SAMPLE=<ID=NORMAL,Description="Normal",Accession=.,Platform=ILLUMINA,Protocol=WGS,SampleName=X,Source=.>
-##SAMPLE=<ID=TUMOUR,Description="Tumour",Accession=.,Platform=ILLUMINA,Protocol=WGS,SampleName=X,Source=.>
-#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting reads">
+##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
 """ 
 	## Replace variables into the template and print header into the output file
 	with  open(outFilePath,'w') as outFile:
@@ -243,7 +243,7 @@ class VCF():
 	## Iterate and print each VCF line into the output VCF file
 	for VCFline in lineListSorted:
 
-	   row = VCFline.chrom + "\t" + str(VCFline.pos) + "\t" + VCFline.id + "\t" + VCFline.ref + "\t" + VCFline.alt + "\t" + VCFline.qual + "\t" + VCFline.filter + "\t" + VCFline.info + "\n"
+	   row = VCFline.chrom + "\t" + str(VCFline.pos) + "\t" + VCFline.id + "\t" + VCFline.ref + "\t" + VCFline.alt + "\t" + VCFline.qual + "\t" + VCFline.filter + "\t" + VCFline.info + "\t" + VCFline.format + "\n"
            outFile.write(row)
 
 	## Close output file
@@ -274,7 +274,8 @@ class VCFline():
 	self.qual = "."
 	self.filter = "."
 	self.info = self.make_info(insertionObj)
-	
+	self.format = "RCP:RCN"
+
     def make_info(self, insertionObj):
 	""" 
 	    ...
@@ -284,7 +285,7 @@ class VCFline():
 	"""
 	
 	## Create list containing the order of info fields
-	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "REGION", "GENE", "REP", "DIV", "CONTIGA", "CONTIGB", "TRDS" ] 
+	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "REGION", "GENE", "REP", "DIV", "CONTIGA", "CONTIGB", "TRP", "TRN" ] 
 
 	## Build dictionary with info tags as keys 
 	infoDict = {}
@@ -305,8 +306,8 @@ class VCFline():
 	infoDict["DIV"] = "unkn"
 	infoDict["CONTIGA"] = insertionObj.informativeContigBkpA
 	infoDict["CONTIGB"] = insertionObj.informativeContigBkpB	
-
-	infoDict["TRDS"] = "unkn"
+	infoDict["TRP"] = "unkn"
+	infoDict["TRN"] = "unkn"
 
 	## Create info string in the correct order from dictionary 
 	infoList = []

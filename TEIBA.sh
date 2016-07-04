@@ -255,6 +255,7 @@ binDir=$rootDir/bin
 srcDir=$rootDir/src
 pyDir=$srcDir/python
 bashDir=$srcDir/bash 
+awkDir=$srcDir/awk
 
 ## references:
 refDir=$rootDir/ref
@@ -273,6 +274,7 @@ annotDir=$outDir/Annot
 # scripts
 CLUSTERS2FASTA=$pyDir/clusters2fasta.py
 ALIGN_CONTIGS=$bashDir/alignContigs2reference.sh
+ADD_SUP_READS=$awkDir/addSupReads2insertionList.awk
 BKP_ANALYSIS=$pyDir/insertionBkpAnalysis.py
 ANNOTATOR=$bashDir/variants_annotator.sh
 
@@ -466,24 +468,31 @@ printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs
 ## 4.1 Make a list with the TE insertion ids:
 # Output:
 # - $outDir/insertions_list.txt
-insertionsList=$bkpAnalysisDir/insertions_list.txt
+insertionsList=$bkpAnalysisDir/insertionsList.txt
 
 ls $blatDir | grep '.*psl' | grep -v "allContigs"| awk '{split($1,a,":"); print a[1]":"a[2];}' | sort | uniq > $insertionsList
 
-## 4.2 Prepare input file for insertion breakpoint analysis
+## 4.2 For each insertion add the list of read pairs supporting + and - cluster 
+# Output:
+# - $bkpAnalysisDir/insertionsList_supportingReadPairs.txt
+insertionsListSupReads=$bkpAnalysisDir/insertionsList_supportingReadPairs.txt
+
+awk -v OFS='\t' -v fileRef=$input -f $ADD_SUP_READS $insertionsList > $insertionsListSupReads
+
+## 4.3 Prepare input file for insertion breakpoint analysis
 # Output:
 # - $outDir/paths2bkpAnalysis.txt
 paths2bkpAnalysis=$bkpAnalysisDir/paths2bkpAnalysis.txt
 echo -n "" > $paths2bkpAnalysis
  
-cat $insertionsList | while read insertionId; 
+cat $insertionsListSupReads | while read insertionId readPairsPlus readPairsMinus; 
 do 	
 	contigPlusPath=${contigsDir}/${insertionId}:+.contigs.fa
 	contigMinusPath=${contigsDir}/${insertionId}:-.contigs.fa
 	blatPlusPath=${blatDir}/${insertionId}:+.psl
 	blatMinusPath=${blatDir}/${insertionId}:-.psl
 	
-	printf ${insertionId}"\t"${contigPlusPath}","${contigMinusPath}"\t"${blatPlusPath}","${blatMinusPath}"\n" >> $paths2bkpAnalysis
+	printf ${insertionId}"\t"${contigPlusPath}","${contigMinusPath}"\t"${blatPlusPath}","${blatMinusPath}"\t"${readPairsPlus}","${readPairsMinus}"\n" >> $paths2bkpAnalysis
 done
 
 ## 4.3 Perform breakpoint analysis

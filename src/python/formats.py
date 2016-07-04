@@ -81,7 +81,7 @@ class VCF():
 	# Iterate and print each VCF line into the output VCF file
 	for VCFline in self.lineList:
 
-	   row = VCFline.chrom + "\t" + str(VCFline.pos) + "\t" + VCFline.id + "\t" + VCFline.ref + "\t" + VCFline.alt + "\t" + VCFline.qual + "\t" + VCFline.filter + "\t" + VCFline.info + "\n"
+	   row = VCFline.chrom + "\t" + str(VCFline.pos) + "\t" + VCFline.id + "\t" + VCFline.ref + "\t" + VCFline.alt + "\t" + VCFline.qual + "\t" + VCFline.filter + "\t" + VCFline.info + "\t" + VCFline.format + "\n"
            outFile.write(row)
 
 	## Close output file
@@ -113,6 +113,7 @@ class VCFline():
 	self.qual = VCFlineList[5] 
 	self.filter = VCFlineList[6] 
 	self.info = VCFlineList[7]
+	self.format = VCFlineList[8]
 	self.infoDict = self.read_info()
 
     def read_info(self):
@@ -136,7 +137,7 @@ class VCFline():
 	"""
 	
 	## Create list containing the order of info fields (provisional)
-	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "TRDS" ] 
+	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "TRP", "TRN" ] 
 	flagList = ["COSMIC", "CPG" ]
 
 	## Create info string in the correct order from dictionary 
