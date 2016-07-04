@@ -84,50 +84,56 @@ supportingReadsDict = {}
 for line in insertions:
     line = line.rstrip('\n')
     line = line.split("\t")
-    chrPlus = line[0]
-    begPlus = line[1]
-    endPlus = int(line[2]) + 100 # Done because this coordinate is the beginning of the read. So, I need to sum the readlength. I need to add an input parameter to specify the read length. 
-    nbReadsPlus = line[3]
-    familyPlus = line[4]
-    readPairListPlus = line[5].split(",")
-    chrMinus = line[6]
-    begMinus = line[7]
-    endMinus = line[8]
-    nbReadsMinus = line[9]
-    familyMinus = line[10]
-    readPairListMinus = line[11].split(",")
+
+    ## A) Line with expected number of columns
+    if (int(len(line)) == 12):
+        chrPlus = line[0]
+        begPlus = line[1]
+        endPlus = int(line[2]) + 100 # Done because this coordinate is the beginning of the read. So, I need to sum the readlength. I need to add an input parameter to specify the read length. 
+        nbReadsPlus = line[3]
+        familyPlus = line[4]
+        readPairListPlus = line[5].split(",")
+        chrMinus = line[6]
+        begMinus = line[7]
+        endMinus = line[8]
+        nbReadsMinus = line[9]
+        familyMinus = line[10]
+        readPairListMinus = line[11].split(",")
     
-    ## Rename "Other" family insertions as SVA 
-    # Plus
-    if (familyPlus == "Other"):
-	familyPlus = "SVA"
+        ## Rename "Other" family insertions as SVA 
+        # Plus
+        if (familyPlus == "Other"):
+	    familyPlus = "SVA"
 	
-    # Minus
-    if (familyMinus == "Other"):
-	familyMinus = "SVA"
+        # Minus
+        if (familyMinus == "Other"):
+	    familyMinus = "SVA"
 	
-    ## Generate an insertion id for + and - clusters (insertion coordinates defined by the end 
-    # of + cluster and beg of - cluster)    
-    insertionIdPlus = familyPlus + ":" + chrPlus + "_" + str(endPlus) + "_" + begMinus + ":" + "+"
-    insertionIdMinus = familyMinus + ":" + chrMinus + "_" + str(endPlus) + "_" + begMinus + ":" + "-"
+        ## Generate an insertion id for + and - clusters (insertion coordinates defined by the end 
+        # of + cluster and beg of - cluster)    
+        insertionIdPlus = familyPlus + ":" + chrPlus + "_" + str(endPlus) + "_" + begMinus + ":" + "+"
+        insertionIdMinus = familyMinus + ":" + chrMinus + "_" + str(endPlus) + "_" + begMinus + ":" + "-"
     
-    ## Inizialize dictionary keys for + and - clusters if they do not exist
-    # a) + Cluster
-    if insertionIdPlus not in supportingReadsDict:
-        supportingReadsDict[insertionIdPlus] = {}
+        ## Inizialize dictionary keys for + and - clusters if they do not exist
+        # a) + Cluster
+        if insertionIdPlus not in supportingReadsDict:
+            supportingReadsDict[insertionIdPlus] = {}
         
-    # b) - Cluster    
-    if insertionIdMinus not in supportingReadsDict:
-        supportingReadsDict[insertionIdMinus] = {}    
+        # b) - Cluster    
+        if insertionIdMinus not in supportingReadsDict:
+            supportingReadsDict[insertionIdMinus] = {}    
     
-    ## Add the list with mate 1 and mate 2 sequences as value for + and - clusters:
-    # a) + Cluster
-    for pairId in readPairListPlus:
-        supportingReadsDict[insertionIdPlus][pairId] = fastaDict[pairId]
+        ## Add the list with mate 1 and mate 2 sequences as value for + and - clusters:
+        # a) + Cluster
+        for pairId in readPairListPlus:
+            supportingReadsDict[insertionIdPlus][pairId] = fastaDict[pairId]
     
-    # b) - Cluster
-    for pairId in readPairListMinus:
-        supportingReadsDict[insertionIdMinus][pairId] = fastaDict[pairId]
+        # b) - Cluster
+        for pairId in readPairListMinus:
+            supportingReadsDict[insertionIdMinus][pairId] = fastaDict[pairId]
+
+    else:
+	print "[ERROR] Input line with unexpected number of columns."
         
 
 ### 3) Generate a fasta per insertion and cluster containing the 
