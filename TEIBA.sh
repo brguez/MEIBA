@@ -175,7 +175,7 @@ function run {
 ############################
 
 # TEIBA version 
-version=0.1
+version=0.2.4
 
 # Enable extended pattern matching 
 shopt -s extglob
@@ -217,12 +217,17 @@ fi
 ## Mandatory arguments
 ## ~~~~~~~~~~~~~~~~~~~
 
-if [[ ! -e $input ]]; then log "The TraFiC TE insertion calls file does not exist. Mandatory argument -i\n" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -e $fasta ]]; then log "The TE insertion supporting reads fasta file does not exist. Mandatory argument -f" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -e $genome ]]; then log "The reference genome fasta file does not not exist. Mandatory argument -g" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -e $repeatsDb ]]; then log "The RepeatMasker repeats database does not exist. Mandatory argument -d" "ERROR" >&2; usageDoc; exit -1; fi 
+## remove empty lines and lines only composed by spaces in the insertions input file
+inputInsertions=$outDir/${sampleId}_candidates_TraFiC_insertions.txt
+sed '/^[[:space:]]*$/d' $input > $inputInsertions
 
-if [[ $sampleId == "" ]]; then log "The sample id is not provided. Mandatory argument -s\n" "ERROR" >&2; usageDoc; exit -1; fi
+## Check that input files are ok:
+if [[ ! -s $inputInsertions ]]; then log "The TraFiC TE insertion calls file does not exist or is empty. Mandatory argument -i\n" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -s $fasta ]]; then log "The TE insertion supporting reads fasta file does not exist or is empty. Mandatory argument -f" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -s $genome ]]; then log "The reference genome fasta file does not not exist or is empty. Mandatory argument -g" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -s $repeatsDb ]]; then log "The RepeatMasker repeats database does not exist or is empty. Mandatory argument -d" "ERROR" >&2; usageDoc; exit -1; fi 
+
+if [[ $sampleId == "" ]]; then log "Sample id does not provided. Mandatory argument -s\n" "ERROR" >&2; usageDoc; exit -1; fi
 
 
 ## Optional arguments
@@ -356,7 +361,7 @@ step="CLUSTERS2FASTA"
 startTime=$(date +%s)
 printHeader "Prepare fasta for assembly"  
 log "Producing per TE insertion two fasta for insertion bkp assembly\n" $step
-run "python $CLUSTERS2FASTA $input $fasta --outDir $fastaDir 1> $logsDir/1_clusters2fasta.out 2> $logsDir/1_clusters2fasta.err" "$ECHO"	
+run "python $CLUSTERS2FASTA $inputInsertions $fasta --outDir $fastaDir 1> $logsDir/1_clusters2fasta.out 2> $logsDir/1_clusters2fasta.err" "$ECHO"	
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
@@ -480,7 +485,7 @@ ls $blatDir | grep '.*psl' | grep -v "allContigs"| awk '{split($1,a,":"); print 
 # - $bkpAnalysisDir/insertionsList_supportingReadPairs.txt
 insertionsListSupReads=$bkpAnalysisDir/insertionsList_supportingReadPairs.txt
 
-awk -v OFS='\t' -v fileRef=$input -f $ADD_SUP_READS $insertionsList > $insertionsListSupReads
+awk -v OFS='\t' -v fileRef=$inputInsertions -f $ADD_SUP_READS $insertionsList > $insertionsListSupReads
 
 ## 4.3 Prepare input file for insertion breakpoint analysis
 # Output:
