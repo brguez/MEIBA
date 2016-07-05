@@ -224,9 +224,8 @@ awk -v OFS='\t' -v offset=$offset -f $ADDOFFSET $blatAllPath > $blatPath
 # 5. CLEANUP AND END #
 ######################
 echo "5. Cleanup and end" >&1
-echo >&1
 echo "rm $targetRegionPath $blatTEPath $blatTargetRegionPath $blatAllPath" >&1
-# rm $targetRegionPath $blatTEPath $blatTargetRegionPath $blatAllPath
+rm $targetRegionPath $blatTEPath $blatTargetRegionPath $blatAllPath
 
 
 
