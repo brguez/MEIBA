@@ -137,9 +137,9 @@ function log {
     label=$2
     if [[ ! $ECHO ]];then
         if [[ "$label" != "" ]];then
-            printf "\n[${label}] $string\n"
+            printf "[${label}] $string\n"
         else
-            printf "\n$string\n"
+            printf "$string\n"
         fi
     fi
 }
@@ -194,7 +194,7 @@ if [ -z "$rootDir" ] ;
 then
   # error; for some reason, the path is not accessible
   # to the script
-  log "Path not accessible to the script\n" "ERROR" 
+  log "Path not accessible to the script" "ERROR" 
   exit 1  # fail
 fi
 
@@ -222,13 +222,11 @@ inputInsertions=$outDir/${sampleId}_candidates_TraFiC_insertions.txt
 sed '/^[[:space:]]*$/d' $input > $inputInsertions
 
 ## Check that input files are ok:
-if [[ ! -s $inputInsertions ]]; then log "The TraFiC TE insertion calls file does not exist or is empty. Mandatory argument -i\n" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -s $inputInsertions ]]; then log "The TraFiC TE insertion calls file does not exist or is empty. Mandatory argument -i" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -s $fasta ]]; then log "The TE insertion supporting reads fasta file does not exist or is empty. Mandatory argument -f" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -s $genome ]]; then log "The reference genome fasta file does not not exist or is empty. Mandatory argument -g" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -s $repeatsDb ]]; then log "The RepeatMasker repeats database does not exist or is empty. Mandatory argument -d" "ERROR" >&2; usageDoc; exit -1; fi 
-
-if [[ $sampleId == "" ]]; then log "Sample id does not provided. Mandatory argument -s\n" "ERROR" >&2; usageDoc; exit -1; fi
-
+if [[ $sampleId == "" ]]; then log "Sample id does not provided. Mandatory argument -s" "ERROR" >&2; usageDoc; exit -1; fi
 
 ## Optional arguments
 ## ~~~~~~~~~~~~~~~~~~
@@ -246,7 +244,7 @@ then
 else
 	if [[ ! -e "$outDir" ]]; 
 	then
-		log "Your output directory does not exist. Option -o\n" "ERROR" >&2;
+		log "Your output directory does not exist. Option -o" "ERROR" >&2;
 		usageDoc; 
 		exit -1; 
 	fi	
@@ -360,7 +358,7 @@ if [[ ! -d $assemblyLogsDir ]]; then mkdir $assemblyLogsDir; fi
 step="CLUSTERS2FASTA"
 startTime=$(date +%s)
 printHeader "Prepare fasta for assembly"  
-log "Producing per TE insertion two fasta for insertion bkp assembly\n" $step
+log "Producing per TE insertion two fasta for insertion bkp assembly" $step
 run "python $CLUSTERS2FASTA $inputInsertions $fasta --outDir $fastaDir 1> $logsDir/1_clusters2fasta.out 2> $logsDir/1_clusters2fasta.err" "$ECHO"	
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
@@ -390,15 +388,15 @@ do
 	fastaPath=${fastaDir}/${bkpFasta}	
 	contigPath=${contigsDir}/${bkpId}".contigs.fa"
 		
-	log "** ${bkpId} breakpoint **\n" $step
-	log "1. Preparing files for assembly\n" $step
+	log "** ${bkpId} breakpoint **" $step
+	log "1. Preparing files for assembly" $step
 	run "velveth $contigsDir $kmerLen -fasta -short $fastaPath 1>> $logsDir/2_assembly.out 2>> $logsDir/2_assembly.err" "$ECHO"
-	log "2. Breakpoint assembly with velvet\n" $step
+	log "2. Breakpoint assembly with velvet" $step
 	run "velvetg $contigsDir -exp_cov auto -cov_cutoff auto 1>> $logsDir/2_assembly.out 2>> $logsDir/2_assembly.err" "$ECHO"
-	log "3. Rename output files\n" $step
+	log "3. Rename output files" $step
 	run "mv ${contigsDir}/Log $assemblyLogsDir/${bkpId}.log" "$ECHO"
 	run "mv ${contigsDir}/contigs.fa ${contigsDir}/${bkpId}.contigs.fa" "$ECHO"
-	log "4. Cleaning\n" $step
+	log "4. Cleaning" $step
 	run "rm ${contigsDir}/Sequences ${contigsDir}/Roadmaps ${contigsDir}/PreGraph ${contigsDir}/stats.txt ${contigsDir}/LastGraph ${contigsDir}/Graph2" "$ECHO"
 done
 
@@ -457,7 +455,7 @@ do
 	esac
 	
 	# Align contigs into the insertion target region and TE sequence
-	log "** ${bkpId} breakpoint **\n" $step
+	log "** ${bkpId} breakpoint **" $step
 	run "bash $ALIGN_CONTIGS $bkpContigsPath $bkpId $genome $consensusTE 1000 $blatDir 1>> $logsDir/3_blat.out 2>> $logsDir/3_blat.err" "$ECHO"
 done 
 
@@ -513,12 +511,12 @@ then
 	step="BKP-ANALYSIS"
 	startTime=$(date +%s)
 	printHeader "Performing MEI breakpoint analysis"
-	log "Identifying insertion breakpoints, TSD, TE length, TE orientation and TE structure\n" $step  
+	log "Identifying insertion breakpoints, TSD, TE length, TE orientation and TE structure" $step  
 	run "python $BKP_ANALYSIS $paths2bkpAnalysis $sampleId $genome --outDir $bkpAnalysisDir 1>> $logsDir/4_bkpAnalysis.out 2>> $logsDir/4_bkpAnalysis.err" "$ECHO"
 	
 	if [ ! -s $rawVCF ]; 
 	then	
-		log "Error performing breakpoint analysis\n" "ERROR" 
+		log "Error performing breakpoint analysis" "ERROR" 
         	exit -1
 	else
 		endTime=$(date +%s)
@@ -542,12 +540,12 @@ then
 	step="ANNOTATION"
 	startTime=$(date +%s)
 	printHeader "Performing MEI breakpoint annotation"
-	log "Annotating MEI\n" $step  
+	log "Annotating MEI" $step  
 	run "bash $ANNOTATOR $rawVCF $repeatsDb $driverDb $sampleId $annotDir 1>> $logsDir/5_annotation.out 2>> $logsDir/5_annotation.err" "$ECHO"
 	
 	if [ ! -s $annotVCF ]; 
 	then	
-		log "Error performing annotation\n" "ERROR" 
+		log "Error performing annotation" "ERROR" 
         	exit -1
 	else
 		endTime=$(date +%s)
