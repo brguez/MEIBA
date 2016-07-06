@@ -212,8 +212,8 @@ class VCF():
 ##INFO=<ID=CONTIGB,Number=1,Type=String,Description="Assembled contig sequence spanning 2nd bkp (highest genomic position)">
 ##INFO=<ID=TRP,Number=.,Type=String,Description="Reads from the tumour sample and positive cluster that support this insertion">
 ##INFO=<ID=TRN,Number=.,Type=String,Description="Reads from the tumour sample and positive cluster that support this insertion">
+##FILTER=<ID=SCORE,Description="Insertion with an score < threshold">
 ##FILTER=<ID=REP,Description="Insertion overlapping a satellite region or a repetitive element of the same class">
-##FILTER=<ID=SCORE,Description="Insertion with an score > threshold">
 ##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting reads">
 ##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
