@@ -175,7 +175,7 @@ function run {
 ############################
 
 # TEIBA version 
-version=0.2.4
+version=0.2.6
 
 # Enable extended pattern matching 
 shopt -s extglob
@@ -271,6 +271,7 @@ assemblyLogsDir=$logsDir/2_assembly
 blatDir=$outDir/Blat
 bkpAnalysisDir=$outDir/BkpAnalysis
 annotDir=$outDir/Annot
+filterDir=$outDir/Filter
 
 # 5. Scripts/references
 ########################
@@ -280,6 +281,7 @@ ALIGN_CONTIGS=$bashDir/alignContigs2reference.sh
 ADD_SUP_READS=$awkDir/addSupReads2insertionList.awk
 BKP_ANALYSIS=$pyDir/insertionBkpAnalysis.py
 ANNOTATOR=$bashDir/variants_annotator.sh
+FILTER=$pyDir/filterVCF.MEI.py
 
 # references
 driverDb=$refDir/driverDb_COSMIC_CPG.20162706.tsv
@@ -336,15 +338,18 @@ if [[ ! -d $bkpAnalysisDir ]]; then mkdir $bkpAnalysisDir; fi
 # MEI annotation directory:
 if [[ ! -d $annotDir ]]; then mkdir $annotDir; fi
 
+# MEI filtering directory:
+if [[ ! -d $filterDir ]]; then mkdir $filterDir; fi
+
 # Log directories:
 if [[ ! -d $logsDir ]]; then mkdir $logsDir; fi
 if [[ ! -d $assemblyLogsDir ]]; then mkdir $assemblyLogsDir; fi
 
 
-# 1) Produces for each TE insertion two fasta (one for read pairs supporting + cluster and another one for read pairs supporting - cluster)
-############################################################################################################################################
-# These fasta files will be used to assemble the 5' and 3' TE insertion breakpoint sequences 
-#############################################################################################
+# 1) Produces for each Mobile Element Insertion (MEI) two fasta (one for read pairs supporting + cluster and another one for read pairs 
+##########################################################################################################################################
+# supporting - cluster) These fasta files will be used to assemble the 5' and 3' TE insertion breakpoint sequences 
+###################################################################################################################
 # Each fasta will be named according to this convention: 
 ########################################################
 # - ${fastaDir}/${family}:${chr}_${beg}_${end}:${orientation}.fa
@@ -364,7 +369,7 @@ endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
 
-# 2) Assemble the 5' and 3' TE insertion breakpoints with velvet. An independent assembly is performed for each insertion breakpoint 
+# 2) Assemble the 5' and 3' MEI breakpoints with velvet. An independent assembly is performed for each insertion breakpoint 
 ######################################################################################################################################
 # It will produce a fasta containing the assembled contigs for each cluster insertion
 ######################################################################################
@@ -463,8 +468,8 @@ endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
 
-# 4) TE insertion breakpoint analysis from assembled and aligned contigs
-##########################################################################
+# 4) MEI breakpoint analysis from assembled and aligned contigs
+#####################################################################
 # It will produce a single file containing the insertion breakpoint and 
 ########################################################################
 # many pieces of information associated (orientation, TSD, length...)
@@ -529,10 +534,10 @@ fi
 ## Remove temporary contigs and blat directories
 rm -r $contigsDir $blatDir
 
-# 5) Annotate mobile elements insertions
-##########################################
+# 5) Annotate MEI
+###################
 ## Output:
-# -  $outDir/$sampleId.annotated.vcf
+# -  $annotDir/$sampleId.annotated.vcf 
 annotVCF=$annotDir/$sampleId.annotated.vcf 
 
 if [ ! -s $annotVCF ]; 
@@ -559,18 +564,46 @@ fi
 rm -r $bkpAnalysisDir 
 
 
-#############################
-# 6) MAKE OUTPUT GZ AND END #
-#############################
+# 6) Filter MEI 
+#################
+## Output:
+# -  $filterDir/$sampleId.filtered.vcf
+filteredVCF=$filterDir/$sampleId.filtered.vcf
 
-## Produce a compressed vcf as output
-finalVCF=$outDir/$sampleId.vcf
+if [ ! -s $filteredVCF ]; 
+then
+	step="FILTER"
+	startTime=$(date +%s)
+	printHeader "Performing MEI filtering"
+	log "Filtering MEI" $step  
+	run "$FILTER $annotVCF $sampleId --min-score 4 --max-divergence 300 --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err" "$ECHO"
+	
+	if [ ! -s $filteredVCF ]; 
+	then	
+		log "Error performing filtering" "ERROR" 
+        	exit -1
+	else
+		endTime=$(date +%s)
+		printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
+	fi
+else
+	printHeader "Output file already exists... skipping step"
+fi
 
-cp $annotVCF $finalVCF
-
-## Remove annotation directory
+## Remove temporary annotation directory
 rm -r $annotDir 
 
+#############################
+# 7) MAKE OUTPUT VCF AND END #
+#############################
+
+## Produce output VCF
+finalVCF=$outDir/$sampleId.vcf
+
+cp $filteredVCF $finalVCF
+
+## Remove temporary filter directory
+rm -r $filterDir
 
 ## End
 end=$(date +%s)
