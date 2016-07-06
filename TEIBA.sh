@@ -137,9 +137,9 @@ function log {
     label=$2
     if [[ ! $ECHO ]];then
         if [[ "$label" != "" ]];then
-            printf "[$label] $string"
+            printf "\n[${label}] $string\n"
         else
-            printf "$string"
+            printf "\n$string\n"
         fi
     fi
 }
