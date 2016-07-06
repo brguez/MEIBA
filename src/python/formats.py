@@ -124,10 +124,22 @@ class VCFline():
 	
 	infoList = self.info.split(';')
 	
+	# Iterate over info fields list. 
 	for field in infoList:
+
 	    fieldList = field.split('=')
-	    key = fieldList[0]
-	    value = fieldList[1]
+
+	    # A) Key-value pair
+	    if (len(fieldList) == 2):
+	
+ 	        key = fieldList[0]
+	        value = fieldList[1]
+	    
+	    # B) Flag 
+	    else:
+		key = fieldList[0]
+		value = "1"
+	    
 	    infoDict[key] = value
 
         return infoDict
