@@ -30,7 +30,7 @@ Execute for one dataset (sample).
 	
 *** USAGE
 
-	$0 -i <TraFic_insertions> -f <FASTA> -s <sample_identifier> [OPTIONS]
+	$0 -i <insertions> -f <insertions_fasta> -g <genome> -d <driver_db> -s <sample_identifier> [OPTIONS]
 
 *** MANDATORY 
 		
