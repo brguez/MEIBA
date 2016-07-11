@@ -71,7 +71,7 @@ do
       i)
 	  if [ -n "$OPTARG" ];
 	  then
-              input=$OPTARG
+              insertions=$OPTARG
 	  fi
 	  ;;
       
@@ -217,12 +217,8 @@ fi
 ## Mandatory arguments
 ## ~~~~~~~~~~~~~~~~~~~
 
-## remove empty lines and lines only composed by spaces in the insertions input file
-inputInsertions=$outDir/${sampleId}_candidates_TraFiC_insertions.txt
-sed '/^[[:space:]]*$/d' $input > $inputInsertions
-
 ## Check that input files are ok:
-if [[ ! -s $inputInsertions ]]; then log "The TraFiC MEI insertion calls file does not exist or is empty. Mandatory argument -i" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -s $insertions ]]; then log "The TraFiC MEI insertion calls file does not exist or is empty. Mandatory argument -i" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -s $fasta ]]; then log "The MEI insertion supporting reads fasta file does not exist or is empty. Mandatory argument -f" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -s $genome ]]; then log "The reference genome fasta file does not not exist or is empty. Mandatory argument -g" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -s $repeatsDb ]]; then log "The RepeatMasker repeats database does not exist or is empty. Mandatory argument -d" "ERROR" >&2; usageDoc; exit -1; fi 
@@ -296,7 +292,7 @@ echo $header
 eval "for i in {1..${#header}};do printf \"-\";done"
 printf "\n\n"
 printf "  %-34s %s\n" "***** MANDATORY ARGUMENTS *****"
-printf "  %-34s %s\n" "input:" "$input"
+printf "  %-34s %s\n" "insertions:" "$insertions"
 printf "  %-34s %s\n" "fasta:" "$fasta"
 printf "  %-34s %s\n" "genome:" "$genome"
 printf "  %-34s %s\n" "repeats-db:" "$repeatsDb"
@@ -344,7 +340,7 @@ step="CLUSTERS2FASTA"
 startTime=$(date +%s)
 printHeader "Prepare fasta for assembly"  
 log "Producing per MEI two fasta for insertion bkp assembly" $step
-run "python $CLUSTERS2FASTA $inputInsertions $fasta --outDir $fastaDir 1> $logsDir/1_clusters2fasta.out 2> $logsDir/1_clusters2fasta.err" "$ECHO"	
+run "python $CLUSTERS2FASTA $insertions $fasta --outDir $fastaDir 1> $logsDir/1_clusters2fasta.out 2> $logsDir/1_clusters2fasta.err" "$ECHO"	
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
@@ -481,10 +477,10 @@ ls $blatDir | grep '.*psl' | grep -v "allContigs"| awk '{split($1,a,":"); print 
 # - $bkpAnalysisDir/insertionList_supportingReadPairs.txt
 insertionListSupReads=$bkpAnalysisDir/insertionList_supportingReadPairs.txt
 
-awk -v OFS='\t' -v fileRef=$inputInsertions -f $ADD_SUP_READS $insertionList > $insertionListSupReads
+awk -v OFS='\t' -v fileRef=$insertions -f $ADD_SUP_READS $insertionList > $insertionListSupReads
 
 # Remove intermediate files:
-rm $inputInsertions $insertionList 
+rm $insertionList 
 
 ## 4.3 Prepare input file for insertion breakpoint analysis
 # Output:
