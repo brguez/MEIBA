@@ -315,6 +315,12 @@ start=$(date +%s)
 # 0) PRELIMINARY STEPS #
 ########################
 
+## Preprocess input fasta
+# IMPORTANT NOTE: Provisionally fix for read ids different between input fasta and TraFiC insertion file (problem needs to be fixed within TraFiC)
+fastaFixedIds=$outDir/$sampleId.fixedIds.fa 
+
+sed -E "s/#[a-zA-Z0-9]+//g" $fasta | sed -E "s/#//g" > $fastaFixedIds 
+
 # Create log directory
 if [[ ! -d $logsDir ]]; then mkdir $logsDir; fi
 
@@ -340,10 +346,12 @@ step="CLUSTERS2FASTA"
 startTime=$(date +%s)
 printHeader "Prepare fasta for assembly"  
 log "Producing per MEI two fasta for insertion bkp assembly" $step
-run "python $CLUSTERS2FASTA $insertions $fasta --outDir $fastaDir 1> $logsDir/1_clusters2fasta.out 2> $logsDir/1_clusters2fasta.err" "$ECHO"	
+run "python $CLUSTERS2FASTA $insertions $fastaFixedIds --outDir $fastaDir 1> $logsDir/1_clusters2fasta.out 2> $logsDir/1_clusters2fasta.err" "$ECHO"	
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
+## Remove temporary fasta file
+rm $fastaFixedIds 
 
 # 2) Assemble the 5' and 3' MEI breakpoints with velvet. An independent assembly is performed for each insertion breakpoint 
 ######################################################################################################################################
