@@ -21,7 +21,8 @@ import formats
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('VCF', help='...')
 parser.add_argument('donorId', help='...')
-parser.add_argument('--min-score', default=4, dest='minScore', type=int, help='Minimum insertion score. Default: 4.' )
+parser.add_argument('--min-score', default=5, dest='minScore', type=int, help='Minimum insertion score for L1, Alu and SVA. Default: 5, both breakpoints expected to be assembled (5-prime and 3-prime).' )
+parser.add_argument('--min-score-ERVK', default=3, dest='minScoreERVK', type=int, help='Minimum insertion score for ERVK. Note that mechanism of retrotransposition different, no polyA, so an ERVK insertion can not have an score > 3. Default: 3.' )
 parser.add_argument('--max-divergence', default=300, dest='maxDiv', type=int, help='Maximum millidivergence. Default: 300.' )
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
@@ -29,6 +30,7 @@ args = parser.parse_args()
 inputVCF = args.VCF
 donorId = args.donorId
 minScore = args.minScore
+minScoreERVK = args.minScoreERVK
 maxDiv = args.maxDiv
 outDir = args.outDir
 
@@ -40,6 +42,7 @@ print "***** ", scriptName, " configuration *****"
 print "vcf: ", inputVCF
 print "donorId: ", donorId
 print "minScore: ", minScore
+print "minScoreERVK: ", minScoreERVK
 print "maxDiv: ", maxDiv
 print "outDir: ", outDir
 print 
@@ -59,13 +62,15 @@ VCFObj.read_VCF(inputVCF)
 # Iterate over each MEI in the VCF
 for VCFlineObj in VCFObj.lineList:
 
-    ## Start with filter field set as unkown
-    VCFlineObj.filter == "."
-
     ## 2.1 Apply score filter:
     # score < minScore_threshold -> filter out
-    if (int(VCFlineObj.infoDict["SCORE"]) < minScore):
+    
+    # A) L1, Alu or SVA insertion
+    if (VCFlineObj.infoDict["CLASS"] != "ERVK") and (int(VCFlineObj.infoDict["SCORE"]) < minScore):
+	VCFlineObj.filter = "SCORE"
 
+    # B) ERVK insertion
+    elif (VCFlineObj.infoDict["CLASS"] == "ERVK") and (int(VCFlineObj.infoDict["SCORE"]) < minScoreERVK):
 	VCFlineObj.filter = "SCORE"
 
     ## 2.2 Repeats filter:
