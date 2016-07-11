@@ -34,9 +34,9 @@ Execute for one dataset (sample).
 
 *** MANDATORY 
 		
-	-i	<TXT>			TraFiC TE somatic insertion calls for a given sample.		
+	-i	<TXT>			TraFiC MEI somatic insertion calls for a given sample.		
 
-	-f	<FASTA>			Fasta containing TE insertions supporting reads. 
+	-f	<FASTA>			Fasta containing MEI insertions supporting reads. 
 
 	-g 	<FASTA>			Reference Genome in fasta format (RG). Please make sure you provide the same RG version you used to run TraFiC. 
 					Also, make sure the same chromosome naming conventions are used.
@@ -222,8 +222,8 @@ inputInsertions=$outDir/${sampleId}_candidates_TraFiC_insertions.txt
 sed '/^[[:space:]]*$/d' $input > $inputInsertions
 
 ## Check that input files are ok:
-if [[ ! -s $inputInsertions ]]; then log "The TraFiC TE insertion calls file does not exist or is empty. Mandatory argument -i" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -s $fasta ]]; then log "The TE insertion supporting reads fasta file does not exist or is empty. Mandatory argument -f" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -s $inputInsertions ]]; then log "The TraFiC MEI insertion calls file does not exist or is empty. Mandatory argument -i" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -s $fasta ]]; then log "The MEI insertion supporting reads fasta file does not exist or is empty. Mandatory argument -f" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -s $genome ]]; then log "The reference genome fasta file does not not exist or is empty. Mandatory argument -g" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -s $repeatsDb ]]; then log "The RepeatMasker repeats database does not exist or is empty. Mandatory argument -d" "ERROR" >&2; usageDoc; exit -1; fi 
 if [[ $sampleId == "" ]]; then log "Sample id does not provided. Mandatory argument -s" "ERROR" >&2; usageDoc; exit -1; fi
@@ -250,7 +250,6 @@ else
 	fi	
 fi
 
-
 # 4. Directories
 ################
 ## binaries and scripts
@@ -267,7 +266,6 @@ refDir=$rootDir/ref
 logsDir=$outDir/Logs
 fastaDir=$outDir/Fasta
 contigsDir=$outDir/Contigs
-assemblyLogsDir=$logsDir/2_assembly
 blatDir=$outDir/Blat
 bkpAnalysisDir=$outDir/BkpAnalysis
 annotDir=$outDir/Annot
@@ -317,53 +315,35 @@ eval "for i in {1..${#header}};do printf \"-\";done"
 printf "\n\n"
 start=$(date +%s)
 
-#######################    	
+########################    	
 # 0) PRELIMINARY STEPS #
-#######################
+########################
 
-## 0.1) Make directories
-#######################
-# Fastas for assembly
-if [[ ! -d $fastaDir ]]; then mkdir $fastaDir; fi
-
-# Assembled contigs of TE insertion breakpoints and assembly logs
-if [[ ! -d $contigsDir ]]; then mkdir $contigsDir; fi
-
-# Contigs alignment with Blat:
-if [[ ! -d $blatDir ]]; then mkdir $blatDir; fi
-
-# MEI breakpoint analysis directory
-if [[ ! -d $bkpAnalysisDir ]]; then mkdir $bkpAnalysisDir; fi
-
-# MEI annotation directory:
-if [[ ! -d $annotDir ]]; then mkdir $annotDir; fi
-
-# MEI filtering directory:
-if [[ ! -d $filterDir ]]; then mkdir $filterDir; fi
-
-# Log directories:
+# Create log directory
 if [[ ! -d $logsDir ]]; then mkdir $logsDir; fi
-if [[ ! -d $assemblyLogsDir ]]; then mkdir $assemblyLogsDir; fi
-
 
 # 1) Produces for each Mobile Element Insertion (MEI) two fasta (one for read pairs supporting + cluster and another one for read pairs 
 ##########################################################################################################################################
-# supporting - cluster) These fasta files will be used to assemble the 5' and 3' TE insertion breakpoint sequences 
+# supporting - cluster) These fasta files will be used to assemble the 5' and 3' MEI insertion breakpoint sequences 
 ###################################################################################################################
 # Each fasta will be named according to this convention: 
 ########################################################
 # - ${fastaDir}/${family}:${chr}_${beg}_${end}:${orientation}.fa
 # where:
-#	- family: TE family (L1, ALU, SVA...)
+#	- family: MEI family (L1, ALU, SVA...)
 #	- chr: insertion chromosome
 # 	- beg: insertion beginning
 #	- end: insertion end
 #	- orientation: cluster (+ or -)
+
+## Make fasta for assembly directory:
+if [[ ! -d $fastaDir ]]; then mkdir $fastaDir; fi
  	
+## Execute the step 
 step="CLUSTERS2FASTA"
 startTime=$(date +%s)
 printHeader "Prepare fasta for assembly"  
-log "Producing per TE insertion two fasta for insertion bkp assembly" $step
+log "Producing per MEI two fasta for insertion bkp assembly" $step
 run "python $CLUSTERS2FASTA $inputInsertions $fasta --outDir $fastaDir 1> $logsDir/1_clusters2fasta.out 2> $logsDir/1_clusters2fasta.err" "$ECHO"	
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
@@ -377,15 +357,19 @@ printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs
 ########################### 
 # - ${contigsDir}/${family}:${chr}_${beg}_${end}:${orientation}.contigs.fa
 # where:
-#	- family: TE family (L1, ALU, SVA...)
+#	- family: MEI family (L1, ALU, SVA...)
 #	- chr: insertion chromosome
 # 	- beg: insertion beginning
 #	- end: insertion end
 #	- orientation: cluster (+ or -)
 
+## Make assembly directory:
+if [[ ! -d $contigsDir ]]; then mkdir $contigsDir; fi
+ 	
+## Execute the step 
 step="BKP-ASSEMBLY"
 startTime=$(date +%s)
-printHeader "Assembling the 5' and 3' TE insertion breakpoints with velvet"  
+printHeader "Assembling the 5' and 3' MEI breakpoints with velvet"  
 
 ls $fastaDir | grep '.*fa' | while read bkpFasta; 
 do 	
@@ -399,10 +383,10 @@ do
 	log "2. Breakpoint assembly with velvet" $step
 	run "velvetg $contigsDir -exp_cov auto -cov_cutoff auto 1>> $logsDir/2_assembly.out 2>> $logsDir/2_assembly.err" "$ECHO"
 	log "3. Rename output files" $step
-	run "mv ${contigsDir}/Log $assemblyLogsDir/${bkpId}.log" "$ECHO"
 	run "mv ${contigsDir}/contigs.fa ${contigsDir}/${bkpId}.contigs.fa" "$ECHO"
-	log "4. Cleaning" $step
-	run "rm ${contigsDir}/Sequences ${contigsDir}/Roadmaps ${contigsDir}/PreGraph ${contigsDir}/stats.txt ${contigsDir}/LastGraph ${contigsDir}/Graph2" "$ECHO"
+	log "4. Second Cleaning" $step
+	run "rm $fastaPath ${contigsDir}/Log ${contigsDir}/Sequences ${contigsDir}/Roadmaps ${contigsDir}/PreGraph ${contigsDir}/stats.txt ${contigsDir}/LastGraph ${contigsDir}/Graph2" "$ECHO"
+	
 done
 
 ## Remove temporary fasta directory
@@ -422,46 +406,51 @@ printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs
 ########################### 
 # - ${blatPath}/${family}:${chr}_${beg}_${end}:${orientation}.psl
 # where:
-#	- family: TE family (L1, ALU, SVA...)
+#	- family: MEI family (L1, ALU, SVA...)
 #	- chr: insertion chromosome
 # 	- beg: insertion beginning
 #	- end: insertion end
 #	- orientation: cluster (+ or -)
 
+## Make blat directory:
+if [[ ! -d $blatDir ]]; then mkdir $blatDir; fi
+ 	
+## Execute the step 
 step="BLAT"
 startTime=$(date +%s)
 
 printHeader "Aligning the assembled bkp contigs into the reference genome with blat"  
 
-ls $contigsDir | grep '.*fa' | while read bkpContigs;
+ls $contigsDir | grep '.*fa' | while read bkpContig;
 do
-	bkpContigsPath=${contigsDir}/${bkpContigs}	
-	bkpId=${bkpContigs%.contigs.fa}
+	bkpContigPath=${contigsDir}/${bkpContig}	
+	bkpId=${bkpContig%.contigs.fa}
 	category=`echo $bkpId | awk '{split($1,a,":"); print a[1];}'` 	
 
-	# For each insertion, select the corresponding consensus TE sequence to align the contigs into
+	# For each insertion, select the corresponding consensus MEI sequence to align the contigs into
 	case $category in   	
             
 	    L1)
-              	consensusTE=$consensusL1
+              	consensusMEI=$consensusL1
 	       	;;
       
             Alu)
-                consensusTE=$consensusAlu
+                consensusMEI=$consensusAlu
 	       	;;
 
 	    SVA)
-		consensusTE=$consensusSVA	
+		consensusMEI=$consensusSVA	
 		;;
 
  	    ERVK)
-		consensusTE=$consensusERVK
+		consensusMEI=$consensusERVK
 		;;
 	esac
 	
-	# Align contigs into the insertion target region and TE sequence
+	# Align contigs into the insertion target region and MEI sequence
 	log "** ${bkpId} breakpoint **" $step
-	run "bash $ALIGN_CONTIGS $bkpContigsPath $bkpId $genome $consensusTE 1000 $blatDir 1>> $logsDir/3_blat.out 2>> $logsDir/3_blat.err" "$ECHO"
+	log "1. Blat alignment" $step
+	run "bash $ALIGN_CONTIGS $bkpContigPath $bkpId $genome $consensusMEI 1000 $blatDir 1>> $logsDir/3_blat.out 2>> $logsDir/3_blat.err" "$ECHO"
 done 
 
 endTime=$(date +%s)
@@ -476,19 +465,26 @@ printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs
 # ####################################################################
 # - $outDir/TEIBA.results.txt 
 
-## 4.1 Make a list with the TE insertion ids:
+## Make bkp analysis directory:
+if [[ ! -d $bkpAnalysisDir ]]; then mkdir $bkpAnalysisDir; fi
+ 	
+### Execute the step 
+## 4.1 Make a list with the MEI ids:
 # Output:
 # - $outDir/insertions_list.txt
-insertionsList=$bkpAnalysisDir/insertionsList.txt
+insertionList=$bkpAnalysisDir/insertionList.txt
 
-ls $blatDir | grep '.*psl' | grep -v "allContigs"| awk '{split($1,a,":"); print a[1]":"a[2];}' | sort | uniq > $insertionsList
+ls $blatDir | grep '.*psl' | grep -v "allContigs"| awk '{split($1,a,":"); print a[1]":"a[2];}' | sort | uniq > $insertionList
 
 ## 4.2 For each insertion add the list of read pairs supporting + and - cluster 
 # Output:
-# - $bkpAnalysisDir/insertionsList_supportingReadPairs.txt
-insertionsListSupReads=$bkpAnalysisDir/insertionsList_supportingReadPairs.txt
+# - $bkpAnalysisDir/insertionList_supportingReadPairs.txt
+insertionListSupReads=$bkpAnalysisDir/insertionList_supportingReadPairs.txt
 
-awk -v OFS='\t' -v fileRef=$inputInsertions -f $ADD_SUP_READS $insertionsList > $insertionsListSupReads
+awk -v OFS='\t' -v fileRef=$inputInsertions -f $ADD_SUP_READS $insertionList > $insertionListSupReads
+
+# Remove intermediate files:
+rm $inputInsertions $insertionList 
 
 ## 4.3 Prepare input file for insertion breakpoint analysis
 # Output:
@@ -496,7 +492,7 @@ awk -v OFS='\t' -v fileRef=$inputInsertions -f $ADD_SUP_READS $insertionsList > 
 paths2bkpAnalysis=$bkpAnalysisDir/paths2bkpAnalysis.txt
 echo -n "" > $paths2bkpAnalysis
  
-cat $insertionsListSupReads | while read insertionId readPairsPlus readPairsMinus; 
+cat $insertionListSupReads | while read insertionId readPairsPlus readPairsMinus; 
 do 	
 	contigPlusPath=${contigsDir}/${insertionId}:+.contigs.fa
 	contigMinusPath=${contigsDir}/${insertionId}:-.contigs.fa
@@ -505,6 +501,9 @@ do
 	
 	printf ${insertionId}"\t"${contigPlusPath}","${contigMinusPath}"\t"${blatPlusPath}","${blatMinusPath}"\t"${readPairsPlus}","${readPairsMinus}"\n" >> $paths2bkpAnalysis
 done
+
+# Remove intermediate files:
+rm $insertionListSupReads
 
 ## 4.3 Perform breakpoint analysis
 # Output:
@@ -516,7 +515,7 @@ then
 	step="BKP-ANALYSIS"
 	startTime=$(date +%s)
 	printHeader "Performing MEI breakpoint analysis"
-	log "Identifying insertion breakpoints, TSD, TE length, TE orientation and TE structure" $step  
+	log "Identifying insertion breakpoints, TSD, MEI length, orientation and structure" $step  
 	run "python $BKP_ANALYSIS $paths2bkpAnalysis $sampleId $genome --outDir $bkpAnalysisDir 1>> $logsDir/4_bkpAnalysis.out 2>> $logsDir/4_bkpAnalysis.err" "$ECHO"
 	
 	if [ ! -s $rawVCF ]; 
@@ -540,6 +539,10 @@ rm -r $contigsDir $blatDir
 # -  $annotDir/$sampleId.annotated.vcf 
 annotVCF=$annotDir/$sampleId.annotated.vcf 
 
+## Make MEI annotation directory:
+if [[ ! -d $annotDir ]]; then mkdir $annotDir; fi
+	
+### Execute the step 
 if [ ! -s $annotVCF ]; 
 then
 	step="ANNOTATION"
@@ -570,6 +573,10 @@ rm -r $bkpAnalysisDir
 # -  $filterDir/$sampleId.filtered.vcf
 filteredVCF=$filterDir/$sampleId.filtered.vcf
 
+## Make MEI filtering directory:
+if [[ ! -d $filterDir ]]; then mkdir $filterDir; fi
+	
+### Execute the step 
 if [ ! -s $filteredVCF ]; 
 then
 	step="FILTER"
