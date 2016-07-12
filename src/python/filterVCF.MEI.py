@@ -96,7 +96,7 @@ for VCFlineObj in VCFObj.lineList:
 	    
 	    # b) Already filtered by score -> append filtering reason 
 	    else:
-		VCFlineObj.filter = VCFlineObj.filter + ",REP"
+		VCFlineObj.filter = VCFlineObj.filter + ";REP"
 
     ## 2.3 MEI passed all the filters: 
     if (VCFlineObj.filter == "."):
