@@ -493,7 +493,7 @@ rm $insertionList
 ## 4.3 Prepare input file for insertion breakpoint analysis
 # Output:
 # - $outDir/paths2bkpAnalysis.txt
-paths2bkpAnalysis=$bkpAnalysisDir/paths2bkpAnalysis.txt
+paths2bkpAnalysis=$outDir/paths2bkpAnalysis.txt
 echo -n "" > $paths2bkpAnalysis
  
 cat $insertionListSupReads | while read insertionId readPairsPlus readPairsMinus; 
@@ -503,7 +503,7 @@ do
 	blatPlusPath=${blatDir}/${insertionId}:+.psl
 	blatMinusPath=${blatDir}/${insertionId}:-.psl
 	
-	printf ${insertionId}"\t"${contigPlusPath}","${contigMinusPath}"\t"${blatPlusPath}","${blatMinusPath}"\t"${readPairsPlus}","${readPairsMinus}"\n" >> $paths2bkpAnalysis
+	printf ${insertionId}"\t"${contigPlusPath}","${contigMinusPath}"\t"${blatPlusPath}","${blatMinusPath}"\t"${readPairsPlus}"\t"${readPairsMinus}"\n" >> $paths2bkpAnalysis
 done
 
 # Remove intermediate files:
@@ -535,7 +535,9 @@ else
 fi
 
 ## Remove temporary contigs and blat directories
+rm $paths2bkpAnalysis
 rm -r $contigsDir $blatDir
+
 
 # 5) Annotate MEI
 ###################

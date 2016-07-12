@@ -81,7 +81,7 @@ class VCF():
 	# Iterate and print each VCF line into the output VCF file
 	for VCFline in self.lineList:
 
-	   row = VCFline.chrom + "\t" + str(VCFline.pos) + "\t" + VCFline.id + "\t" + VCFline.ref + "\t" + VCFline.alt + "\t" + VCFline.qual + "\t" + VCFline.filter + "\t" + VCFline.info + "\t" + VCFline.format + "\n"
+	   row = VCFline.chrom + "\t" + str(VCFline.pos) + "\t" + VCFline.id + "\t" + VCFline.ref + "\t" + VCFline.alt + "\t" + VCFline.qual + "\t" + VCFline.filter + "\t" + VCFline.info + "\t" + VCFline.format + "\t" + VCFline.genoType + "\n"
            outFile.write(row)
 
 	## Close output file
@@ -104,7 +104,6 @@ class VCFline():
 	    Output:
             - 
 	"""
-
 	self.chrom = VCFlineList[0]
 	self.pos = int(VCFlineList[1])
 	self.id = VCFlineList[2]
@@ -114,7 +113,9 @@ class VCFline():
 	self.filter = VCFlineList[6] 
 	self.info = VCFlineList[7]
 	self.format = VCFlineList[8]
+	self.genoType = VCFlineList[9]
 	self.infoDict = self.read_info()
+
 
     def read_info(self):
 	""" 

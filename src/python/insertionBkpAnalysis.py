@@ -81,7 +81,7 @@ class VCF():
 
 	return lineListSorted
 	
-    def print_header(self, outFilePath):
+    def print_header(self, outFilePath, donorId):
 	""" 
 	    ...
             
@@ -96,14 +96,17 @@ class VCF():
 	date = time.strftime("%Y%m%d")
 		
 	context = {
-	 "date":date, 
+	 "date": date,
+	 "source": "TraFiCv2.0",  
+	 "reference": "hs37d5",  
+  	 "donorId": donorId,  
 	 } 
 
 	## Header template
   	template = """##fileformat=VCFv4.2
 ##fileDate={date} 
-##source=TraFiCv2.0 
-##reference=hs37d5
+##source={source} 
+##reference={reference} 
 ##contig=<ID=1,assembly=GRCh37,length=249250621,species=human>
 ##contig=<ID=2,assembly=GRCh37,length=243199373,species=human>
 ##contig=<ID=3,assembly=GRCh37,length=198022430,species=human>
@@ -210,13 +213,13 @@ class VCF():
 ##INFO=<ID=DIV,Number=1,Type=Integer,Description="Millidivergence of the overlapping repetitive element with respect a consensus sequence">
 ##INFO=<ID=CONTIGA,Number=1,Type=String,Description="Assembled contig sequence spanning 1st bkp (lowest genomic position)">
 ##INFO=<ID=CONTIGB,Number=1,Type=String,Description="Assembled contig sequence spanning 2nd bkp (highest genomic position)">
-##INFO=<ID=TRP,Number=.,Type=String,Description="Reads from the tumour sample and positive cluster that support this insertion">
-##INFO=<ID=TRN,Number=.,Type=String,Description="Reads from the tumour sample and positive cluster that support this insertion">
+##INFO=<ID=RP,Number=.,Type=String,Description="Reads from the tumour sample and positive cluster that support this insertion">
+##INFO=<ID=RN,Number=.,Type=String,Description="Reads from the tumour sample and negative cluster that support this insertion">
 ##FILTER=<ID=SCORE,Description="Insertion with an score < threshold">
 ##FILTER=<ID=REP,Description="Insertion overlapping a satellite region or a repetitive element of the same class">
 ##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting reads">
 ##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
-#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	{donorId}
 """ 
 	## Replace variables into the template and print header into the output file
 	with  open(outFilePath,'w') as outFile:
@@ -243,7 +246,7 @@ class VCF():
 	## Iterate and print each VCF line into the output VCF file
 	for VCFline in lineListSorted:
 
-	   row = VCFline.chrom + "\t" + str(VCFline.pos) + "\t" + VCFline.id + "\t" + VCFline.ref + "\t" + VCFline.alt + "\t" + VCFline.qual + "\t" + VCFline.filter + "\t" + VCFline.info + "\t" + VCFline.format + "\n"
+	   row = VCFline.chrom + "\t" + str(VCFline.pos) + "\t" + VCFline.id + "\t" + VCFline.ref + "\t" + VCFline.alt + "\t" + VCFline.qual + "\t" + VCFline.filter + "\t" + VCFline.info + "\t" + VCFline.format + "\t" + VCFline.genoType + "\n"
            outFile.write(row)
 
 	## Close output file
@@ -275,6 +278,7 @@ class VCFline():
 	self.filter = "."
 	self.info = self.make_info(insertionObj)
 	self.format = "RCP:RCN"
+	self.genoType = str(insertionObj.clusterPlusObj.nbPairs) + ":" + str(insertionObj.clusterMinusObj.nbPairs)
 
     def make_info(self, insertionObj):
 	""" 
@@ -285,7 +289,7 @@ class VCFline():
 	"""
 	
 	## Create list containing the order of info fields
-	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "REGION", "GENE", "REP", "DIV", "CONTIGA", "CONTIGB", "TRP", "TRN" ] 
+	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "REGION", "GENE", "REP", "DIV", "CONTIGA", "CONTIGB", "RP", "RN" ] 
 
 	## Build dictionary with info tags as keys 
 	infoDict = {}
@@ -306,8 +310,8 @@ class VCFline():
 	infoDict["DIV"] = "unkn"
 	infoDict["CONTIGA"] = insertionObj.informativeContigBkpA
 	infoDict["CONTIGB"] = insertionObj.informativeContigBkpB	
-	infoDict["TRP"] = "unkn"
-	infoDict["TRN"] = "unkn"
+	infoDict["RP"] = insertionObj.clusterPlusObj.readPairIds
+	infoDict["RN"] = insertionObj.clusterMinusObj.readPairIds
 
 	## Create info string in the correct order from dictionary 
 	infoList = []
@@ -340,7 +344,7 @@ class insertion():
     - imprecise_bkp
     """
 
-    def __init__(self, family, coordinates, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath):
+    def __init__(self, family, coordinates, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus):
         """ 
             Initialize insertion object.
             
@@ -351,14 +355,16 @@ class insertion():
             4) blatPlusPath. psl file containing the blat aligments for the positive cluster's assembled contigs.
             5) contigsMinusPath. Fasta file containing the assembled contigs for the negative cluster. 
             6) blatMinusPath. psl file containing the blat aligments for the negative cluster's assembled contigs.
-            
+ 	    7) readPairsPlus. List of + cluster supporting reads. 
+	    8) readPairsMinus. List of - cluster supporting reads.            
+
             Output:
             - Insertion object variables initialized
         """
         self.TEClass = TEClass
         self.coordinates = coordinates
-        self.clusterPlusObj = self.create_cluster("+", contigsPlusPath, blatPlusPath)
-        self.clusterMinusObj = self.create_cluster("-", contigsMinusPath, blatMinusPath)
+        self.clusterPlusObj = self.create_cluster("+", contigsPlusPath, blatPlusPath, readPairsPlus)
+        self.clusterMinusObj = self.create_cluster("-", contigsMinusPath, blatMinusPath, readPairsMinus)
 
 	## Unknown values by default:
 	self.traficId = "unkn"
@@ -378,7 +384,7 @@ class insertion():
 	self.polyA = "unkn"
  
     #### FUNCTIONS ####
-    def create_cluster(self, ID, contigsPath, blatPath):
+    def create_cluster(self, ID, contigsPath, blatPath, readPairsList):
         """ 
             Create cluster object.
             
@@ -387,13 +393,14 @@ class insertion():
             2) contigsPath. Fasta file containing the assembled contigs for the given 
                             cluster.
             3) blatPath. psl file containing the blat aligments for the assembled contigs.
-            
+	    4) readPairsList. List of cluster supporting reads.            
+	
             Output:
             1) clusterObj. Cluster object 
         """
         
         # Create cluster object
-        clusterObj = cluster(ID, contigsPath)
+        clusterObj = cluster(ID, contigsPath, readPairsList)
         
         # Add blat alignments to cluster object
         clusterObj.add_alignments(blatPath)
@@ -954,19 +961,23 @@ class cluster():
     - find_informative_contig
     """
     
-    def __init__(self, ID, contigsFasta):
+    def __init__(self, ID, contigsFasta, readPairsList):
         """ 
             Initialize cluster object.
             
             Input:
-            1) contigsFasta. Fasta file containing the assembled contigs for the given cluster
-            
+            1) ID. Cluster id. 
+	    2) contigsFasta. Fasta file containing the assembled contigs for the given cluster
+	    3) readPairsList. List of cluster supporting reads             
+
             Output:
             - Cluster object variables initialized
         """
         self.ID = ID
         self.contigsDict = self.create_contigs_dict(contigsFasta)
-	           
+        self.readPairIds = readPairsList
+	self.nbPairs =  len(readPairsList.split(','))	          
+
     #### FUNCTIONS ####
     def blat_alignment_reader(self, blatPath):
         """
@@ -1878,7 +1889,7 @@ genomeObj = fasta(genome)
 
 header("Creating VCF object and printing VCF header into the output file")
 VCFObj = VCF()
-VCFObj.print_header(outFilePath)
+VCFObj.print_header(outFilePath, donorId)
 
 ## 2. Per each insertion perform breakpoint analysis 
 
@@ -1893,6 +1904,8 @@ for line in inputFile:
     TEClass, insertionCoord = line[0].split(":")
     contigsPlusPath, contigsMinusPath = line[1].split(",")
     blatPlusPath, blatMinusPath = line[2].split(",")
+    readPairsPlus = line[3]
+    readPairsMinus = line[4]
 
     # Perform breakpoint analysis for the TE insertion 
     header("Tranposable Element Insertion Breakpoint Analysis (TEIBA) for: " + insertionCoord)
@@ -1901,7 +1914,7 @@ for line in inputFile:
     if os.path.isfile(contigsPlusPath) and os.path.isfile(blatPlusPath) and os.path.isfile(contigsMinusPath) and os.path.isfile(blatMinusPath):  
 
 	## Create insertion object and identify breakpoints from assembled contigs        
-	insertionObj = insertion(TEClass, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath)
+	insertionObj = insertion(TEClass, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus)
         insertionObj.find_insertionBkp(genomeObj, outDir)
 
 	## Create VCFline object 
