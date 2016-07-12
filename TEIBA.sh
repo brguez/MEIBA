@@ -175,7 +175,7 @@ function run {
 ############################
 
 # TEIBA version 
-version=0.2.6
+version=0.2.8
 
 # Enable extended pattern matching 
 shopt -s extglob
