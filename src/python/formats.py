@@ -3,7 +3,6 @@
 
 import re
 
-
 class VCF():
     """ 
 	.....................
@@ -15,17 +14,16 @@ class VCF():
 
     def __init__(self):
 	""" 
-	    ...
-            
-	    Output:
-            - 
+
 	"""
 	self.header = "" 
 	self.lineList = []  # List of VCFline objects
         	
     #### METHODS ####
     def read_VCF(self, VCFpath):
+	""" 
 
+	"""
 	VCFfile = open(VCFpath, 'r')
 	headerList = []
 
@@ -52,13 +50,7 @@ class VCF():
 
     def write_header(self, outFilePath):
 	""" 
-	    ...
-            
-	    Input:
-	    1) ...
-            
-	    Output:
-	    1) ...
+
 	"""
 
 	outFile = open(outFilePath, 'w')	
@@ -67,13 +59,7 @@ class VCF():
 
     def write_variants(self, outFilePath):
 	""" 
-	    ...
-            
-	    Input:
-	    1) ...
-            
-	    Output:
-	    1) ...
+
 	"""
 
 	outFile = open(outFilePath, 'a')	
@@ -81,7 +67,7 @@ class VCF():
 	# Iterate and print each VCF line into the output VCF file
 	for VCFline in self.lineList:
 
-	   row = VCFline.chrom + "\t" + str(VCFline.pos) + "\t" + VCFline.id + "\t" + VCFline.ref + "\t" + VCFline.alt + "\t" + VCFline.qual + "\t" + VCFline.filter + "\t" + VCFline.info + "\t" + VCFline.format + "\t" + VCFline.genoType + "\n"
+	   row = VCFline.chrom + "\t" + str(VCFline.pos) + "\t" + VCFline.id + "\t" + VCFline.ref + "\t" + VCFline.alt + "\t" + VCFline.qual + "\t" + VCFline.filter + "\t" + VCFline.info + "\t" + VCFline.format + "\t" + VCFline.genotype + "\n"
            outFile.write(row)
 
 	## Close output file
@@ -90,19 +76,12 @@ class VCF():
 
 class VCFline():
     """ 
-	.....................
-    
-	Methods:
-	- 
 
     """
 
     def __init__(self, VCFlineList):
 	""" 
-	    ...
-            
-	    Output:
-            - 
+
 	"""
 	self.chrom = VCFlineList[0]
 	self.pos = int(VCFlineList[1])
@@ -113,7 +92,7 @@ class VCFline():
 	self.filter = VCFlineList[6] 
 	self.info = VCFlineList[7]
 	self.format = VCFlineList[8]
-	self.genoType = VCFlineList[9]
+	self.genotype = VCFlineList[9]
 	self.infoDict = self.read_info()
 
 
@@ -180,6 +159,14 @@ class VCFline():
 	  
 	return(info)
 
+    def nbPE(self):
+	""" 
+	Return the total number of paired-end reads supporting a MEI (sum + and - cluster supporting reads)
+	"""
+	genotypeList = self.genotype.split(':')
+	nbPE = int(genotypeList[0]) + int(genotypeList[1])
+
+	return nbPE
 
 class annovar():
     """ 
