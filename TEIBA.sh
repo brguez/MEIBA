@@ -278,7 +278,7 @@ ANNOTATOR=$bashDir/variants_annotator.sh
 FILTER=$pyDir/filterVCF.MEI.py
 
 # references
-driverDb=$refDir/driverDb_COSMIC_CPG.20162706.tsv
+driverDb=$refDir/cancerGenes_COSMIC_CPG.tsv
 consensusL1=$refDir/L1_consensus.fa 
 consensusAlu=$refDir/Alu_consensus.fa
 consensusSVA=$refDir/SVA_consensus.fa
