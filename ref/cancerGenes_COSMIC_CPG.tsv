@@ -1,4 +1,10 @@
-#Gene_Symbol	Role_in_Cancer	in_cosmic	in_CPG
+## 20162706
+## Database of cancer genes. Composed by:
+## 1. Cancer driver genes from cosmic cancer gene census database (27/06/2016, COSMIC v77)
+## access_info: http://cancer.sanger.ac.uk/census/
+## 2. Cancer predisposition genes (CPG) from Rahman N. (doi:10.1038/nature12981)
+## access_info: Supplementary table 1
+## <GENE_SYMBOL>	<ROLE>	<COSMIC>	<CPG>	
 ELANE	TSG	0	1
 FHIT	unkn	1	0
 BUB1B	TSG	1	1
