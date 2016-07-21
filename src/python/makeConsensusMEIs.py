@@ -308,8 +308,8 @@ class cohort():
 		    else: 
 			lastMEIcluster = MEIclusterList[-1]	# Last MEI cluster		    	
 			lastMEI = lastMEIcluster.MEIlist[-1] 	# Last MEI within the cluster
-			totalCIPOS = int(MEIObj.infoDict["CIPOS"]) + int(lastMEI.infoDict["CIPOS"]) + 5 # Allow a minimum of 5 nucleotides 
-													# of difference (CIPOS=0)			
+			totalCIPOS = int(MEIObj.infoDict["CIPOS"]) + int(lastMEI.infoDict["CIPOS"]) + overhang # Allow a minimum of nucleotides 
+													       # of difference (CIPOS=0, X=overhang)			
 						
 			## a) Current MEI within previous cluster interval -> add MEI to the cluster
 			##       <---------------------------interval-------------------------------> 
@@ -404,10 +404,12 @@ from operator import itemgetter, attrgetter, methodcaller
 ## Get user's input ## 
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('inputVCFs', help='...')
+parser.add_argument('--overhang', default=5, type=int, dest='overhang', help='Maximum overhang for MEI clustering. Default: 5 base pairs.' )
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
 inputVCFs = args.inputVCFs
+overhang = args.overhang
 outDir = args.outDir
 
 scriptName = os.path.basename(sys.argv[0])
@@ -416,6 +418,7 @@ scriptName = os.path.basename(sys.argv[0])
 print
 print "***** ", scriptName, " configuration *****"
 print "inputVCFs: ", inputVCFs
+print "overhang: ", overhang
 print "outDir: ", outDir
 print 
 print "***** Executing ", scriptName, ".... *****"
