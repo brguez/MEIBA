@@ -47,7 +47,14 @@ BEGIN{
 		begMinus = $8;
  
 		# Family:
-		familyPlus = $5;
+		if ($5 == "Other")
+		{
+			familyPlus = "SVA";
+		}		
+		else
+		{
+			familyPlus = $5;
+		}
 		
 		# Supporting read pair identifiers list:
 		readPairsPlus = $6;
