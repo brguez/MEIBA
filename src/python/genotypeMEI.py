@@ -180,6 +180,7 @@ class cohort():
 ##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site length (+: target site duplication, -: target site deletion)">
 ##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication or deletion sequence">
 ##INFO=<ID=POLYA,Number=1,Type=String,Description="Poly-A sequence">
+##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1000GENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), TRAFIC: TraFic in-house database)">
 ##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the transposable element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
 ##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
 ##INFO=<ID=ROLE,Number=1,Type=String,Description="Role in cancer (oncogene, TSG: tumor suppressor gene, oncogene/TSG: both roles)">
@@ -439,7 +440,7 @@ cohortObj.build_MEI_dict()
 cohortObj.make_consensus_MEI_dict()
 
 ## 5. Make output VCF containing consensus MEI objects
-outFilePath = outDir + '/consensus_germline_MEI.vcf'
+outFilePath = outDir + '/not_redundant_list_germline_MEI.vcf'
 
 # 5.1 Write header
 cohortObj.write_header(outFilePath)
