@@ -279,6 +279,7 @@ FILTER=$pyDir/filterVCF.MEI.py
 
 # references
 driverDb=$refDir/cancerGenes_COSMIC_CPG.tsv
+germlineMEIdb=$refDir/germline_MEI_1KGENOMES.bed
 consensusL1=$refDir/L1_consensus.fa 
 consensusAlu=$refDir/Alu_consensus.fa
 consensusSVA=$refDir/SVA_consensus.fa
@@ -555,7 +556,7 @@ then
 	startTime=$(date +%s)
 	printHeader "Performing MEI breakpoint annotation"
 	log "Annotating MEI" $step  
-	run "bash $ANNOTATOR $rawVCF $repeatsDb $driverDb $sampleId $annotDir 1>> $logsDir/5_annotation.out 2>> $logsDir/5_annotation.err" "$ECHO"
+	run "bash $ANNOTATOR $rawVCF $repeatsDb $driverDb $germlineMEIdb $sampleId $annotDir 1>> $logsDir/5_annotation.out 2>> $logsDir/5_annotation.err" "$ECHO"
 	
 	if [ ! -s $annotVCF ]; 
 	then	
