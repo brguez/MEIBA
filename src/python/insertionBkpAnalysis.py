@@ -204,6 +204,7 @@ class VCF():
 ##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site length (+: target site duplication, -: target site deletion)">
 ##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication or deletion sequence">
 ##INFO=<ID=POLYA,Number=1,Type=String,Description="Poly-A sequence">
+##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1KGENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), TRAFIC: TraFic in-house database)">
 ##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the transposable element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
 ##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
 ##INFO=<ID=ROLE,Number=1,Type=String,Description="Role in cancer (oncogene, TSG: tumor suppressor gene, oncogene/TSG: both roles)">
@@ -289,8 +290,8 @@ class VCFline():
 	"""
 	
 	## Create list containing the order of info fields
-	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "REGION", "GENE", "REP", "DIV", "CONTIGA", "CONTIGB", "RP", "RN" ] 
-
+	infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "CONTIGA", "CONTIGB", "RP", "RN" ]
+		    
 	## Build dictionary with info tags as keys 
 	infoDict = {}
 	infoDict["SVTYPE"] = "<MEI>"
@@ -304,10 +305,6 @@ class VCFline():
 	infoDict["TSLEN"] = insertionObj.targetSiteSize
 	infoDict["TSSEQ"] = insertionObj.targetSiteSeq
 	infoDict["POLYA"] = insertionObj.polyA
-	infoDict["REGION"] = "unkn"
-	infoDict["GENE"] = "unkn"
-	infoDict["REP"] = "unkn"
-	infoDict["DIV"] = "unkn"
 	infoDict["CONTIGA"] = insertionObj.informativeContigBkpA
 	infoDict["CONTIGB"] = insertionObj.informativeContigBkpB	
 	infoDict["RP"] = insertionObj.clusterPlusObj.readPairIds
