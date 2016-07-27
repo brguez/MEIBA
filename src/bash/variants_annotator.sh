@@ -21,18 +21,21 @@ authors
 
 # usage
 #######
-# Usage:    bash variants_annotator.sh sample.vcf repeatsDb.bed drivers.tsv sampleId [outDir]
-# Example:  bash variants_annotator.sh e52ffa79-557a-4024-81f3-f3826c227ec5.vcf repeats_repeatMasker_hg19.bed driverDb_COSMIC_CPG.20162706.tsv e52ffa79-557a-4024-81f3-f3826c227ec5 variant_annotation_dir
+# Usage:    bash variants_annotator.sh sample.vcf repeatsDb.bed drivers.tsv germlineDb.bed sampleId [outDir]
+# Example:  bash variants_annotator.sh e52ffa79-557a-4024-81f3-f3826c227ec5.vcf repeats_repeatMasker_hg19.bed cancerGenes_COSMIC_CPG.tsv germline_MEI_1000genomes_db.bed e52ffa79-557a-4024-81f3-f3826c227ec5 variant_annotation_dir
 
 # Input
 ########
 # 1) VCF
-# 2) Sample identifier
-# 3) Output directory
+# 2) RepeatMasker repeats database in bed format
+# 3) Cancer drivers database
+# 4) Germline MEI database in bed format 
+# 5) Sample identifier
+# 6) Output directory
 
 # Output
 ###########
-# 1) VCF with annotated MEI (overlapping region, gene, repeat, satellite region...)
+# 1) VCF with annotated variants (overlapping region, gene, repeat, satellite region, germline...)
 
 ### will exit if there is an error or in a pipe
 set -e -o pipefail
@@ -44,9 +47,9 @@ then
     echo "" >&2
     echo "*** variants_annotator ***" >&2
     echo "" >&2
-    echo "Usage:    bash variants_annotator.sh sample.vcf repeatsDb.bed drivers.tsv sampleId [outDir] " >&2
-    echo "" >&2
-    echo "Example:  bash variants_annotator.sh e52ffa79-557a-4024-81f3-f3826c227ec5.vcf repeats_repeatMasker_hg19.bed driverDb_COSMIC_CPG.20162706.tsv e52ffa79-557a-4024-81f3-f3826c227ec5 variant_annotation_dir" >&2
+    echo "Usage:    bash variants_annotator.sh sample.vcf repeatsDb.bed drivers.tsv germlineDb.bed sampleId [outDir] " >&2
+    echo "" >&2 
+    echo "Example:  bash variants_annotator.sh e52ffa79-557a-4024-81f3-f3826c227ec5.vcf repeats_repeatMasker_hg19.bed cancerGenes_COSMIC_CPG.tsv germline_MEI_1000genomes_db.bed e52ffa79-557a-4024-81f3-f3826c227ec5 variant_annotation_dir" >&2
     echo "" >&2
     echo "...description..." >&2
     echo "" >&2
@@ -54,11 +57,12 @@ then
     echo "1) VCF" >&2
     echo "2) RepeatMasker repeats database in bed format" >&2	
     echo "3) Cancer drivers database" >&2 
-    echo "4) Sample identifier" >&2
-    echo "5) Output directory" >&2
+    echo "4) Germline MEI database in bed format" >&2 
+    echo "5) Sample identifier" >&2
+    echo "6) Output directory" >&2
     echo "" >&2
     echo "Output:" >&2 
-    echo "1) VCF with annotated variants (overlapping region, gene, repeat, satellite region...)" >&2
+    echo "1) VCF with annotated variants (overlapping region, gene, repeat, satellite region, germline...)" >&2
     echo "" >&2
     exit -1
 fi
@@ -71,14 +75,14 @@ fi
 inputVCF=$1
 repeatsDb=$2
 driverDb=$3
-donorId=$4
+germlineMEIdb=$4
+donorId=$5
 
-
-if [ ! -n "$5" ]
+if [ ! -n "$6" ]
 then
 	outDir=.
 else
-	outDir=$5
+	outDir=$6
 fi	
 
 
@@ -105,6 +109,7 @@ pyDir=$rootDir/../python
 ## Annovar directory
 annovarDir=$rootDir/../../apps/annovar
 
+
 # Programs, scripts and databases
 ##################################
 
@@ -116,10 +121,12 @@ VCF2BED=$awkDir/vcf2bed.MEI.awk
 ADD_GENE2VCF=$pyDir/addGnAnnot2VCF.py
 ADD_REPEAT2VCF=$pyDir/addRepeatAnnot2VCF.py
 ADD_DRIVER2VCF=$pyDir/addDriverAnnot2VCF.py
+ADD_GERMLINEDB2VCF=$pyDir/MEIinGermlineDb.py
 
 ## Annovar:
 ANNOVAR=$annovarDir/annotate_variation.pl
 ANNOVAR_DB=$annovarDir/humandb/
+
 
 ## DISPLAY PROGRAM CONFIGURATION  
 ##################################
@@ -132,6 +139,7 @@ printf "  %-34s %s\n" "***** MANDATORY ARGUMENTS *****"
 printf "  %-34s %s\n" "inputVCF:" "$inputVCF"
 printf "  %-34s %s\n" "repeatsDb:" "$repeatsDb"
 printf "  %-34s %s\n" "driverDb:" "$driverDb"
+printf "  %-34s %s\n" "germlineMEIdb:" "$germlineMEIdb"
 printf "  %-34s %s\n\n" "donorId:" "$donorId"
 printf "  %-34s %s\n" "***** OPTIONAL ARGUMENTS *****"
 printf "  %-34s %s\n\n" "outDir:" "$outDir"
@@ -244,21 +252,32 @@ python $ADD_REPEAT2VCF $outDir/$donorId.gnAnnot.vcf $repeatAnnot $donorId --outD
 ## Output:
 # -  $outDir/$donorId".driverAnnot.vcf"
 
-echo "2.3 Add cancer driver annotation information to the VCF" >&1
+echo "3. Add cancer driver annotation information to the VCF" >&1
 
 echo "python $ADD_DRIVER2VCF $outDir/$donorId.repeatAnnot.vcf $driverDb $donorId --outDir $outDir 1> $outDir/addDriverAnnot.out 2> $outDir/addDriverAnnot.err" >&1
 python $ADD_DRIVER2VCF $outDir/$donorId.repeatAnnot.vcf $driverDb $donorId --outDir $outDir 1> $outDir/addDriverAnnot.out 2> $outDir/addDriverAnnot.err
 
+####################################
+# 4. KNOWN GERMLINE MEI ANNOTATION # 
+####################################
+## Output:
+# -  $outDir/$donorId".germlineDbAnnot.vcf"
+
+echo "4. Assess for each MEI if it is a germline variant already reported by 1k genomes project" >&1
+
+echo "python $ADD_GERMLINEDB2VCF $outDir/$donorId.driverAnnot.vcf $germlineMEIdb $donorId --outDir $outDir 1> $outDir/MEIinGermlineDb.out 2> $outDir/MEIinGermlineDb.err" >&1
+
+python $ADD_GERMLINEDB2VCF $outDir/$donorId.driverAnnot.vcf $germlineMEIdb $donorId --outDir $outDir 1> $outDir/MEIinGermlineDb.out 2> $outDir/MEIinGermlineDb.err
 
 
 ######################
-# 4. CLEANUP AND END #
+# 5. CLEANUP AND END #
 ######################
-echo "4. Cleanup and end" >&1
+echo "5. Cleanup and end" >&1
 echo >&1
-# rm 
 
-cp $outDir/$donorId".driverAnnot.vcf" $outDir/$donorId".annotated.vcf"
+cp $outDir/$donorId".germlineDbAnnot.vcf" $outDir/$donorId".annotated.vcf"
 
+rm $outDir/$donorId".germlineDbAnnot.vcf"
 
 
