@@ -711,7 +711,7 @@ class insertion():
         if (bkpPos5prime > bkpPos3prime):
             
             ## Compute length
-            targetSiteSize = bkpPos5prime - bkpPos3prime + 1 # add 1, since bkp coordinates are 1-based as VCF 
+            targetSiteSize = bkpPos5prime - bkpPos3prime 
         
             ## Extract sequence
             # A.a) Begin of the contig sequence aligned in the TE insertion genomic region
@@ -1447,8 +1447,8 @@ class contig():
             if (alignObj.strand == "+"):
                 bkpPos = alignObj.tEnd
             else:
-                bkpPos = alignObj.tBeg + 1     # Convert from 0-based (PSL) to 1-based (VCF) coordinate system
-                
+                bkpPos = alignObj.tBeg 
+		                
             ## Search for poly-A in the contig target piece of sequence. 
             polyASeq = self.is_polyA(targetSeq)
         
@@ -1463,7 +1463,7 @@ class contig():
             bkpChrom = alignObj.tName
             
             if (alignObj.strand == "+"):
-                bkpPos = alignObj.tBeg + 1     # Convert from 0-based (PSL) to 1-based (VCF) coordinate system
+                bkpPos = alignObj.tBeg 
             else:
                 bkpPos = alignObj.tEnd
                 
@@ -1561,7 +1561,7 @@ class contig():
             if (alignObj.strand == "+"):
                 bkpPos = alignObj.tEnd
             else:
-                bkpPos = alignObj.tBeg + 1     # Convert from 0-based (PSL) to 1-based (VCF) coordinate system 
+                bkpPos = alignObj.tBeg 
                 
         # B) End of the contig sequence aligned in the TE insertion genomic region
         #   ******TE******-------------
@@ -1574,7 +1574,7 @@ class contig():
             bkpChrom = alignObj.tName
             
             if (alignObj.strand == "+"):
-                bkpPos = alignObj.tBeg + 1     # Convert from 0-based (PSL) to 1-based (VCF) coordinate system 
+                bkpPos = alignObj.tBeg  
             else:
                 bkpPos = alignObj.tEnd
                 
