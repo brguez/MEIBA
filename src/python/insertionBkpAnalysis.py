@@ -741,10 +741,10 @@ class insertion():
 	elif (bkpPos5prime < bkpPos3prime):    
 	    
 	    ## Compute length
-            targetSiteSize =  bkpPos5prime - bkpPos3prime - 1 # substract 1, since it is a negative value and bkp coordinates are 1-based as VCF 
+            targetSiteSize =  bkpPos5prime - bkpPos3prime 
 
 	    ## Extract sequence 
-	    beg = bkpPos5prime - 1 # (substract 1 since bkp coordinates are 1-based while python strings are 0-based)
+	    beg = bkpPos5prime 
 	    end = bkpPos3prime 
 
 	    targetSiteSeq = genomeObj.fastaDict[bkpChrom5prime][ beg : end ]
