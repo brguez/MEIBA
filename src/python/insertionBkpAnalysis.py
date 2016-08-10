@@ -201,8 +201,8 @@ class VCF():
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
 ##INFO=<ID=STRUCT,Number=1,Type=String,Description="Transposable element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
 ##INFO=<ID=LEN,Number=1,Type=Integer,Description="Transposable element length">
-##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site length (+: target site duplication, -: target site deletion)">
-##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication or deletion sequence">
+##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site duplication length">
+##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication sequence">
 ##INFO=<ID=POLYA,Number=1,Type=String,Description="Poly-A sequence">
 ##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1KGENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), TRAFIC: TraFic in-house database)">
 ##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the transposable element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
@@ -536,7 +536,7 @@ class insertion():
 		polyA = "unkn"
 
 
-	    ## 3. Determine insertion score and Target Site Duplication or Deletion (TSD) if possible:
+	    ## 3. Determine insertion score and Target Site Duplication if possible:
 	    CI5prime = bkp5prime[2]
 	    CI3prime = bkp3prime[2]
 
@@ -567,8 +567,8 @@ class insertion():
 		info("5' and 3' informative contigs:")
 		self.score = '5'	
 
-		# Find Target site Duplication or Deletion
-            	self.targetSiteSize, self.targetSiteSeq = self.target_site(informative5primeContigObj, informative3primeContigObj, genomeObj)
+		# Find Target site Duplication 
+            	self.targetSiteSize, self.targetSiteSeq = self.target_site(informative5primeContigObj, informative3primeContigObj)
 
 		# Inconsistent TSD: 
 		if (self.targetSiteSize == "inconsistent"):
@@ -676,89 +676,63 @@ class insertion():
         #outFile.close()
 
 
-    def target_site(self, informative5primeContigObj, informative3primeContigObj, genomeObj):
+    def target_site(self, informative5primeContigObj, informative3primeContigObj):
         """ 
-            Determine Target Site Duplication or Target Site Deletion Size (TSD).
+            Determine Target Site Duplication (TSD).
 
-	    1) Duplication:
+	    + strand)
                      
-            --------------------------- bkpPlus
-                    bkpMinus --------------------
+            --------------------------- bkp5'
+                       bkp3' --------------------
                              <-------->
-                             duplication (7bp)
-	    2) Deletion:
-		      bkpPlus
-	    -----------------          bkpMinus
-                                       --------------------
+                             TSD (7bp)
+
+	    - strand)
+
+            --------------------------- bkp3'
+                       bkp5' --------------------
                              <-------->
-                              deletion (7bp)
+                             TSD (7bp)
 
             Input:
             1) informative5primeContigObj. 
-            2) informative3primeContigObj
+            2) informative3primeContigObj.
                      
             Output:
-            1) targetSiteSize. Target site duplication or deletion length. 'inconsistent' if expected TSD size different to TSD sequence length.
-            2) targetSiteSeq. Target site duplication or deletion sequence or 'na' if no TSD. 'inconsistent' if expected TSD size different to TSD sequence length.
+            1) targetSiteSize. Target site duplication length. 'inconsistent' if expected TSD size different to TSD sequence length.
+            2) targetSiteSeq. Target site duplication sequence or 'na' if no TSD. 'inconsistent' if expected TSD size different to TSD sequence length.
         """
         
 	bkpPos5prime = informative5primeContigObj.informativeDict["bkp"][1]
-	bkpChrom5prime = informative5primeContigObj.informativeDict["bkp"][0]
         bkpPos3prime = informative3primeContigObj.informativeDict["bkp"][1]	
 	alignObj5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"]
         
-        # A) Target site duplication 
-        if (bkpPos5prime > bkpPos3prime):
-            
-            ## Compute length
-            targetSiteSize = bkpPos5prime - bkpPos3prime 
+        ## Compute TSD length
+        targetSiteSize = abs(bkpPos5prime - bkpPos3prime) 
         
-            ## Extract sequence
-            # A.a) Begin of the contig sequence aligned in the TE insertion genomic region
-            #   -------------**TSD**######TE#####
-            #   --------------------
-            # qBeg               *qEnd*
-            if (alignObj5prime.alignType == "beg"):
-                beg = alignObj5prime.qEnd - targetSiteSize
-                end = alignObj5prime.qEnd
-                targetSiteSeq = informative5primeContigObj.seq[beg:end]
+        ## Extract TSD sequence
+        # A) Begin of the contig sequence aligned in the TE insertion genomic region
+        #   -------------**TSD**######TE#####
+        #   --------------------
+        # qBeg               *qEnd*
+        if (alignObj5prime.alignType == "beg"):
+	    beg = alignObj5prime.qEnd - targetSiteSize
+            end = alignObj5prime.qEnd
+            targetSiteSeq = informative5primeContigObj.seq[beg:end]
         
-            # A.b) End of the contig sequence aligned in the TE insertion genomic region
-            #   ######TE#####AAAAAAA**TSD**-------------
-            #                       --------------------
-            #                    *qBeg*               qEnd
-            elif (alignObj5prime.alignType == "end"):
-                beg = alignObj5prime.qBeg    # (no substract 1 since psl coordinates are 0-based as python strings)
-                end = alignObj5prime.qBeg + targetSiteSize
-                targetSiteSeq = informative5primeContigObj.seq[beg:end]     
-	    
-	    ## Inconsistent TSD if sequence has not the expected length or longer than 100 bp  
-	    if (targetSiteSize != len(targetSiteSeq)) or (targetSiteSize > 100):
-		targetSiteSize = "inconsistent"
-		targetSiteSeq = "inconsistent"
-
-	# B) Target site deletion      
-	elif (bkpPos5prime < bkpPos3prime):    
-	    
-	    ## Compute length
-            targetSiteSize =  bkpPos5prime - bkpPos3prime 
-
-	    ## Extract sequence 
-	    beg = bkpPos5prime 
-	    end = bkpPos3prime 
-
-	    targetSiteSeq = genomeObj.fastaDict[bkpChrom5prime][ beg : end ]
-
-
-	    ## Inconsistent target site deletion if longer than 100 bp
-	    if (targetSiteSize < -100):
-		targetSiteSize = "inconsistent"
-		targetSiteSeq = "inconsistent"
-
-        # C) No target site duplication nor deletion
+	# B) End of the contig sequence aligned in the TE insertion genomic region
+        #   ######TE#####AAAAAAA**TSD**-------------
+        #                       --------------------
+        #                    *qBeg*               qEnd
         else:
-            targetSiteSize = 0
-            targetSiteSeq = "unkn"
+            beg = alignObj5prime.qBeg    # (no substract 1 since psl coordinates are 0-based as python strings)
+            end = alignObj5prime.qBeg + targetSiteSize
+            targetSiteSeq = informative5primeContigObj.seq[beg:end]     
+	    
+	## Inconsistent TSD if sequence has not the expected length or longer than 100 bp  
+	if (targetSiteSize != len(targetSiteSeq)) or (targetSiteSize > 100):
+	    targetSiteSize = "inconsistent"
+	    targetSiteSeq = "inconsistent"
     
         return (targetSiteSize, targetSiteSeq)
  
@@ -1378,7 +1352,7 @@ class contig():
 	    informativeBoolean = 0
 
 	# B) Best 5' 
-	elif (bestDist5Prime <= bestDist3Prime) or ((bestDist5Prime != "") and (bestDist3Prime == "")):
+	elif (bestDist5Prime < bestDist3Prime) or ((bestDist5Prime != "") and (bestDist3Prime == "")):
 	    informativeBoolean = 1
 	    self.informativeDict = bestInformative5primeDict
 
