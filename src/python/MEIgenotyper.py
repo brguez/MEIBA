@@ -54,63 +54,65 @@ def genotyper(bamFile, VCFlineObj, HETVAF, HOMVAF):
 	# Iterate over the alignments
 	for alignment in iterator:
 
-		log("GENOTYPE", "Alignment info (bkpACoord, start, CIGAR): " + str(VCFlineObj.pos) + " " + str(alignment.reference_start) + " " + alignment.cigarstring)
+		# Discard unmapped reads
+		if (alignment.is_unmapped == False):
+			log("GENOTYPE", "Alignment info (bkpACoord, start, CIGAR): " + str(VCFlineObj.pos) + " " + str(alignment.reference_start) + " " + alignment.cigarstring)
 	
-		# Assess if the alignment supports the reference allele. Conditions:
-		# a) Read overlap the insertion site with an overhang of 20 or more nucleotides on each side
-		# b) Each segment properly aligned according to the aligner (bitwise flag 0x2)
-		# c) Not PCR nor optical duplicated (bitwise flag 0x400)
-
-		overhang = 20 
-		overlap = alignment.get_overlap(VCFlineObj.pos - overhang, VCFlineObj.pos + overhang)
-		properPair = alignment.is_proper_pair
-		duplicate = alignment.is_duplicate
-	
-		log("GENOTYPE", "Reference allele info (overhang, properPair, duplicate): " + str(overlap) + " " + str(properPair) + " " + str(duplicate))
-		
-		# A) Read supporting the reference allele:
-		if (overlap >= 40) and (properPair == True) and (duplicate == False): 
-			nbReadsRef += 1			
-			log("GENOTYPE", "Alignment supports REFERENCE")
-			
-		# B) Read do not supporting the reference allele   
-		else:
-			# Assess if the alignment supports the MEI polymorphism. Conditions:
-			# a) Only beginning of the read soft (Operation=4) or hard clipped (Operation=5) 
-			# b) Alignment start position within +- (CIPOS + 5bp) compared to the insertion breakpoint 
+			# Assess if the alignment supports the reference allele. Conditions:
+			# a) Read overlap the insertion site with an overhang of 20 or more nucleotides on each side
+			# b) Each segment properly aligned according to the aligner (bitwise flag 0x2)
 			# c) Not PCR nor optical duplicated (bitwise flag 0x400)
 
-			firstOperation = alignment.cigartuples[0][0] 
-			lastOperation = alignment.cigartuples[-1][0] 
+			overhang = 20 
+			overlap = alignment.get_overlap(VCFlineObj.pos - overhang, VCFlineObj.pos + overhang)
+			properPair = alignment.is_proper_pair
+			duplicate = alignment.is_duplicate
 	
-			log("GENOTYPE", "MEI allele info (firstOperation, lastOperation, duplicate): " + str(firstOperation) + " " + str(lastOperation) + " " + str(duplicate))
-
-			## Assess clipping
-			# a) Clipping at the beginning of the read while not at the end
-			if ((firstOperation == 4) or (firstOperation == 5)) and ((lastOperation != 4) and (lastOperation != 5)): 
+			log("GENOTYPE", "Reference allele info (overhang, properPair, duplicate): " + str(overlap) + " " + str(properPair) + " " + str(duplicate))
+		
+			# A) Read supporting the reference allele:
+			if (overlap >= 40) and (properPair == True) and (duplicate == False): 
+				nbReadsRef += 1			
+				log("GENOTYPE", "Alignment supports REFERENCE")
 			
-				## Assess breakpoint position
-				beg = int(VCFlineObj.pos) - (int(VCFlineObj.infoDict["CIPOS"]) + 5) 
-				end = int(VCFlineObj.pos) + (int(VCFlineObj.infoDict["CIPOS"]) + 5) 
+			# B) Read do not supporting the reference allele   
+			else:
+				# Assess if the alignment supports the MEI polymorphism. Conditions:
+				# a) Only beginning of the read soft (Operation=4) or hard clipped (Operation=5) 
+				# b) Alignment start position within +- (CIPOS + 5bp) compared to the insertion breakpoint 
+				# c) Not PCR nor optical duplicated (bitwise flag 0x400)
+	
+				firstOperation = alignment.cigartuples[0][0] 
+				lastOperation = alignment.cigartuples[-1][0] 
+		
+				log("GENOTYPE", "MEI allele info (firstOperation, lastOperation, duplicate): " + str(firstOperation) + " " + str(lastOperation) + " " + str(duplicate))
+
+				## Assess clipping
+				# a) Clipping at the beginning of the read while not at the end
+				if ((firstOperation == 4) or (firstOperation == 5)) and ((lastOperation != 4) and (lastOperation != 5)): 
+				
+					## Assess breakpoint position
+					beg = int(VCFlineObj.pos) - (int(VCFlineObj.infoDict["CIPOS"]) + 5) 
+					end = int(VCFlineObj.pos) + (int(VCFlineObj.infoDict["CIPOS"]) + 5) 
 	
 
-				# bkp within range
-				if (beg <= alignment.reference_start) and (alignment.reference_start <= end):
-					bkp = True	
+					# bkp within range
+					if (beg <= alignment.reference_start) and (alignment.reference_start <= end):
+						bkp = True	
+					else:
+						bkp = False
+	
+				# b) Not clipped 
 				else:
 					bkp = False
-	
-			# b) Not clipped 
-			else:
-				bkp = False
-				
-			# Read supporting the MEI polymorphism:
-			if (bkp == True) and (duplicate == False): 
-				nbReadsMEI += 1			
-				log("GENOTYPE", "Alignment supports MEI")
+					
+				# Read supporting the MEI polymorphism:
+				if (bkp == True) and (duplicate == False): 
+					nbReadsMEI += 1			
+					log("GENOTYPE", "Alignment supports MEI")
 				 			
 				
-		print "--------"
+			print "--------"
 	
 	### 2. Compute the VAF
 	totatNbReads = nbReadsMEI + nbReadsRef
@@ -119,10 +121,10 @@ def genotyper(bamFile, VCFlineObj, HETVAF, HOMVAF):
 		vaf = 0
 	else:
 		vaf =  float(nbReadsMEI) / totatNbReads
-
+	
 	### 3. Determine donor genotype for the current variant
 	# Note: Required at least three MEI supporting reads for considering the variant
-	
+		
 	# A) Homozygous for MEI
 	if (vaf >= HOMVAF) and (nbReadsMEI >= 3):
 		genotype = '1/1'
