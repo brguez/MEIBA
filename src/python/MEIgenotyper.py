@@ -48,7 +48,7 @@ def genotyper(bamFile, VCFlineObj, HETVAF, HOMVAF):
 
 	subHeader("Genotype " + VCFlineObj.infoDict["CLASS"] + ":" + VCFlineObj.chrom + "_" + str(VCFlineObj.pos) + " with a CIPOS of " + VCFlineObj.infoDict["CIPOS"])
 
-	# Extract alignments within the genomic region
+	# Extract alignments overlapping the genomic region
 	iterator = bamFile.fetch(chrom, beg, end)
 	
 	# Iterate over the alignments
@@ -60,6 +60,9 @@ def genotyper(bamFile, VCFlineObj, HETVAF, HOMVAF):
 	
 			# Assess if the alignment supports the reference allele. Conditions:
 			# a) Read overlap the insertion site with an overhang of 20 or more nucleotides on each side
+			#    Note regarding overhang: it should be equal to the minimum anchor length for soft and hard clipped reads supporting the insertion. 
+			#    Otherwise we are underestimating VAF values, since we are applying a more stringent criteria for considering reads supporting 
+			#    the alternative than the reference allele...
 			# b) Each segment properly aligned according to the aligner (bitwise flag 0x2)
 			# c) Not PCR nor optical duplicated (bitwise flag 0x400)
 
