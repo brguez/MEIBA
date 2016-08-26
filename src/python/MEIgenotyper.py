@@ -251,7 +251,7 @@ counter = 1
 # Generate a genotyping thread per set of donors
 for chunk in BAMChunks:
 
-	print "chunk " + str(counter) + " : " + str(len(chunk)) + " " + str(chunk) 
+	print "chunk" + str(counter) + " : " + str(len(chunk)) + " donors to genotype" 
 	
 	threadName = "THREAD-" + str(counter)
 	thread = threading.Thread(target=worker, args=(VCF, chunk), name=threadName)
@@ -264,3 +264,5 @@ for chunk in BAMChunks:
 	
 # Wait till threads have finished
 [t.join() for t in threads]
+
+header("Finished")
