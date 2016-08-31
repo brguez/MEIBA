@@ -42,9 +42,8 @@ class cohort():
 	# Per iteration, read a VCF, generate a VCF object and add it to the cohort
 	for line in inputVCFs:
     	    line = line.rstrip('\n')
-    	    line = line.split("\t")
-            donorId = line[0]
-    	    VCFfile = line[1]
+	    line = line.split("\t")
+    	    VCFfile = line[0]
     	    VCFObj = formats.VCF()
     	    
 	    info("Reading " + VCFfile + "...")
@@ -177,10 +176,10 @@ class cohort():
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
 ##INFO=<ID=STRUCT,Number=1,Type=String,Description="Transposable element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
 ##INFO=<ID=LEN,Number=1,Type=Integer,Description="Transposable element length">
-##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site length (+: target site duplication, -: target site deletion)">
-##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication or deletion sequence">
+##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site duplication length">
+##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication sequence">
 ##INFO=<ID=POLYA,Number=1,Type=String,Description="Poly-A sequence">
-##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1000GENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), TRAFIC: TraFic in-house database)">
+##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1KGENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), TRAFIC: TraFic in-house database)">
 ##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the transposable element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
 ##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
 ##INFO=<ID=ROLE,Number=1,Type=String,Description="Role in cancer (oncogene, TSG: tumor suppressor gene, oncogene/TSG: both roles)">
@@ -196,6 +195,9 @@ class cohort():
 ##FILTER=<ID=REP,Description="Insertion overlapping a satellite region or a repetitive element of the same class">
 ##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting reads">
 ##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Unphased genotypes">
+##FORMAT=<ID=NV,Number=1,Type=Integer,Description="Number of reads containing variant in this sample">
+##FORMAT=<ID=NR,Number=1,Type=Integer,Description="Number of reads covering variant location in this sample">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	CONSENSUS
 """ 
 	## Replace variables into the template and print header into the output file
@@ -440,7 +442,7 @@ cohortObj.build_MEI_dict()
 cohortObj.make_consensus_MEI_dict()
 
 ## 5. Make output VCF containing consensus MEI objects
-outFilePath = outDir + '/not_redundant_list_germline_MEI.vcf'
+outFilePath = outDir + '/not_redundant_germline_MEI.vcf'
 
 # 5.1 Write header
 cohortObj.write_header(outFilePath)
