@@ -8,6 +8,7 @@ def header(string):
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print '\n', timeInfo, "****", string, "****"
 
+
 def subHeader(string):
     """ 
         Display  subheader
@@ -23,6 +24,7 @@ def info(string):
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, string
     
+
 def log(label, string):
     """ 
         Display labelled information 
@@ -54,31 +56,48 @@ def worker(VCF, BAMset):
 
 		## Genotype each MEI polymorphism for the current donor
 		for VCFlineObj in VCFObj.lineList:
-		
-			genotype, nbReadsMEI, totatNbReads, vaf = genotypeMEI(bamFile, VCFlineObj, HETVAF, HOMVAF)
+
+			subHeader("Genotype " + VCFlineObj.infoDict["CLASS"] + ":" + VCFlineObj.chrom + "_" + str(VCFlineObj.pos) + " with a CIPOS of " + VCFlineObj.infoDict["CIPOS"])			
+			chrom = str(VCFlineObj.chrom)
+
+			## A) Estimate VAF for MEI breakpoint A
+			# ------------------__TSD__*********TE******AAA__TSD__------------- Donor genome
+			#		         bkpB		     bkpA
+			# -------------------------------__TSD__--------------------------- Reference genome
+			# 			      bkpA    bkpB
+			info("Breakpoint A")
+			bkpPos = int(VCFlineObj.pos)
+			nbReadsMEI_A, totatNbReads_A, vaf_A = computeBkpVaf(bamFile, chrom, bkpPos, "A")
+
+			## B) Estimate VAF for MEI breakpoint B 
+			info("Breakpoint B")
+			bkpPos = int(VCFlineObj.pos) + int(VCFlineObj.infoDict["TSLEN"])
+			nbReadsMEI_B, totatNbReads_B, vaf_B = computeBkpVaf(bamFile, chrom, bkpPos, "B")
+			
+			## Print results
+			print "TMP_VAF-A", nbReadsMEI_A, totatNbReads_A, vaf_A
+			print "TMP_VAF-B", nbReadsMEI_B, totatNbReads_B, vaf_B
 
 		subHeader("Finished " + donorId + " genotyping")
 		bamFile.close()
 	
 	info( threadId + ' finished')
 	
-def genotypeMEI(bamFile, VCFlineObj, HETVAF, HOMVAF):
+
+def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
 	'''
 	
 	'''
-	### 1. Count the number of reads supporting the reference and MEI polymorphism
+	### 1.Count the number of reads supporting the reference and MEI polymorphism
 	nbReadsRef = 0
 	nbReadsMEI = 0
 
-	# Define genomic region +- (CIPOS + 5bp) around insertion breakpoint 
+	# Define genomic region +- 5bp around insertion breakpoint 
 	# + 1 for the end interval position, reason: 
 	# Convert from 1-based in VCF to 0-based half-open intervals in BAM [X,Y)
 	# The position X is part of the interval, but Y is not.
-	chrom = str(VCFlineObj.chrom)
-	beg = int(VCFlineObj.pos) - (int(VCFlineObj.infoDict["CIPOS"]) + 5)  
-	end = int(VCFlineObj.pos) + (int(VCFlineObj.infoDict["CIPOS"]) + 5) + 1
-
-	#subHeader("Genotype " + VCFlineObj.infoDict["CLASS"] + ":" + VCFlineObj.chrom + "_" + str(VCFlineObj.pos) + " with a CIPOS of " + VCFlineObj.infoDict["CIPOS"])
+	beg = bkpPos - 5  
+	end = bkpPos + 6
 
 	# Extract alignments overlapping the genomic region
 	iterator = bamFile.fetch(chrom, beg, end)
@@ -88,7 +107,7 @@ def genotypeMEI(bamFile, VCFlineObj, HETVAF, HOMVAF):
 
 		# Discard unmapped reads
 		if (alignment.is_unmapped == False):
-			#log("GENOTYPE", "Alignment info (bkpACoord, start, CIGAR): " + str(VCFlineObj.pos) + " " + str(alignment.reference_start) + " " + alignment.cigarstring)
+			log("VAF-" + bkpCat, "Alignment info (bkpCoord, start, end, CIGAR): " + str(bkpPos) + " " + str(alignment.reference_start) + " " + str(alignment.reference_end) + " " + alignment.cigarstring)
 	
 			# Assess if the alignment supports the reference allele. Conditions:
 			# a) Read overlap the insertion site with an overhang of 20 or more nucleotides on each side
@@ -99,56 +118,69 @@ def genotypeMEI(bamFile, VCFlineObj, HETVAF, HOMVAF):
 			# c) Not PCR nor optical duplicated (bitwise flag 0x400)
 
 			overhang = 20 
-			overlap = alignment.get_overlap(VCFlineObj.pos - overhang, VCFlineObj.pos + overhang)
+			overlap = alignment.get_overlap(bkpPos - overhang, bkpPos + overhang)
 			properPair = alignment.is_proper_pair
 			duplicate = alignment.is_duplicate
 	
-			#log("GENOTYPE", "Reference allele info (overhang, properPair, duplicate): " + str(overlap) + " " + str(properPair) + " " + str(duplicate))
+			log("VAF-" + bkpCat, "Reference allele info (overhang, properPair, duplicate): " + str(overlap) + " " + str(properPair) + " " + str(duplicate))
 		
 			# A) Read supporting the reference allele:
 			if (overlap >= 40) and (properPair == True) and (duplicate == False): 
 				nbReadsRef += 1			
-				#log("GENOTYPE", "Alignment supports REFERENCE")
+				log("VAF-" + bkpCat, "Alignment supports REFERENCE")
 			
 			# B) Read do not supporting the reference allele   
 			else:
 				# Assess if the alignment supports the MEI polymorphism. Conditions:
-				# a) Only beginning of the read soft (Operation=4) or hard clipped (Operation=5) 
-				# b) Alignment start position within +- (CIPOS + 5bp) compared to the insertion breakpoint 
+				# a) bkpA: Only beginning of the read soft (Operation=4) or hard clipped (Operation=5) 
+				#    bkpB: Only end of the read soft (Operation=4) or hard clipped (Operation=5)
+				# b) Alignment start position within +- 5bp compared to the insertion breakpoint 
 				# c) Not PCR nor optical duplicated (bitwise flag 0x400)
 	
 				firstOperation = alignment.cigartuples[0][0] 
 				lastOperation = alignment.cigartuples[-1][0] 
 		
-				#log("GENOTYPE", "MEI allele info (firstOperation, lastOperation, duplicate): " + str(firstOperation) + " " + str(lastOperation) + " " + str(duplicate))
+				log("VAF-" + bkpCat, "MEI allele info (firstOperation, lastOperation, duplicate): " + str(firstOperation) + " " + str(lastOperation) + " " + str(duplicate))
 
-				## Assess clipping
-				# a) Clipping at the beginning of the read while not at the end
-				if ((firstOperation == 4) or (firstOperation == 5)) and ((lastOperation != 4) and (lastOperation != 5)): 
+				### Assess clipping
+		
+				## Define region to search for clipped reads	
+				beg = bkpPos - 5 
+				end = bkpPos + 5
+
+				# A) Breakpoint A. Clipping at the beginning of the read while not at the end
+				if (bkpCat == "A") and ((firstOperation == 4) or (firstOperation == 5)) and ((lastOperation != 4) and (lastOperation != 5)): 
 				
-					## Assess breakpoint position
-					beg = int(VCFlineObj.pos) - (int(VCFlineObj.infoDict["CIPOS"]) + 5) 
-					end = int(VCFlineObj.pos) + (int(VCFlineObj.infoDict["CIPOS"]) + 5) 
-	
-
-					# bkp within range
+					# a) clipping breakpoint within range (+-5 bkp in VCF)
+					# beg <---------> end
 					if (beg <= alignment.reference_start) and (alignment.reference_start <= end):
-						bkp = True	
+						bkpBool = True	
+
+					# b) bkp not within range
 					else:
-						bkp = False
-	
-				# b) Not clipped 
+						bkpBool = False
+
+				# B) Breakpoint B. Clipping at the end of the read while not at the beginning
+				elif (bkpCat == "B") and ((lastOperation == 4) or (lastOperation == 5)) and ((firstOperation != 4) and (firstOperation != 5)):
+
+					# a) clipping breakpoint within range
+					## beg <---------> end
+					if (beg <= alignment.reference_end) and (alignment.reference_end <= end):
+						bkpBool = True	
+
+					# b) not within range					
+					else:
+						bkpBool = False
+
+				# C) Not clipped or not properly clipped 
 				else:
-					bkp = False
-					
-				# Read supporting the MEI polymorphism:
-				if (bkp == True) and (duplicate == False): 
-					nbReadsMEI += 1			
-					#log("GENOTYPE", "Alignment supports MEI")
-				 			
-				
-			#print "--------"
+					bkpBool = False
 	
+				## Read supporting the MEI polymorphism:
+				if (bkpBool == True) and (duplicate == False): 
+					nbReadsMEI += 1			
+					log("VAF-" + bkpCat, "Alignment supports MEI")		
+
 	### 2. Compute the VAF
 	totatNbReads = nbReadsMEI + nbReadsRef
 
@@ -156,26 +188,30 @@ def genotypeMEI(bamFile, VCFlineObj, HETVAF, HOMVAF):
 		vaf = 0
 	else:
 		vaf =  float(nbReadsMEI) / totatNbReads
-	
-	### 3. Determine donor genotype for the current variant
-	# Note: Required at least three MEI supporting reads for considering the variant
+
+	log("VAF-" + bkpCat, "VAF (nbReadsMEI, totatNbReads, VAF): " + str(nbReadsMEI) + " " + str(totatNbReads) + " " + str(vaf))
+
+	return (nbReadsMEI, totatNbReads, vaf)
+
+# -------------------------------------------------------
+### 3. Determine donor genotype for the current variant
+# Note: Required at least three MEI supporting reads for considering the variant
 		
-	# A) Homozygous for MEI
-	if (vaf >= HOMVAF) and (nbReadsMEI >= 3):
-		genotype = '1/1'
+# A) Homozygous for MEI
+#if (vaf >= HOMVAF) and (nbReadsMEI >= 3):
+#genotype = '1/1'
         	
-	# B) Heterozygous                
-	elif (vaf >= HETVAF) and (nbReadsMEI >= 3):
-		genotype = '0/1' 
+# B) Heterozygous                
+#elif (vaf >= HETVAF) and (nbReadsMEI >= 3):
+#genotype = '0/1' 
 
-	# C) Homozygous for reference	
-	else:
-		genotype = '0/0' 
+# C) Homozygous for reference	
+#else:
+#genotype = '0/0' 
 
-	#info("MEI genotype (genotype, nbReadsMEI, totatNbReads, VAF): " + genotype + " " + str(nbReadsMEI) + " " + str(totatNbReads) + " " + str(vaf) + "\n")	
-	
-	return (genotype, nbReadsMEI, totatNbReads, vaf)
-
+#info("MEI genotype (genotype, nbReadsMEI, totatNbReads, VAF): " + genotype + " " + str(nbReadsMEI) + " " + str(totatNbReads) + " " + str(vaf) + "\n")			
+# return (genotype, nbReadsMEI, totatNbReads, vaf)
+# --------------------------------------------------
 
 #### CLASSES ####
 #### MAIN ####
