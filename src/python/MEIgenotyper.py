@@ -56,33 +56,58 @@ def worker(VCF, BAMset):
 
 		## Genotype each MEI polymorphism for the current donor
 		for VCFlineObj in VCFObj.lineList:
+			genotypeMEI(bamFile, VCFObj)
 
-			subHeader("Genotype " + VCFlineObj.infoDict["CLASS"] + ":" + VCFlineObj.chrom + "_" + str(VCFlineObj.pos) + " with a CIPOS of " + VCFlineObj.infoDict["CIPOS"])			
-			chrom = str(VCFlineObj.chrom)
-
-			## A) Estimate VAF for MEI breakpoint A
-			# ------------------__TSD__*********TE******AAA__TSD__------------- Donor genome
-			#		         bkpB		     bkpA
-			# -------------------------------__TSD__--------------------------- Reference genome
-			# 			      bkpA    bkpB
-			info("Breakpoint A")
-			bkpPos = int(VCFlineObj.pos)
-			nbReadsMEI_A, totatNbReads_A, vaf_A = computeBkpVaf(bamFile, chrom, bkpPos, "A")
-
-			## B) Estimate VAF for MEI breakpoint B 
-			info("Breakpoint B")
-			bkpPos = int(VCFlineObj.pos) + int(VCFlineObj.infoDict["TSLEN"])
-			nbReadsMEI_B, totatNbReads_B, vaf_B = computeBkpVaf(bamFile, chrom, bkpPos, "B")
-			
-			## Print results
-			print "TMP_VAF-A", nbReadsMEI_A, totatNbReads_A, vaf_A
-			print "TMP_VAF-B", nbReadsMEI_B, totatNbReads_B, vaf_B
-
-		subHeader("Finished " + donorId + " genotyping")
 		bamFile.close()
 	
 	info( threadId + ' finished')
 	
+def genotypeMEI(bamFile, VCFObj):
+	'''
+	'''
+
+	subHeader("Genotype " + VCFlineObj.infoDict["CLASS"] + ":" + VCFlineObj.chrom + "_" + str(VCFlineObj.pos) + " with a CIPOS of " + VCFlineObj.infoDict["CIPOS"])			
+	chrom = str(VCFlineObj.chrom)
+
+	## A) Estimate VAF for MEI breakpoint A
+	# ------------------__TSD__*********TE******AAA__TSD__------------- Donor genome
+	#		         bkpB		     bkpA
+	# -------------------------------__TSD__--------------------------- Reference genome
+	# 			      bkpA    bkpB
+	info("Breakpoint A")
+	bkpPos = int(VCFlineObj.pos)
+	nbReadsMEI_A, totatNbReads_A, vaf_A = computeBkpVaf(bamFile, chrom, bkpPos, "A")
+
+	## B) Estimate VAF for MEI breakpoint B 
+	info("Breakpoint B")
+	bkpPos = int(VCFlineObj.pos) + int(VCFlineObj.infoDict["TSLEN"])
+	nbReadsMEI_B, totatNbReads_B, vaf_B = computeBkpVaf(bamFile, chrom, bkpPos, "B")
+			
+	## Print results
+	print "TMP_VAF-A", nbReadsMEI_A, totatNbReads_A, vaf_A
+	print "TMP_VAF-B", nbReadsMEI_B, totatNbReads_B, vaf_B
+
+	# -------------------------------------------------------
+	### 3. Determine donor genotype for the current variant
+	# Note: Required at least five MEI supporting reads for considering the variant
+		
+	# A) Homozygous for MEI
+	#if (vaf >= HOMVAF) and (nbReadsMEI >= 3):
+	#genotype = '1/1'
+        	
+	# B) Heterozygous                
+	#elif (vaf >= HETVAF) and (nbReadsMEI >= 3):
+	#genotype = '0/1' 
+
+	# C) Homozygous for reference	
+	#else:
+	#genotype = '0/0' 
+
+	#info("MEI genotype (genotype, nbReadsMEI, totatNbReads, VAF): " + genotype + " " + str(nbReadsMEI) + " " + str(totatNbReads) + " " + str(vaf) + "\n")			
+	# return (genotype, nbReadsMEI, totatNbReads, vaf)
+# --------------------------------------------------
+
+	subHeader("Finished " + donorId + " genotyping")
 
 def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
 	'''
@@ -134,7 +159,7 @@ def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
 				# Assess if the alignment supports the MEI polymorphism. Conditions:
 				# a) bkpA: Only beginning of the read soft (Operation=4) or hard clipped (Operation=5) 
 				#    bkpB: Only end of the read soft (Operation=4) or hard clipped (Operation=5)
-				# b) Alignment start position within +- 5bp compared to the insertion breakpoint 
+				# b) Alignment start position within +- 3bp compared to the insertion breakpoint 
 				# c) Not PCR nor optical duplicated (bitwise flag 0x400)
 	
 				firstOperation = alignment.cigartuples[0][0] 
@@ -145,8 +170,8 @@ def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
 				### Assess clipping
 		
 				## Define region to search for clipped reads	
-				beg = bkpPos - 5 
-				end = bkpPos + 5
+				beg = bkpPos - 3
+				end = bkpPos + 3
 
 				# A) Breakpoint A. Clipping at the beginning of the read while not at the end
 				if (bkpCat == "A") and ((firstOperation == 4) or (firstOperation == 5)) and ((lastOperation != 4) and (lastOperation != 5)): 
@@ -193,25 +218,6 @@ def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
 
 	return (nbReadsMEI, totatNbReads, vaf)
 
-# -------------------------------------------------------
-### 3. Determine donor genotype for the current variant
-# Note: Required at least three MEI supporting reads for considering the variant
-		
-# A) Homozygous for MEI
-#if (vaf >= HOMVAF) and (nbReadsMEI >= 3):
-#genotype = '1/1'
-        	
-# B) Heterozygous                
-#elif (vaf >= HETVAF) and (nbReadsMEI >= 3):
-#genotype = '0/1' 
-
-# C) Homozygous for reference	
-#else:
-#genotype = '0/0' 
-
-#info("MEI genotype (genotype, nbReadsMEI, totatNbReads, VAF): " + genotype + " " + str(nbReadsMEI) + " " + str(totatNbReads) + " " + str(vaf) + "\n")			
-# return (genotype, nbReadsMEI, totatNbReads, vaf)
-# --------------------------------------------------
 
 #### CLASSES ####
 #### MAIN ####
