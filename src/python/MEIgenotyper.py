@@ -32,7 +32,7 @@ def log(label, string):
     print "[" + label + "]", string
 
 
-def worker(VCF, BAMset):
+def worker(VCF, BAMset, HOMVAF, HETVAF):
 	'''
 	'''
 
@@ -56,62 +56,88 @@ def worker(VCF, BAMset):
 
 		## Genotype each MEI polymorphism for the current donor
 		for VCFlineObj in VCFObj.lineList:
-			genotypeMEI(bamFile, VCFObj)
+			genotype, nbReadsMEI, totalNbReads, vaf = genotypeMEI(bamFile, VCFlineObj, HOMVAF, HETVAF)
 
+		subHeader("Finished " + donorId + " genotyping")
 		bamFile.close()
 	
 	info( threadId + ' finished')
 	
-def genotypeMEI(bamFile, VCFObj):
+def genotypeMEI(bamFile, VCFlineObj, HOMVAF, HETVAF):
 	'''
 	'''
 
 	subHeader("Genotype " + VCFlineObj.infoDict["CLASS"] + ":" + VCFlineObj.chrom + "_" + str(VCFlineObj.pos) + " with a CIPOS of " + VCFlineObj.infoDict["CIPOS"])			
 	chrom = str(VCFlineObj.chrom)
 
-	## A) Estimate VAF for MEI breakpoint A
+	### 1. Compute VAF 
+	## 1.1) Estimate VAF for MEI breakpoint A
 	# ------------------__TSD__*********TE******AAA__TSD__------------- Donor genome
 	#		         bkpB		     bkpA
 	# -------------------------------__TSD__--------------------------- Reference genome
 	# 			      bkpA    bkpB
-	info("Breakpoint A")
+	info("Breakpoint A VAF")
 	bkpPos = int(VCFlineObj.pos)
-	nbReadsMEI_A, totatNbReads_A, vaf_A = computeBkpVaf(bamFile, chrom, bkpPos, "A")
+	nbReadsMEI_A, totalNbReads_A, vaf_A = computeBkpVaf(bamFile, chrom, bkpPos, "A")
 
-	## B) Estimate VAF for MEI breakpoint B 
-	info("Breakpoint B")
+	## 1.2) Estimate VAF for MEI breakpoint B 
+	info("Breakpoint B VAF")
 	bkpPos = int(VCFlineObj.pos) + int(VCFlineObj.infoDict["TSLEN"])
-	nbReadsMEI_B, totatNbReads_B, vaf_B = computeBkpVaf(bamFile, chrom, bkpPos, "B")
-			
-	## Print results
-	print "TMP_VAF-A", nbReadsMEI_A, totatNbReads_A, vaf_A
-	print "TMP_VAF-B", nbReadsMEI_B, totatNbReads_B, vaf_B
-
-	# -------------------------------------------------------
-	### 3. Determine donor genotype for the current variant
-	# Note: Required at least five MEI supporting reads for considering the variant
+	nbReadsMEI_B, totalNbReads_B, vaf_B = computeBkpVaf(bamFile, chrom, bkpPos, "B")
 		
-	# A) Homozygous for MEI
-	#if (vaf >= HOMVAF) and (nbReadsMEI >= 3):
-	#genotype = '1/1'
+	## 1.3) Compute average VAF for the MEI
+	info("Average VAF")
+	
+	minNbClipped = 5
+
+	## a) Both breakpoints supported by at least X clipped-reads 
+	if (nbReadsMEI_A >= minNbClipped) and (nbReadsMEI_B >= minNbClipped): 
+		nbReadsMEI = int(nbReadsMEI_A + nbReadsMEI_B) / 2 
+		totalNbReads = int(totalNbReads_A + totalNbReads_B) / 2
+		vaf = float(nbReadsMEI) / totalNbReads
+
+	## b) Breakpoint A supported by at least X clipped-reads
+	elif (nbReadsMEI_A >= minNbClipped):
+		nbReadsMEI = nbReadsMEI_A 
+		totalNbReads = totalNbReads_A
+		vaf = vaf_A
+
+	## c) Breakpoint B supported by at least X clipped-reads
+	elif (nbReadsMEI_B >= minNbClipped):
+		nbReadsMEI = nbReadsMEI_B 
+		totalNbReads = totalNbReads_B
+		vaf = vaf_B
+ 
+	## d) No breakpoint supported by at least X clipped-reads 
+	else:
+		nbReadsMEI = int(nbReadsMEI_A + nbReadsMEI_B) / 2 
+		totalNbReads =	int(totalNbReads_A + totalNbReads_B) / 2
+		vaf = 0
+
+	## Print results
+	print "TMP_VAF-A", nbReadsMEI_A, totalNbReads_A, vaf_A
+	print "TMP_VAF-B", nbReadsMEI_B, totalNbReads_B, vaf_B
+	print "TMP_VAF", nbReadsMEI, totalNbReads, vaf
+
+	### 2. Determine donor genotype for the current variant
+	# a) Homozygous for MEI
+	if (vaf >= HOMVAF):
+		genotype = '1/1'
         	
-	# B) Heterozygous                
-	#elif (vaf >= HETVAF) and (nbReadsMEI >= 3):
-	#genotype = '0/1' 
+	# b) Heterozygous for MEI             
+	elif (vaf >= HETVAF):
+		genotype = '0/1' 
 
-	# C) Homozygous for reference	
-	#else:
-	#genotype = '0/0' 
+	# c) Homozygous for reference	
+	else:
+		genotype = '0/0' 
 
-	#info("MEI genotype (genotype, nbReadsMEI, totatNbReads, VAF): " + genotype + " " + str(nbReadsMEI) + " " + str(totatNbReads) + " " + str(vaf) + "\n")			
-	# return (genotype, nbReadsMEI, totatNbReads, vaf)
-# --------------------------------------------------
+	info("MEI genotype (genotype, nbReadsMEI, totalNbReads, VAF): " + genotype + " " + str(nbReadsMEI) + " " + str(totalNbReads) + " " + str(vaf) + "\n")			
+	return (genotype, nbReadsMEI, totalNbReads, vaf)
 
-	subHeader("Finished " + donorId + " genotyping")
 
 def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
 	'''
-	
 	'''
 	### 1.Count the number of reads supporting the reference and MEI polymorphism
 	nbReadsRef = 0
@@ -207,16 +233,16 @@ def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
 					log("VAF-" + bkpCat, "Alignment supports MEI")		
 
 	### 2. Compute the VAF
-	totatNbReads = nbReadsMEI + nbReadsRef
+	totalNbReads = nbReadsMEI + nbReadsRef
 
-	if totatNbReads == 0:
+	if totalNbReads == 0:
 		vaf = 0
 	else:
-		vaf =  float(nbReadsMEI) / totatNbReads
+		vaf =  float(nbReadsMEI) / totalNbReads
 
-	log("VAF-" + bkpCat, "VAF (nbReadsMEI, totatNbReads, VAF): " + str(nbReadsMEI) + " " + str(totatNbReads) + " " + str(vaf))
+	log("VAF-" + bkpCat, "VAF (nbReadsMEI, totalNbReads, VAF): " + str(nbReadsMEI) + " " + str(totalNbReads) + " " + str(vaf))
 
-	return (nbReadsMEI, totatNbReads, vaf)
+	return (nbReadsMEI, totalNbReads, vaf)
 
 
 #### CLASSES ####
@@ -296,7 +322,7 @@ for chunk in BAMChunks:
 	print "chunk" + str(counter) + " : " + str(len(chunk)) + " donors to genotype" 
 	
 	threadName = "THREAD-" + str(counter)
-	thread = threading.Thread(target=worker, args=(VCF, chunk), name=threadName)
+	thread = threading.Thread(target=worker, args=(VCF, chunk, HOMVAF, HETVAF), name=threadName)
 	threads.append(thread)
 
 	counter += 1
