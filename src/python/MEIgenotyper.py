@@ -32,7 +32,7 @@ def log(label, string):
     print "[" + label + "]", string
 
 
-def worker(VCF, BAMset, HOMVAF, HETVAF):
+def worker(VCF, BAMset, homVaf, hetVaf):
 	'''
 	'''
 
@@ -56,14 +56,14 @@ def worker(VCF, BAMset, HOMVAF, HETVAF):
 
 		## Genotype each MEI polymorphism for the current donor
 		for VCFlineObj in VCFObj.lineList:
-			genotype, nbReadsMEI, totalNbReads, vaf = genotypeMEI(bamFile, VCFlineObj, HOMVAF, HETVAF)
+			genotype, nbReadsMEI, totalNbReads, vaf = genotypeMEI(bamFile, VCFlineObj, homVaf, hetVaf)
 
 		subHeader("Finished " + donorId + " genotyping")
 		bamFile.close()
 	
 	info( threadId + ' finished')
 	
-def genotypeMEI(bamFile, VCFlineObj, HOMVAF, HETVAF):
+def genotypeMEI(bamFile, VCFlineObj, homVaf, hetVaf):
 	'''
 	'''
 
@@ -76,17 +76,20 @@ def genotypeMEI(bamFile, VCFlineObj, HOMVAF, HETVAF):
 	#		         bkpB		     bkpA
 	# -------------------------------__TSD__--------------------------- Reference genome
 	# 			      bkpA    bkpB
-	info("Breakpoint A VAF")
+	msg = "Breakpoint A VAF"
+	if debugBool == True: info(msg)  
 	bkpPos = int(VCFlineObj.pos)
 	nbReadsMEI_A, totalNbReads_A, vaf_A = computeBkpVaf(bamFile, chrom, bkpPos, "A")
 
 	## 1.2) Estimate VAF for MEI breakpoint B 
-	info("Breakpoint B VAF")
+	msg = "Breakpoint B VAF"
+	if debugBool == True: info(msg)	
 	bkpPos = int(VCFlineObj.pos) + int(VCFlineObj.infoDict["TSLEN"])
 	nbReadsMEI_B, totalNbReads_B, vaf_B = computeBkpVaf(bamFile, chrom, bkpPos, "B")
 		
 	## 1.3) Compute average VAF for the MEI
-	info("Average VAF")
+	msg = "Average VAF"
+	if debugBool == True: info(msg)
 	
 	minNbClipped = 5
 
@@ -114,31 +117,30 @@ def genotypeMEI(bamFile, VCFlineObj, HOMVAF, HETVAF):
 		totalNbReads =	int(totalNbReads_A + totalNbReads_B) / 2
 		vaf = 0
 
-	## Print results
-	print "TMP_VAF-A", nbReadsMEI_A, totalNbReads_A, vaf_A
-	print "TMP_VAF-B", nbReadsMEI_B, totalNbReads_B, vaf_B
-	print "TMP_VAF", nbReadsMEI, totalNbReads, vaf
-
 	### 2. Determine donor genotype for the current variant
 	# a) Homozygous for MEI
-	if (vaf >= HOMVAF):
+	if (vaf >= homVaf):
 		genotype = '1/1'
         	
 	# b) Heterozygous for MEI             
-	elif (vaf >= HETVAF):
+	elif (vaf >= hetVaf):
 		genotype = '0/1' 
 
 	# c) Homozygous for reference	
 	else:
 		genotype = '0/0' 
 
-	info("MEI genotype (genotype, nbReadsMEI, totalNbReads, VAF): " + genotype + " " + str(nbReadsMEI) + " " + str(totalNbReads) + " " + str(vaf) + "\n")			
+	msg = "MEI genotype (genotype, nbReadsMEI, totalNbReads, VAF): " + genotype + " " + str(nbReadsMEI) + " " + str(totalNbReads) + " " + str(vaf) + "\n"
+	if debugBool == True: info(msg)
+
 	return (genotype, nbReadsMEI, totalNbReads, vaf)
 
 
 def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
 	'''
 	'''
+	tag = "VAF-" + bkpCat
+
 	### 1.Count the number of reads supporting the reference and MEI polymorphism
 	nbReadsRef = 0
 	nbReadsMEI = 0
@@ -158,8 +160,9 @@ def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
 
 		# Discard unmapped reads
 		if (alignment.is_unmapped == False):
-			log("VAF-" + bkpCat, "Alignment info (bkpCoord, start, end, CIGAR): " + str(bkpPos) + " " + str(alignment.reference_start) + " " + str(alignment.reference_end) + " " + alignment.cigarstring)
-	
+			msg = "Alignment info (bkpCoord, start, end, CIGAR): " + str(bkpPos) + " " + str(alignment.reference_start) + " " + str(alignment.reference_end) + " " + alignment.cigarstring
+			if (debugBool == True): log(tag, msg)  					
+
 			# Assess if the alignment supports the reference allele. Conditions:
 			# a) Read overlap the insertion site with an overhang of 20 or more nucleotides on each side
 			#    Note regarding overhang: it should be equal to the minimum anchor length for soft and hard clipped reads supporting the insertion. 
@@ -173,13 +176,14 @@ def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
 			properPair = alignment.is_proper_pair
 			duplicate = alignment.is_duplicate
 	
-			log("VAF-" + bkpCat, "Reference allele info (overhang, properPair, duplicate): " + str(overlap) + " " + str(properPair) + " " + str(duplicate))
-		
+			msg = "Reference allele info (overhang, properPair, duplicate): " + str(overlap) + " " + str(properPair) + " " + str(duplicate)
+			if (debugBool == True): log(tag, msg) 	
+
 			# A) Read supporting the reference allele:
 			if (overlap >= 40) and (properPair == True) and (duplicate == False): 
-				nbReadsRef += 1			
-				log("VAF-" + bkpCat, "Alignment supports REFERENCE")
-			
+				msg = "Alignment supports REFERENCE"
+				if (debugBool == True): log(tag, msg) 	
+
 			# B) Read do not supporting the reference allele   
 			else:
 				# Assess if the alignment supports the MEI polymorphism. Conditions:
@@ -190,8 +194,9 @@ def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
 	
 				firstOperation = alignment.cigartuples[0][0] 
 				lastOperation = alignment.cigartuples[-1][0] 
-		
-				log("VAF-" + bkpCat, "MEI allele info (firstOperation, lastOperation, duplicate): " + str(firstOperation) + " " + str(lastOperation) + " " + str(duplicate))
+			
+				msg = "MEI allele info (firstOperation, lastOperation, duplicate): " + str(firstOperation) + " " + str(lastOperation) + " " + str(duplicate)
+				if (debugBool == True): log(tag, msg) 	
 
 				### Assess clipping
 		
@@ -230,7 +235,9 @@ def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
 				## Read supporting the MEI polymorphism:
 				if (bkpBool == True) and (duplicate == False): 
 					nbReadsMEI += 1			
-					log("VAF-" + bkpCat, "Alignment supports MEI")		
+
+					msg = "MEI allele info (firstOperation, lastOperation, duplicate): " + str(firstOperation) + " " + str(lastOperation) + " " + str(duplicate)
+					if (debugBool == True): log(tag, msg) 
 
 	### 2. Compute the VAF
 	totalNbReads = nbReadsMEI + nbReadsRef
@@ -240,7 +247,8 @@ def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
 	else:
 		vaf =  float(nbReadsMEI) / totalNbReads
 
-	log("VAF-" + bkpCat, "VAF (nbReadsMEI, totalNbReads, VAF): " + str(nbReadsMEI) + " " + str(totalNbReads) + " " + str(vaf))
+	msg = "VAF (nbReadsMEI, totalNbReads, VAF): " + str(nbReadsMEI) + " " + str(totalNbReads) + " " + str(vaf)
+	if (debugBool == True): log(tag, msg) 
 
 	return (nbReadsMEI, totalNbReads, vaf)
 
@@ -260,33 +268,39 @@ import pysam
 import threading
 import random
 
+# Global variables:
+global debugBool ## debug logging mode. Boolean.
+
 ## Get user's input ## 
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('VCF', help='VCF with the MEI polymorphism to genotype across the set of donors')
 parser.add_argument('BAMPaths', help='Text file with the path to the donor BAM files. One BAM per row and donor')
-parser.add_argument('-t', '--threads', default=1, dest='threads', type=int, help='Number of threads. Default: 1.' )
+parser.add_argument('--hetVaf', default=0.10, dest='hetVaf', type=float, help='Min VAF threshold for heterozygous (0/1). Default: 1' )
+parser.add_argument('--homVaf', default=0.9, dest='homVaf', type=float, help='Min VAF threshold for homozygous alternative (1/1). Default: 1' )
+parser.add_argument('-t', '--threads', default=1, dest='threads', type=int, help='Number of threads. Default: 1' )
+parser.add_argument('--debug', action='store_true', dest='debug', help='Enable debug mode. Display detailed log info about MEI genotyping')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
 VCF = args.VCF
 BAMPaths = args.BAMPaths
+hetVaf = args.hetVaf
+homVaf = args.homVaf
 threads = args.threads
+debugBool = args.debug
 outDir = args.outDir
 
 scriptName = os.path.basename(sys.argv[0])
-
-# Constants
-HETVAF = 0.10  # Min VAF threshold for heterozygous (0/1)
-HOMVAF = 0.9   # Min VAF threshold for homozygous alternative (1/1)
 
 ## Display configuration to standard output ##
 print
 print "***** ", scriptName, " configuration *****"
 print "VCF: ", VCF
 print "BAMPaths: ", BAMPaths
-print "min-vaf-heterozygous: ", HETVAF
-print "min-vaf-homozygous: ", HOMVAF
+print "min-vaf-heterozygous: ", hetVaf
+print "min-vaf-homozygous: ", homVaf
 print "threads: ", threads
+print "debug: ", debugBool
 print "outDir: ", outDir
 print 
 print "***** Executing ", scriptName, ".... *****"
@@ -322,7 +336,7 @@ for chunk in BAMChunks:
 	print "chunk" + str(counter) + " : " + str(len(chunk)) + " donors to genotype" 
 	
 	threadName = "THREAD-" + str(counter)
-	thread = threading.Thread(target=worker, args=(VCF, chunk, HOMVAF, HETVAF), name=threadName)
+	thread = threading.Thread(target=worker, args=(VCF, chunk, homVaf, hetVaf), name=threadName)
 	threads.append(thread)
 
 	counter += 1
