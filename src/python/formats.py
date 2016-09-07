@@ -30,11 +30,11 @@ class VCF():
 	for line in VCFfile:
 	    
 	    # A) Header
-	    if line.startswith("#"):
+	    if line.startswith("##"):
 		headerList.append(line)
 	    
 	    # B) Variants
-	    else:
+	    elif not line.startswith("#"):
    	        line = line.rstrip('\n')
 	        line = line.split('\t')
 		VCFlineObj = VCFline(line)
@@ -73,6 +73,38 @@ class VCF():
 	## Close output file
 	outFile.close()
 
+    def write_variants_multiSample(self, donorIdList, outFilePath):
+	"""
+	"""
+	
+	outFile = open(outFilePath, 'a')
+
+	## 1. Write VCF header
+	# Make fixed fields
+	header = "#CHROM" + "\t" + "POS" + "\t" + "ID" + "\t" + "REF" + "\t" + "ALT" + "\t" + "QUAL" + "\t" + "FILTER" + "\t" +	"INFO" + "\t" +	"FORMAT"
+	
+	# Add donor ids to the header
+	for donorId in donorIdList:
+		header =  header + "\t" + donorId
+	
+	# Add trailing new line and write header
+	header = header + "\n"
+	outFile.write(header)
+
+	## 2. Write genotyped variants
+	# Iterate and write each VCF data line into the output VCF file
+	for VCFline in self.lineList:
+
+		row = VCFline.chrom + "\t" + str(VCFline.pos) + "\t" + VCFline.id + "\t" + VCFline.ref + "\t" + VCFline.alt + "\t" + VCFline.qual + "\t" + VCFline.filter + "\t" + VCFline.info + "\t" + "GT:NV:NR"
+
+		# Add donor's genotypes to the VCF data line. One per iteration 
+		for donorId in donorIdList:
+			genotype = VCFline.genotypesDict[donorId] 			
+			row =  row + "\t" + genotype
+ 
+		# Add trailing new line and write VCF data line
+		row = row + "\n"
+		outFile.write(row)
 
 class VCFline():
     """ 
@@ -93,6 +125,7 @@ class VCFline():
 	self.info = VCFlineList[7]
 	self.format = VCFlineList[8]
 	self.genotype = VCFlineList[9]
+	self.genotypesDict = {}
 	self.infoDict = self.read_info()
 
 
