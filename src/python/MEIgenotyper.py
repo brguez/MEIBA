@@ -32,7 +32,7 @@ def log(label, string):
     print "[" + label + "]", string
 
 
-def worker(VCF, BAMset, homVaf, hetVaf):
+def worker(VCFObj, donorIdBamPathList, homVaf, hetVaf):
 	'''
 	'''
 
@@ -40,13 +40,12 @@ def worker(VCF, BAMset, homVaf, hetVaf):
 	info( threadId + ' launched')
 	time.sleep(random.uniform(0, 1))
 
-	## Iterate over donor BAM files, genotyping one donor at a time
-	for line in BAMset:
+	## Iterate over donor id/BAM files, genotyping one donor at a time
+	for line in donorIdBamPathList:
 	
-		BAMPath = line.rstrip('\n')
-	
-		base = os.path.basename(BAMPath)
-		donorId = os.path.splitext(base)[0]
+		# Extract donorId and BAM file path 
+		donorId = line[0]
+		BAMPath = line[1]
 
 		subHeader(threadId +" genotyping donor " + donorId)
 		time.sleep(random.uniform(0, 1))
@@ -56,7 +55,8 @@ def worker(VCF, BAMset, homVaf, hetVaf):
 
 		## Genotype each MEI polymorphism for the current donor
 		for VCFlineObj in VCFObj.lineList:
-			genotype, nbReadsMEI, totalNbReads, vaf = genotypeMEI(bamFile, VCFlineObj, homVaf, hetVaf)
+			genotype = genotypeMEI(bamFile, VCFlineObj, homVaf, hetVaf)
+			VCFlineObj.genotypesDict[donorId] = genotype 
 
 		subHeader("Finished " + donorId + " genotyping")
 		bamFile.close()
@@ -133,7 +133,10 @@ def genotypeMEI(bamFile, VCFlineObj, homVaf, hetVaf):
 	msg = "MEI genotype (genotype, nbReadsMEI, totalNbReads, VAF): " + genotype + " " + str(nbReadsMEI) + " " + str(totalNbReads) + " " + str(vaf) + "\n"
 	if debugBool == True: info(msg)
 
-	return (genotype, nbReadsMEI, totalNbReads, vaf)
+	## Make genotype field and return output
+	genotypeField = genotype + ':' + str(nbReadsMEI) + ':' + str(totalNbReads)
+	
+	return (genotypeField)
 
 
 def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
@@ -181,6 +184,7 @@ def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
 
 			# A) Read supporting the reference allele:
 			if (overlap >= 40) and (properPair == True) and (duplicate == False): 
+				nbReadsRef += 1	
 				msg = "Alignment supports REFERENCE"
 				if (debugBool == True): log(tag, msg) 	
 
@@ -236,8 +240,11 @@ def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
 				if (bkpBool == True) and (duplicate == False): 
 					nbReadsMEI += 1			
 
-					msg = "MEI allele info (firstOperation, lastOperation, duplicate): " + str(firstOperation) + " " + str(lastOperation) + " " + str(duplicate)
+					msg = "Alignment supports MEI"
 					if (debugBool == True): log(tag, msg) 
+		
+		msg = "-------------------"
+		if (debugBool == True): print msg 
 
 	### 2. Compute the VAF
 	totalNbReads = nbReadsMEI + nbReadsRef
@@ -274,9 +281,9 @@ global debugBool ## debug logging mode. Boolean.
 ## Get user's input ## 
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('VCF', help='VCF with the MEI polymorphism to genotype across the set of donors')
-parser.add_argument('BAMPaths', help='Text file with the path to the donor BAM files. One BAM per row and donor')
-parser.add_argument('--hetVaf', default=0.10, dest='hetVaf', type=float, help='Min VAF threshold for heterozygous (0/1). Default: 1' )
-parser.add_argument('--homVaf', default=0.9, dest='homVaf', type=float, help='Min VAF threshold for homozygous alternative (1/1). Default: 1' )
+parser.add_argument('BAMPaths', help='Tab separated text file with two columns: 1) donor ids and 2) path to the corresponding donor normal BAM files. One donor per row.')
+parser.add_argument('--hetVaf', default=0.10, dest='hetVaf', type=float, help='Min VAF threshold for heterozygous (0/1). Default: 0.1' )
+parser.add_argument('--homVaf', default=0.9, dest='homVaf', type=float, help='Min VAF threshold for homozygous alternative (1/1). Default: 0.9' )
 parser.add_argument('-t', '--threads', default=1, dest='threads', type=int, help='Number of threads. Default: 1' )
 parser.add_argument('--debug', action='store_true', dest='debug', help='Enable debug mode. Display detailed log info about MEI genotyping')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
@@ -319,13 +326,13 @@ VCFObj.read_VCF(VCF)
 #### 2. Genotype donors
 header("2. Genotype donors")
 
-# Make list of input BAM files:
-BAMList = [line.rstrip('\n') for line in open(BAMPaths)]
+# Make list of donorId/BAM files:
+donorIdBamPathList = [line.split() for line in open(BAMPaths)]
 
 # Split donors into X evenly sized chunks. X = number of threads
-chunkSize = int(round(len(BAMList) / float(threads)))
+chunkSize = int(round(len(donorIdBamPathList) / float(threads)))
 
-BAMChunks = [BAMList[i:i + chunkSize] for i in xrange(0, len(BAMList), chunkSize)]
+BAMChunks = [donorIdBamPathList[i:i + chunkSize] for i in xrange(0, len(donorIdBamPathList), chunkSize)]
 
 threads = list()
 counter = 1 
@@ -333,10 +340,10 @@ counter = 1
 # Generate a genotyping thread per set of donors
 for chunk in BAMChunks:
 
-	print "chunk" + str(counter) + " : " + str(len(chunk)) + " donors to genotype" 
+	print "chunk" + str(counter) + ": " + str(len(chunk)) + " donors to genotype" 
 	
 	threadName = "THREAD-" + str(counter)
-	thread = threading.Thread(target=worker, args=(VCF, chunk, homVaf, hetVaf), name=threadName)
+	thread = threading.Thread(target=worker, args=(VCFObj, chunk, homVaf, hetVaf), name=threadName)
 	threads.append(thread)
 
 	counter += 1
@@ -344,7 +351,22 @@ for chunk in BAMChunks:
 # Launch threads
 [t.start() for t in threads]
 	
-# Wait till threads have finished
+# Wait till threads have finished genotyping
 [t.join() for t in threads]
+
+#### 3. Make output multisample VCF file
+header("3. Produce multi-sample VCF file as ouput")
+
+fileName = 'germlineMEI_PCAWG_genotyped.vcf'
+outFilePath = outDir + '/' + fileName
+
+# 3.1 Write header
+VCFObj.write_header(outFilePath)
+
+# 3.2 Write variants
+donorIdList = [line[0] for line in donorIdBamPathList] 
+
+VCFObj.write_variants_multiSample(donorIdList, outFilePath)
+
 
 header("Finished")
