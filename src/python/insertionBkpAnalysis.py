@@ -221,7 +221,7 @@ class VCF():
 ##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting reads">
 ##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Unphased genotypes">
-##FORMAT=<ID=NV,Number=1,Type=Integer,Description="Number of reads containing variant in this sample">
+##FORMAT=<ID=NV,Number=1,Type=Integer,Description="Number of reads supporting the variant in this sample">
 ##FORMAT=<ID=NR,Number=1,Type=Integer,Description="Number of reads covering variant location in this sample">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	{donorId}
 """ 
