@@ -20,6 +20,23 @@ class VCF():
 	self.lineList = []  # List of VCFline objects
         	
     #### METHODS ####
+    def addLine(self, VCFlineObj):
+	""" 
+
+	"""
+	self.lineList.append(VCFlineObj)
+
+
+    def sort(self):
+	""" 
+
+	"""
+
+	lineListSorted = sorted(self.lineList, key=lambda line: (line.chrom, line.pos))
+
+	return lineListSorted
+
+
     def read_VCF(self, VCFpath):
 	""" 
 
@@ -42,11 +59,46 @@ class VCF():
 
 	self.header = "".join(headerList)
 
-    def addLine(self, VCFlineObj):
+    def read_VCF_multiSample(self, VCFpath):
 	""" 
-
 	"""
-	self.lineList.append(VCFlineObj)
+# genotype = genotypeMEI(bamFile, VCFlineObj, homVaf, hetVaf)
+# VCFlineObj.genotypesDict[donorId] = genotype 
+# def write_variants_multiSample(self, donorIdList, outFilePath):
+
+	VCFfile = open(VCFpath, 'r')
+	headerList = []
+
+	for line in VCFfile:
+
+	    # A) Meta-information
+	    if line.startswith("##"):
+		headerList.append(line)
+		
+	    # B) Header
+	    elif line.startswith("#CHROM"):
+		line = line.rstrip('\n')	    
+		line = line.split('\t')
+		donorIdList = [line[i] for i in range(9, len(line))]
+
+	    # C) Variants
+	    elif not line.startswith("#"):
+		line = line.rstrip('\n')
+	        line = line.split('\t')
+		VCFlineObj = VCFline(line)
+		gnTypeList = [line[i] for i in range(9, len(line))]
+
+		for i in range(0, len(gnTypeList)):
+		
+			donorId = donorIdList[i]
+			gnType = gnTypeList[i]			
+			VCFlineObj.genotypesDict[donorId] = gnType
+
+		self.addLine(VCFlineObj)
+
+	self.header = "".join(headerList)
+
+	return(donorIdList)
 
     def write_header(self, outFilePath):
 	""" 
@@ -64,7 +116,13 @@ class VCF():
 
 	outFile = open(outFilePath, 'a')	
 
-	# Iterate and print each VCF line into the output VCF file
+	## 1. Write VCF header
+	header = "#CHROM" + "\t" + "POS" + "\t" + "ID" + "\t" + "REF" + "\t" + "ALT" + "\t" + "QUAL" + "\t" + "FILTER" + "\t" +	"INFO" + "\t" +	"FORMAT"  + "\n"
+	
+	outFile.write(header)
+
+	## 2. Write variants
+	# Iterate and write each VCF data line into the output VCF file
 	for VCFline in self.lineList:
 
 	   row = VCFline.chrom + "\t" + str(VCFline.pos) + "\t" + VCFline.id + "\t" + VCFline.ref + "\t" + VCFline.alt + "\t" + VCFline.qual + "\t" + VCFline.filter + "\t" + VCFline.info + "\t" + VCFline.format + "\t" + VCFline.genotype + "\n"
@@ -72,6 +130,7 @@ class VCF():
 
 	## Close output file
 	outFile.close()
+
 
     def write_variants_multiSample(self, donorIdList, outFilePath):
 	"""
