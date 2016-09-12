@@ -64,33 +64,37 @@ print
 header("1. Process input VCFs")
 paths = open(VCFPaths, 'r')
 
+# Make merged VCF object
 completeVCFObj = formats.VCF()
 
-#VCFObj.read_VCF(VCF)
-
+## Read one VCF per iteration and add the variants to the merged VCF
 for VCFfile in paths:
 			
 	VCFfile = VCFfile.rstrip('\n')
 	VCFObj = formats.VCF()
+	
 	donorIdList = VCFObj.read_VCF_multiSample(VCFfile)
 
+	# Add variant objects
 	for lineObj in VCFObj.lineList:
 		completeVCFObj.addLine(lineObj)
 
+	# Create header
 	if completeVCFObj.header == "":
 		completeVCFObj.header = VCFObj.header				
 
+# Sort variants in the merged VCF object
 completeVCFObj.lineList = completeVCFObj.sort() 
 
-#### . 
-header("2. Split into N VCFs with N the number of chromosomes")
+#### Write output VCF file from merged VCF object
+header("2. Write output VCF file")
 
 outFilePath = outDir + '/' + sampleId + ".vcf"
 
-# .1 Write header
+# 1. Write header
 completeVCFObj.write_header(outFilePath)
 
-# .2 Write variants
+# 2. Write variants
 completeVCFObj.write_variants_multiSample(donorIdList, outFilePath)
 
 
