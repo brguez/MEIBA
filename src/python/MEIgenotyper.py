@@ -282,6 +282,7 @@ global debugBool ## debug logging mode. Boolean.
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('VCF', help='VCF with the MEI polymorphism to genotype across the set of donors')
 parser.add_argument('BAMPaths', help='Tab separated text file with two columns: 1) donor ids and 2) path to the corresponding donor normal BAM files. One donor per row.')
+parser.add_argument('sampleId', help='Identifier to name output file.')
 parser.add_argument('--hetVaf', default=0.10, dest='hetVaf', type=float, help='Min VAF threshold for heterozygous (0/1). Default: 0.1' )
 parser.add_argument('--homVaf', default=0.9, dest='homVaf', type=float, help='Min VAF threshold for homozygous alternative (1/1). Default: 0.9' )
 parser.add_argument('-t', '--threads', default=1, dest='threads', type=int, help='Number of threads. Default: 1' )
@@ -291,6 +292,7 @@ parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='
 args = parser.parse_args()
 VCF = args.VCF
 BAMPaths = args.BAMPaths
+sampleId =  args.sampleId
 hetVaf = args.hetVaf
 homVaf = args.homVaf
 threads = args.threads
@@ -304,6 +306,7 @@ print
 print "***** ", scriptName, " configuration *****"
 print "VCF: ", VCF
 print "BAMPaths: ", BAMPaths
+print "sampleId: ", sampleId
 print "min-vaf-heterozygous: ", hetVaf
 print "min-vaf-homozygous: ", homVaf
 print "threads: ", threads
@@ -357,7 +360,7 @@ for chunk in BAMChunks:
 #### 3. Make output multisample VCF file
 header("3. Produce multi-sample VCF file as ouput")
 
-fileName = 'germlineMEI_PCAWG_genotyped.vcf'
+fileName = sampleId + '.vcf'
 outFilePath = outDir + '/' + fileName
 
 # 3.1 Write header
