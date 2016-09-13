@@ -352,7 +352,6 @@ fig = plt.figure(figsize=(10,14))
 fig.suptitle('MEI length correlation', fontsize=18)
 
 ## L1
-# print "L1-len-distances: ", sorted(MEILenL1Distances), np.mean(MEILenL1Distances), np.std(MEILenL1Distances)
 tmpList = map(list, zip(*MEILenL1))
 L1lenPCAWG = tmpList[0]
 L1len1000G = tmpList[1]
@@ -374,7 +373,6 @@ plt.ylabel('1K-GENOMES', fontsize=12)
 ax1.text(0.5, 0.1, text, transform = ax1.transAxes)
 
 ## Alu
-# print "Alu-len-distances: ", sorted(MEILenAluDistances), np.mean(MEILenAluDistances), np.std(MEILenAluDistances)
 tmpList = map(list, zip(*MEILenAlu))
 AlulenPCAWG = tmpList[0]
 Alulen1000G = tmpList[1]
@@ -396,7 +394,6 @@ plt.ylabel('1K-GENOMES', fontsize=12)
 ax2.text(0.5, 0.1, text, transform = ax2.transAxes)
 
 ## SVA 
-# print "SVA-len-distances: ", sorted(MEILenSVADistances), np.mean(MEILenSVADistances), np.std(MEILenSVADistances)
 tmpList = map(list, zip(*MEILenSVA))
 SVAlenPCAWG = tmpList[0]
 SVAlen1000G = tmpList[1]
