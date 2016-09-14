@@ -26,6 +26,7 @@ import sys
 import os.path
 import formats
 import time
+import scipy.stats as stats
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -164,17 +165,122 @@ plt.savefig(fileName)
 
 ## 2.2 Number of + cluster vs - cluster discordant paired-ends scatterplot (tomorrow)
 ###########################################################################
-#header("Number of + and - cluster supporting paired-ends")
+header("Number of + and - cluster supporting paired-ends scatterplots")
+
 
 ## Gather data
-#PEtuplelist = []
+L1PEtuplelist = []
+AluPEtuplelist = []
+SVAPEtuplelist = []
+ERVKPEtuplelist = []
 
-#for MEIObj in VCFObj.lineList:
-#	supportingPEtuple = tuple(MEIObj.genotype.split(':'))
-#	PEtuplelist.append(supportingPEtuple)
+for MEIObj in VCFObj.lineList:
+	supportingPEtuple = tuple(map(int, MEIObj.genotype.split(':')))
+	
+	if (MEIObj.infoDict['CLASS'] == 'L1'):		
+		L1PEtuplelist.append(supportingPEtuple)
+	
+	elif (MEIObj.infoDict['CLASS'] == 'Alu'):
+		AluPEtuplelist.append(supportingPEtuple)
+	
+	elif (MEIObj.infoDict['CLASS'] == 'SVA'):
+		SVAPEtuplelist.append(supportingPEtuple)
+	
+	else:
+		ERVKPEtuplelist.append(supportingPEtuple)
 
-#print PEtuplelist
-#lenTuple = ( length, int(MEI1000G.length) )
+
+### Make plot
+fig = plt.figure(figsize=(10,14))                
+fig.suptitle('Number of discordant paired-ends correlation', fontsize=18)
+
+## L1
+tmpList = map(list, zip(*L1PEtuplelist))
+L1plusPE = tmpList[0]
+L1minusPE = tmpList[1]
+
+# Compute correlation
+corr = stats.pearsonr(L1plusPE, L1minusPE)
+coefficient = format(corr[0], '.3f') 
+pvalue = corr[1]
+text = 'pearson_corr: ' + str(coefficient)
+
+# Make scatterplot
+ax1 = fig.add_subplot(2, 2, 1)
+ax1.set_title("LINE-1", fontsize=14)
+plt.scatter(L1plusPE, L1minusPE, color='#008000', alpha=.4)
+plt.xlim((0, (max(L1plusPE) + 10)))
+plt.ylim((0, (max(L1minusPE) + 10)))
+plt.xlabel('+ cluster', fontsize=12)
+plt.ylabel('- cluster', fontsize=12)
+ax1.text(0.5, 0.1, text, transform = ax1.transAxes)
+
+## Alu
+tmpList = map(list, zip(*AluPEtuplelist))
+AluPlusPE = tmpList[0]
+AluMinusPE = tmpList[1]
+
+# Compute correlation
+corr = stats.pearsonr(AluPlusPE, AluMinusPE)
+coefficient = format(corr[0], '.3f') 
+pvalue = corr[1]
+text = 'pearson_corr: ' + str(coefficient)
+
+# Make scatterplot
+ax2 = fig.add_subplot(2, 2, 2)
+ax2.set_title("ALU", fontsize=14)
+plt.scatter(AluPlusPE, AluMinusPE, color='#008000', alpha=.4)
+plt.xlim((0, (max(AluPlusPE) + 10)))
+plt.ylim((0, (max(AluMinusPE) + 10)))
+plt.xlabel('+ cluster', fontsize=12)
+plt.ylabel('- cluster', fontsize=12)
+ax2.text(0.5, 0.1, text, transform = ax2.transAxes)
+
+## SVA
+tmpList = map(list, zip(*SVAPEtuplelist))
+SVAPlusPE = tmpList[0]
+SVAMinusPE = tmpList[1]
+
+# Compute correlation
+corr = stats.pearsonr(SVAPlusPE, SVAMinusPE)
+coefficient = format(corr[0], '.3f') 
+pvalue = corr[1]
+text = 'pearson_corr: ' + str(coefficient)
+
+# Make scatterplot
+ax3 = fig.add_subplot(2, 2, 3)
+ax3.set_title("SVA", fontsize=14)
+plt.scatter(SVAPlusPE, SVAMinusPE, color='#008000', alpha=.4)
+plt.xlim((0, (max(SVAPlusPE) + 10)))
+plt.ylim((0, (max(SVAMinusPE) + 10)))
+plt.xlabel('+ cluster', fontsize=12)
+plt.ylabel('- cluster', fontsize=12)
+ax3.text(0.5, 0.1, text, transform = ax3.transAxes)
+
+## ERVK
+tmpList = map(list, zip(*ERVKPEtuplelist))
+ERVKPlusPE = tmpList[0]
+ERVKMinusPE = tmpList[1]
+
+# Compute correlation
+corr = stats.pearsonr(ERVKPlusPE, ERVKMinusPE)
+coefficient = format(corr[0], '.3f') 
+pvalue = corr[1]
+text = 'pearson_corr: ' + str(coefficient)
+
+# Make scatterplot
+ax4 = fig.add_subplot(2, 2, 4)
+ax4.set_title("ERVK", fontsize=14)
+plt.scatter(ERVKPlusPE, ERVKMinusPE, color='#008000', alpha=.4)
+plt.xlim((0, (max(ERVKPlusPE) + 10)))
+plt.ylim((0, (max(ERVKMinusPE) + 10)))
+plt.xlabel('+ cluster', fontsize=12)
+plt.ylabel('- cluster', fontsize=12)
+ax4.text(0.5, 0.1, text, transform = ax4.transAxes)
+
+## Save figure
+fileName = outDir + "/PCAWG_discordantPE_clusters_correlation.pdf"
+plt.savefig(fileName)
 
 
 ## 2.3 MEI TSD length histogram 
