@@ -317,7 +317,6 @@ strandDict['inconsistent'] = float(strandDict['inconsistent']) / total * 100
 ## 3.1.2 Put percentages into two lists
 consistentList = [ bkpDict['consistent'], TSDDict['consistent'], strandDict['consistent'] ]
 inconsistentList = [ bkpDict['inconsistent'], TSDDict['inconsistent'], strandDict['inconsistent'] ]
-#print "TSD-len-distances: ", sorted(TSDLenDistances), np.mean(TSDLenDistances), np.std(TSDLenDistances), TSDDict
 
 ## 3.1.3 Make figure
 # Make bar plot 
@@ -327,17 +326,23 @@ fig = plt.figure(figsize=(5,6))
 fig.suptitle('MEI features consistency')
 plt.ylabel('%', fontsize=12)
 ax = fig.add_subplot(111)
-p1 = ax.bar(xpos, consistentList, color='#008000', alpha=0.5, edgecolor='#000000', width=width, align='center')
-p2 = ax.bar(xpos, inconsistentList, color='#ff0000', alpha=0.5, edgecolor='#000000', width=width, align='center',
+p1 = ax.bar(xpos, consistentList, color='#008000', alpha=0.75, edgecolor='#000000', width=width, align='center')
+p2 = ax.bar(xpos, inconsistentList, color='#ff0000', alpha=0.75, edgecolor='#000000', width=width, align='center',
              bottom=consistentList)
+
+# Add a horizontal grid to the plot, but make it very light in color
+# so we can use it for reading data values but not be distracting
+ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey',
+               alpha=0.5)
+ax.set_axisbelow(True)
 
 ## Customize ticks
 plt.yticks(np.arange(0, 101, 10))
 plt.xticks(xpos, ('BKP', 'TSD', 'STRAND'))
 
 ## Make legend 
-circle1 = mpatches.Circle((0, 0), 5, color='#008000', alpha=0.5)
-circle2 = mpatches.Circle((0, 0), 5, color='#ff0000', alpha=0.5)
+circle1 = mpatches.Circle((0, 0), 5, color='#008000', alpha=0.75)
+circle2 = mpatches.Circle((0, 0), 5, color='#ff0000', alpha=0.75)
 plt.figlegend((circle1, circle2), ('Consistent', 'Inconsistent'), loc = 'lower center', ncol=2, labelspacing=0., fontsize=8, fancybox=True )
 
 ## Save figure
