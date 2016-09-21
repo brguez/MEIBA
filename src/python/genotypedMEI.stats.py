@@ -64,12 +64,14 @@ print
 ## Start ## 
 
 #### 1. Read input multi-sample VCF and generate a VCF object
+#############################################################
 header("1. Process multi-sample VCF as input")
 
 VCFObj = formats.VCF()
 donorIdList = VCFObj.read_VCF_multiSample(inputVCF)
 
 #### 2. Read metadata file
+##########################
 # Make three dictionaries with the following structure:
 # - dict1a: key(projectId) -> dict2a: key(donorId) -> nbHeterozygousMEI
 # - dict1b: key(projectId) -> dict2b: key(donorId) -> nbHomozygousMEI
@@ -105,25 +107,26 @@ for line in metadataFile:
 	## Dict1c
 	donorIdProjectCodes[donorId] = projectCode
 
-#for projectCode in nbHeterozMEIDict:
-#	print len(nbHeterozMEIDict[projectCode]), projectCode	
-
-
-
 #### 3. Compute parameters:
-# - Variant allele frequency per MEI
-# - Variant allele count per MEI
+###########################
+# - Variant allele frequency per MEI across PCAWG cohort
+# - Variant allele count per MEI across PCAWG cohort
 # - Number of heterozygous MEI per donor (Save into dictionary generated in step 2)
 # - Number of homozygous MEI per donor (Save into dictionary generated in step 2) 
+# - Predicted zygosity based on number of supporting reads for heterozygous MEI 
+# - Predicted zygosity based on number of supporting reads for homozygous MEI 
 
-L1AlleleCount = []
-L1AlleleFreq = []
-AluAlleleCount = []
-AluAlleleFreq = []
-SvaAlleleCount = []
-SvaAlleleFreq = []
-ErvkAlleleCount = []
-ErvkAlleleFreq = []
+totalAlleleCountList = []
+L1AlleleCountList = []
+L1AlleleFreqList = []
+AluAlleleCountList = []
+AluAlleleFreqList = []
+SvaAlleleCountList = []
+SvaAlleleFreqList = []
+ErvkAlleleCountList = []
+ErvkAlleleFreqList = []
+zygosityHeterozList = []
+zygosityHomozList = []
 
 header("3. Compute parameters")
 
@@ -133,67 +136,81 @@ for MEIObj in VCFObj.lineList:
 	# Number of donors * 2 (diploid, two copies of a given chromosome)
 	totalNbChrom = len(MEIObj.genotypesDict) * 2
 
-	## Compute MEI allele count and update counters to heterozygous and homozygous MEI per donor
+	## Compute MEI allele count, genotyping VAF and update counters to heterozygous and homozygous MEI per donor
 	# MEI allele count: number of chromosomes in the population harvouring the MEI
+	# Genotyping VAF: Ratio (number_reads_supporting_MEI)/(total_nb_reads_covering_MEI)  
 	alleleCount = 0
 
  	for donorId, genotypeField in MEIObj.genotypesDict.iteritems():		
 
 		projectCode = donorIdProjectCodes[donorId]
-		genotype = genotypeField.split(":")[0]
+		genotypeFieldList = genotypeField.split(":")
+		genotype = genotypeFieldList[0]
+		nbReadsMEI = float(genotypeFieldList[1])
+		totalNbReads = float(genotypeFieldList[2])
+		
+		# Compute genotyping VAF:
+		if totalNbReads == 0:
+			zygosity = 0
+		else:	
+			zygosity =  nbReadsMEI / totalNbReads
 
-		#print "donor_genotype: ", projectCode, donorId, genotype
-
+		## Update counters and store VAF values
 		# A) Heterozygous
 		if (genotype == "0/1"):
 			alleleCount +=  1
-			nbHeterozMEIDict[projectCode][donorId] += 1 		
+			nbHeterozMEIDict[projectCode][donorId] += 1
+			zygosityHeterozList.append(zygosity)	
 	
 		# B) Homozygous		
 		elif (genotype == "1/1"):
 			alleleCount += 2
 			nbHomozMEIDict[projectCode][donorId] += 1 
+			zygosityHomozList.append(zygosity)
 
 	## Compute MEI allele frequency:
 	alleleFrequency = float(alleleCount) / totalNbChrom
 	
-	## Save into list. One per MEI type	
+	## Save into list. One per MEI type
+	totalAlleleCountList.append(alleleCount)
+	
 	if (MEIObj.infoDict['CLASS'] == 'L1'):		
-		L1AlleleCount.append(alleleCount)
-		L1AlleleFreq.append(alleleFrequency)
+		L1AlleleCountList.append(alleleCount)
+		L1AlleleFreqList.append(alleleFrequency)
 
 	elif (MEIObj.infoDict['CLASS'] == 'Alu'):
-		AluAlleleCount.append(alleleCount)
-		AluAlleleFreq.append(alleleFrequency)
+		AluAlleleCountList.append(alleleCount)
+		AluAlleleFreqList.append(alleleFrequency)
 	
 	elif (MEIObj.infoDict['CLASS'] == 'SVA'):
-		SvaAlleleCount.append(alleleCount)
-		SvaAlleleFreq.append(alleleFrequency)
+		SvaAlleleCountList.append(alleleCount)
+		SvaAlleleFreqList.append(alleleFrequency)
 	
 	else:
-		ErvkAlleleCount.append(alleleCount)
-		ErvkAlleleFreq.append(alleleFrequency)
+		ErvkAlleleCountList.append(alleleCount)
+		ErvkAlleleFreqList.append(alleleFrequency)
 
 
 #### 4. Make plots:
+#####################
 header("4. Make plots")
 
 # - Variant allele frequencies histogram across PCAWG donors (done)
+# - Number of MEI per donor and tumor type boxplot (done)
+# - Predicted zygosity histogram for homozygous and heterozygous variants (done) 
 # - Variant allele counts line graph (to do)
-# - Number of MEI per donor and tumor type boxplot (to do)
-# - Variant allele frequencies histogram for homozygous and heterozygous variants  based on read support during variant calling (to do) 
 
-### 4.1 Variant allele frequencies histogram across PCAWG donors 
+#### 4.1 Variant allele frequencies histogram across PCAWG donors 
 header("4.1 Make variant allele frequencies plot")
 
 fig = plt.figure(figsize=(16,13))                
 fig.suptitle('Variant allele frequencies (VAF) across PCAWG donors', fontsize=20)
 
-### A) L1
+### a) L1
 ## Make plot
 ax1 = fig.add_subplot(2, 2, 1)
 ax1.set_title("LINE-1", fontsize=16)
-plt.hist(L1AlleleFreq, bins=40, color='#008000', alpha=0.75)
+plt.hist(L1AlleleFreqList, bins=40, color='#008000', alpha=0.75)
 plt.xlabel("VAF", fontsize=14)
 plt.ylabel("# MEI")
 plt.xlim(0, 1)
@@ -209,11 +226,11 @@ plt.xticks(np.arange(0, 1.01, 0.1))
 locs, labels = plt.xticks()
 plt.setp(labels, rotation=30)
 
-### B) ALU
+### b) ALU
 ## Make plot
 ax2 = fig.add_subplot(2, 2, 2)
 ax2.set_title("ALU", fontsize=16)
-plt.hist(AluAlleleFreq, bins=40, color='#008000', alpha=0.75)
+plt.hist(AluAlleleFreqList, bins=40, color='#008000', alpha=0.75)
 plt.xlabel("VAF", fontsize=14)
 plt.ylabel("# MEI")
 plt.xlim(0, 1)
@@ -229,11 +246,11 @@ plt.xticks(np.arange(0, 1.01, 0.1))
 locs, labels = plt.xticks()
 plt.setp(labels, rotation=30)
 
-### C) SVA
+### c) SVA
 ## Make plot
 ax3 = fig.add_subplot(2, 2, 3)
 ax3.set_title("SVA", fontsize=16)
-plt.hist(SvaAlleleFreq, bins=40, color='#008000', alpha=0.75)
+plt.hist(SvaAlleleFreqList, bins=40, color='#008000', alpha=0.75)
 plt.xlabel("VAF", fontsize=14)
 plt.ylabel("# MEI")
 plt.xlim(0, 1)
@@ -249,15 +266,15 @@ plt.xticks(np.arange(0, 1.01, 0.1))
 locs, labels = plt.xticks()
 plt.setp(labels, rotation=30)
 
-### D) ERVK (no ERVK for now.. we need to improve script for identifying ERVK TSD)
+### d) ERVK (no ERVK for now.. we need to improve script for identifying ERVK TSD)
 ## Make plot
 #ax4 = fig.add_subplot(2, 2, 4)
 #ax4.set_title("ERVK", fontsize=16)
-#plt.hist(ErvkAlleleFreq, bins=40, color='#008000', alpha=0.75)
+#plt.hist(ErvkAlleleFreqList, bins=40, color='#008000', alpha=0.75)
 #plt.xlabel("VAF", fontsize=14)
 #plt.ylabel("# MEI")
 #plt.xlim(0, 1)
-#plt.ylim(0, max(ErvkAlleleFreq) + 10)
+#plt.ylim(0, max(ErvkAlleleFreqList) + 10)
 
 # Add a horizontal grid to the plot, but make it very light in color
 # so we can use it for reading data values but not be distracting
@@ -269,16 +286,16 @@ plt.setp(labels, rotation=30)
 #plt.xticks(np.arange(0, 1.01, 0.1))
 #locs, labels = plt.xticks()
 #plt.setp(labels, rotation=30)
-#plt.yticks(np.arange(0, max(ErvkAlleleFreq)))
+#plt.yticks(np.arange(0, max(ErvkAlleleFreqList)))
 
-##### Save figure
+## Save figure
 fileName = outDir + "/PCAWG_cohortVAFs_hist.pdf"
 plt.savefig(fileName)
 
-### 4.2 Make Number of heterozygous and homozigous MEI per donor and tumor type boxplots
+#### 4.2 Make Number of heterozygous and homozigous MEI per donor and tumor type boxplots
 header("4.2 Make boxplots")
 
-#### Organize the data for plotting
+### Organize the data for plotting
 tupleListHeterozMEI = []
 tupleListHomozMEI = []
 
@@ -306,7 +323,7 @@ tmpList = map(list, zip(*tupleListHomozMEI))
 projectCodesListHom = tmpList[0]
 nbMEIPerDonorHom = tmpList[1]
 
-#### Make boxplot
+### Make boxplot
 
 fig = plt.figure(figsize=(18,12))           
 fig.suptitle('# MEI per donor', fontsize=24)
@@ -391,9 +408,102 @@ ax2.yaxis.grid(True, linestyle='-', which='major', color='lightgrey',
                alpha=0.5)
 ax2.set_axisbelow(True)
 
-#### Save figure
-
+## Save figure
 fileName = outDir + "/PCAWG_nbMEIperDonor_boxplot.pdf"
 fig.savefig(fileName)
 
+#### 4.3 Predicted zygosity histogram for homozygous and heterozygous variants
+header("4.3 Make zygosity histogram")
+fig = plt.figure(figsize=(8,6))
+fig.suptitle('Predicted zygosity', fontsize=14)
+
+## Make plot
+ax = fig.add_subplot(1, 1, 1)
+plt.hist(zygosityHeterozList, bins=20, color='#008000', edgecolor='#000000', alpha=0.75, label='Heterozygous')
+plt.hist(zygosityHomozList, bins=5, color='#A67D3D', edgecolor='#000000', alpha=0.75, label='Homozygous')
+plt.xlabel("Zygosity", fontsize=12)
+plt.ylabel("# MEI", fontsize=12)
+plt.xlim(0, 1)
+
+# Add an horizontal grid to the plot, but make it very light in color
+# so we can use it for reading data values but not be distracting
+ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey',
+               alpha=0.5)
+ax.set_axisbelow(True)
+
+## Customize ticks
+plt.xticks(np.arange(0, 1.01, 0.1))
+locs, labels = plt.xticks()
+plt.setp(labels, rotation=30)
+
+## Legend
+plt.legend(fontsize=12, loc='upper left')
+
+## Save figure
+fileName = outDir + "/PCAWG_zygosity_histogram.pdf"
+fig.savefig(fileName)
+
+#### 4.4 Variant allele counts line chart (to do)
+header("4.4 Make boxplots")
+
+### Organize the data for plotting
+
+print "length: ", len(totalAlleleCountList)
+
+alleleCountNbMEITuple = [(i, totalAlleleCountList.count(i)) for i in set(totalAlleleCountList)]
+tmpList = map(list, zip(*alleleCountNbMEITuple))
+alleleCountList = tmpList[0]
+nbMEIList = tmpList[1]
+
+print "tuple: ", alleleCountNbMEITuple
+print "alleleCount: ", alleleCountList
+print "nbMEI:", nbMEIList
+
+### Make plot
+
+header("4.4 Make allele counts line chart")
+
+fig = plt.figure(figsize=(8,8))                
+fig.suptitle('Allele count spectrum', fontsize=16)
+
+## a) L1
+ax1 = fig.add_subplot(1, 1, 1)
+plt.scatter(alleleCountList, nbMEIList, color='#008000', alpha=.4)
+plt.xlabel("Variant allele count", fontsize=14)
+plt.ylabel("# MEI")
+ax1.set_xscale('log', basex=10)
+ax1.set_yscale('log', basex=10)
+plt.xlim(0.5, max(alleleCountList) + 100)
+plt.ylim(0.5, max(nbMEIList) + 100)
+
+# Add a horizontal grid to the plot, but make it very light in color
+# so we can use it for reading data values but not be distracting
+ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey',
+               alpha=0.5)
+ax1.set_axisbelow(True)
+
+## Customize ticks
+# X axis
+xPosList = [ 1, 5, 10, 50, 100, 200, 300, 400, 500, 1000, 2500, max(alleleCountList) ]
+ax1.set_xticks(xPosList)
+ax1.set_xticklabels(xPosList)
+locs, labels = plt.xticks()
+plt.setp(labels, rotation=90)
+
+# y axis
+yPosList = [ 1, 10, 100, 1000, max(nbMEIList) ]
+ax1.set_yticks(yPosList)
+ax1.set_yticklabels(yPosList)
+
+## b) Alu
+
+## c) SVA
+
+
+## Save figure
+fileName = outDir + "/PCAWG_alleleCount_scatterplot.pdf"
+fig.savefig(fileName)
+
+
+####
 header("Finished")
