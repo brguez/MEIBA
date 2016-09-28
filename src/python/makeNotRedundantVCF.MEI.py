@@ -32,26 +32,40 @@ class cohort():
 	self.MEIDict = {}	
 	self.consensusMEIDict = {}  
 
-    def read_VCFs(self, inputVCFs):
+    def read_VCFs(self, inputPath):
 	""" 
 
 	"""
-	inputVCFs = open(inputVCFs, 'r')
+	inputFile = open(inputPath, 'r')
 
 	info("Read input VCFs ")
+
 	# Per iteration, read a VCF, generate a VCF object and add it to the cohort
-	for line in inputVCFs:
+	for line in inputFile:
     	    line = line.rstrip('\n')
 	    line = line.split("\t")
-    	    VCFfile = line[0]
+
+    	    projectCode = line[0]
+	    donorId = line[1]
+	    VCFfile = line[2]
+	
+	    # Create VCF object
     	    VCFObj = formats.VCF()
     	    
 	    info("Reading " + VCFfile + "...")
 
+	    # Input VCF available 
 	    if os.path.isfile(VCFfile):
 
+		# Read VCF and add information to VCF object
 		VCFObj.read_VCF(VCFfile)
-	 	
+
+		# Add projectCode and donorId information to the genotype field in each MEI object
+		for MEIObject in VCFObj.lineList:
+			
+			MEIObject.format = MEIObject.format + ':PRJ:DON' 
+			MEIObject.genotype = MEIObject.genotype + ':' + projectCode + ':' + donorId
+ 
 		# Add donor VCF to cohort
 	 	self.addDonor(VCFObj)
 	    else:
@@ -195,9 +209,8 @@ class cohort():
 ##FILTER=<ID=REP,Description="Insertion overlapping a satellite region or a repetitive element of the same class">
 ##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting reads">
 ##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
-##FORMAT=<ID=GT,Number=1,Type=String,Description="Unphased genotypes">
-##FORMAT=<ID=NV,Number=1,Type=Integer,Description="Number of reads supporting the variant in this sample">
-##FORMAT=<ID=NR,Number=1,Type=Integer,Description="Number of reads covering variant location in this sample">
+##FORMAT=<ID=PRJ,Number=1,Type=String,Description="Project code for donor selected as representative">
+##FORMAT=<ID=DON,Number=1,Type=String,Description="Donor identifier for donor selected as representative">
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	CONSENSUS
 """ 
 	## Replace variables into the template and print header into the output file
@@ -406,12 +419,12 @@ from operator import itemgetter, attrgetter, methodcaller
 
 ## Get user's input ## 
 parser = argparse.ArgumentParser(description= """""")
-parser.add_argument('inputVCFs', help='...')
-parser.add_argument('--overhang', default=5, type=int, dest='overhang', help='Maximum overhang for MEI clustering. Default: 5 base pairs.' )
-parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
+parser.add_argument('inputPath', help='Tabular text file containing one row per donor with the following consecutive fields: projectCode donorId vcf_path')
+parser.add_argument('--overhang', default=5, type=int, dest='overhang', help='Maximum overhang for MEI clustering. Default: 5 base pairs.')
+parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.')
 
 args = parser.parse_args()
-inputVCFs = args.inputVCFs
+inputPath = args.inputPath
 overhang = args.overhang
 outDir = args.outDir
 
@@ -420,7 +433,7 @@ scriptName = os.path.basename(sys.argv[0])
 ## Display configuration to standard output ##
 print
 print "***** ", scriptName, " configuration *****"
-print "inputVCFs: ", inputVCFs
+print "inputPath: ", inputPath
 print "overhang: ", overhang
 print "outDir: ", outDir
 print 
@@ -432,8 +445,8 @@ print
 ## 1. Initialize cohort object 
 cohortObj = cohort()
 
-## 2. Read VCF files and make a list of VCF objects 
-cohortObj.read_VCFs(inputVCFs)
+## 2. Read VCF files and make a list of VCF objects. Add donorId and projectCode information 
+cohortObj.read_VCFs(inputPath)
 
 ## 3. Organize MEI by chromosome, insertion class and in increasing cromosomal coordinates 
 cohortObj.build_MEI_dict()
