@@ -86,8 +86,7 @@ for line in targetMEI:
 		chrom = line[0] 
 		pos = line[1]
 		category = line[2]
-		gene = line[3]
-	
+
 		# Open output file
 		outFilePath = outDir + '/' + 'chr' + chrom + '_' + pos + '_' + category + '_genotypes.txt' 
 		outFile = open(outFilePath, 'a')

@@ -252,6 +252,7 @@ class VCFline():
 	  
 	return(info)
 
+
     def nbPE(self):
 	""" 
 	Return the total number of paired-end reads supporting a MEI (sum + and - cluster supporting reads)
