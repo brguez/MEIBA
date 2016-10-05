@@ -76,7 +76,6 @@ header("2. Read target donors txt")
 
 targetDonorsList = [line.rstrip('\n') for line in open(targetDonors)]
 
-
 #### 3. Make multi-sample VCF file with selected donors as ouput
 ################################################################
 header("3. Make multi-sample VCF file with selected donors as ouput")
