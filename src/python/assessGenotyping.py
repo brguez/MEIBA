@@ -133,15 +133,9 @@ header("2. Make genotyping binary matrices")
 gtDfPCAWG = genotypes2df(VCFObjPCAWG)
 gtBinaryDfPCAWG = gtDfPCAWG.applymap(gt2binary)
 
-#print "binary-PCAWG: ", gtBinaryDfPCAWG
-
-#print '************************'
-
 #### 1KGP
 gtDf1KGP = genotypes2df(VCFObj1KGP)
 gtBinaryDf1KGP = gtDf1KGP.applymap(gt2binary)
-
-#print "binary-1KGP: ", gtBinaryDf1KGP
 
 #### 3. Compare 1KGP and PCAWG genotyping binary matrices to
 #############################################################
@@ -280,9 +274,6 @@ for donorId in colNamesList:
 	# Add series to the list
 	seriesList.append(series)
 
-
-# print 'seriesList: ', seriesList
-
 ## Merge line series into dataframe (row <- recall and precision, columns <- donor_ids):
 df1 = pd.concat(seriesList, axis=1)
 
@@ -334,6 +325,19 @@ xTickMarks = list(df2.index)
 ax.set_xticks(pos+width)
 xtickNames = ax.set_xticklabels(xTickMarks)
 plt.setp(xtickNames, fontsize=12)
+
+# Add a horizontal grid to the plot, but make it very light in color
+# so we can use it for reading data values but not be distracting
+ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey',
+               alpha=0.5)
+ax.set_axisbelow(True)
+
+## Customize ticks
+# y axis
+yPosList=np.arange(0,1.01,0.1)
+ax.set_yticks(yPosList)
+ax.set_yticklabels(yPosList)
+locs, labels = plt.yticks()
 
 ## add a legend
 ax.legend( (recallPlt[0], precisionPlt[0]), ('recall', 'precision') )

@@ -160,9 +160,12 @@ header("Compare PCAWG with 1K-GENOMES MEI")
 
 # Gather all this information into arrays for plotting. 
 bkpDistances = [] 
+bkpDistL1 = []
+bkpDistAlu = []
+bkpDistSVA = []
 strandComparisons = []
-TSDComparisons = [] 
-TSDLenDistances = []
+TSDSeqComparisons = [] 
+TSDLenComparisons = []
 MEILenL1 = []
 MEILenL1Distances = []
 MEILenAlu = []
@@ -231,6 +234,15 @@ for VCFlineObj in VCFlineObjList:
 				difference = min(diffA, diffB)
 				bkpDistances.append(difference)
 
+				if (VCFlineObj.infoDict['CLASS'] == "L1"):			
+					bkpDistL1.append(difference)				
+
+				elif (VCFlineObj.infoDict['CLASS'] == "Alu"):
+					bkpDistAlu.append(difference)
+				
+				elif (VCFlineObj.infoDict['CLASS'] == "SVA"):
+					bkpDistSVA.append(difference)		
+
 			# b) Orientation (+ or -)
 			if (MEI1000G.orientation != "UNK"):
 				comparisonResult = 'consistent' if VCFlineObj.infoDict["STRAND"] == MEI1000G.orientation else 'inconsistent'
@@ -241,13 +253,12 @@ for VCFlineObj in VCFlineObjList:
 				
 				# Compare sequence
 				comparisonResult = 'consistent' if VCFlineObj.infoDict["TSSEQ"] == MEI1000G.TSD else 'inconsistent'
-				TSDComparisons.append(comparisonResult)
+				TSDSeqComparisons.append(comparisonResult)
 
 				# Compare length
-				length = abs(int(VCFlineObj.infoDict['TSLEN']))				
-				difference = abs(len(MEI1000G.TSD) - length)	
-				TSDLenDistances.append(difference)
-			
+				comparisonResult = 'consistent' if int(VCFlineObj.infoDict["TSLEN"]) == len(MEI1000G.TSD) else 'inconsistent'
+				TSDLenComparisons.append(comparisonResult)
+				
 			# d) transposon length 
 			if (MEI1000G.length != "UNK") and ('LEN' in VCFlineObj.infoDict):
 
@@ -296,14 +307,23 @@ bkpDict['consistent'] = float(bkpDict['consistent']) / total * 100
 bkpDict['inconsistent'] = float(bkpDict['inconsistent']) / total * 100
 #print "bkp-distances: ", sorted(bkpDistances), np.mean(bkpDistances), np.std(bkpDistances), bkpDict
 
-## TSD 
-# Count number of consistent and inconsistent TSD length instances
-TSDDict = dict([(x, TSDComparisons.count(x)) for x in set(TSDComparisons)])
+## TSD seq
+# Count number of consistent and inconsistent TSD sequence instances
+TSDSeqDict = dict([(x, TSDSeqComparisons.count(x)) for x in set(TSDSeqComparisons)])
 
 # Convert into percentages
-total = (TSDDict['consistent'] + TSDDict['inconsistent'])
-TSDDict['consistent'] = float(TSDDict['consistent']) / total * 100
-TSDDict['inconsistent'] = float(TSDDict['inconsistent']) / total * 100
+total = (TSDSeqDict['consistent'] + TSDSeqDict['inconsistent'])
+TSDSeqDict['consistent'] = float(TSDSeqDict['consistent']) / total * 100
+TSDSeqDict['inconsistent'] = float(TSDSeqDict['inconsistent']) / total * 100
+
+## TSD length
+# Count number of consistent and inconsistent TSD length instances
+TSDLenDict = dict([(x, TSDLenComparisons.count(x)) for x in set(TSDLenComparisons)])
+
+# Convert into percentages
+total = (TSDLenDict['consistent'] + TSDLenDict['inconsistent'])
+TSDLenDict['consistent'] = float(TSDLenDict['consistent']) / total * 100
+TSDLenDict['inconsistent'] = float(TSDLenDict['inconsistent']) / total * 100
 
 ## Strand 
 # Count number of consistent and inconsistent strand instances
@@ -315,8 +335,8 @@ strandDict['consistent'] = float(strandDict['consistent']) / total * 100
 strandDict['inconsistent'] = float(strandDict['inconsistent']) / total * 100
 
 ## 3.1.2 Put percentages into two lists
-consistentList = [ bkpDict['consistent'], TSDDict['consistent'], strandDict['consistent'] ]
-inconsistentList = [ bkpDict['inconsistent'], TSDDict['inconsistent'], strandDict['inconsistent'] ]
+consistentList = [ bkpDict['consistent'], TSDLenDict['consistent'], strandDict['consistent'] ]
+inconsistentList = [ bkpDict['inconsistent'], TSDLenDict['inconsistent'], strandDict['inconsistent'] ]
 
 ## 3.1.3 Make figure
 # Make bar plot 
@@ -338,7 +358,7 @@ ax.set_axisbelow(True)
 
 ## Customize ticks
 plt.yticks(np.arange(0, 101, 10))
-plt.xticks(xpos, ('BKP', 'TSD', 'STRAND'))
+plt.xticks(xpos, ('BKP', 'TSD-LEN', 'STRAND'))
 
 ## Make legend 
 circle1 = mpatches.Circle((0, 0), 5, color='#008000', alpha=0.75)
@@ -491,6 +511,25 @@ plt.figlegend((circle1, circle2), ('PCAWG', '1K-GENOMES'), loc = 'lower center',
 fileName = outDir + "/PCAWG_1KGENOMES_venn.pdf"
 plt.savefig(fileName)
 
+#########################################################
+## 4. Compute bkp distance mean and standard desviation #
+#########################################################
+
+header("Compute bkp distance mean and standard desviation")
+
+#### Alu
+print "ALU-mean: ", np.mean(bkpDistAlu) 
+print "ALU-std: ", np.std(bkpDistAlu)
+
+#### L1 
+print "L1-mean: ", np.mean(bkpDistL1) 
+print "L1-std: ",np.std(bkpDistL1)
+
+#### SVA
+print "SVA-mean: ", np.mean(bkpDistSVA)
+print "SVA-std: ", np.std(bkpDistSVA)
+
+ 
 ## End ##
 print 
 print "***** Finished! *****"
