@@ -1,2 +1,2 @@
-# TEIBA repository
+# TEIBA repository.
 
