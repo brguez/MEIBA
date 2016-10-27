@@ -37,9 +37,10 @@ import time
 
 ## Get user's input ## 
 parser = argparse.ArgumentParser(description= "Select MEI from VCF based on a list of target MEIs in bed format. Report VCF with those MEI from initial VCF included in the bed.")
-parser.add_argument('inputVCF', help='Multi-sample VCF file containing genotyped MEI')
+parser.add_argument('inputVCF', help='Uni-sample or multi-sample VCF file containing MEI')
 parser.add_argument('inputBed', help='Bed file containing one line per MEI of interest and four columns: chromosome, beg, end and MEI class.')
 parser.add_argument('sampleId', help='Identifier to name output file.')
+parser.add_argument('-multiSample', action='store_true')
 parser.add_argument('--overhang', default=0, type=int, dest='overhang', help='Maximum overhang for searching overlap between MEI VCF and Bed coordinates. Default: 0 base pairs.')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='Output directory. Default: current working directory.' )
 
@@ -47,6 +48,7 @@ args = parser.parse_args()
 inputVCF = args.inputVCF
 inputBed =  args.inputBed
 sampleId =  args.sampleId
+multiSample = args.multiSample
 overhang = args.overhang
 outDir = args.outDir
 
@@ -58,6 +60,7 @@ print "***** ", scriptName, " configuration *****"
 print "inputVCF: ", inputVCF
 print "inputBed: ", inputBed
 print "sampleId: ", sampleId
+print "multiSample: ", multiSample
 print "overhang: ", overhang
 print 
 print "***** Executing ", scriptName, ".... *****"
@@ -65,12 +68,22 @@ print
 
 ## Start ## 
 
-#### 1. Read input multi-sample VCF and generate a VCF object
+#### 1. Read input VCF and generate a VCF object
 #############################################################
-header("1. Process multi-sample VCF as input")
+header("1. Process input VCF" )
 
 VCFObj = formats.VCF()
-donorIdList = VCFObj.read_VCF_multiSample(inputVCF)
+
+# a) One sample VCF file
+if (multiSample == False):
+	print "read-onesample"
+	VCFObj.read_VCF(inputVCF)
+
+# b) Multi-sample VCF file
+else:
+	print "read-multisample"
+	donorIdList = VCFObj.read_VCF_multiSample(inputVCF)
+
 
 #### 2. Select MEI from VCF based on a list of target MEIs
 ############################################################
@@ -130,13 +143,20 @@ header("3. Produce multi-sample VCF with the selected MEI as ouput ")
 fileName = sampleId + '.vcf'
 outFilePath = outDir + '/' + fileName
 
-# 3.1 Write header
+## 3.1 Write header
 outVCFObj.header = VCFObj.header
 outVCFObj.write_header(outFilePath)
 
-# 3.2 Write variants
+## 3.2 Write variants
+# a) One sample VCF file
+if (multiSample == False):
+	print "write-onesample"
+	outVCFObj.write_variants(outFilePath)
 
-outVCFObj.write_variants_multiSample(donorIdList, outFilePath)
+# b) Multi-sample VCF file
+else:
+	print "write-multisample"
+	outVCFObj.write_variants_multiSample(donorIdList, outFilePath)
 
 
 #### END
