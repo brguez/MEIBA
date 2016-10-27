@@ -35,9 +35,14 @@ import os.path
 import formats
 import time
 import scipy.stats as stats
+import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
 import seaborn as sns
+
+## Graphic style ##
+sns.set_style("white")
+sns.set_style("ticks")
 
 ## Get user's input ## 
 parser = argparse.ArgumentParser(description= """""")
@@ -159,7 +164,7 @@ header("4. Make plots")
 
 # - Variant allele frequencies histogram across PCAWG donors (done)
 # - Number of source elements per donor and ancestry. Boxplot (done)
-# - Number of source elements per donor and ancestry. Violin Plot (to do)
+# - Number of source elements per donor and ancestry. Violin Plot (done)
 
 #### 4.1 Source element variant allele frequencies across PCAWG donors 
 header("4.1 Make variant allele frequencies plot")
@@ -177,6 +182,10 @@ plt.ylabel("# L1 source elements", fontsize=12)
 plt.ylim(0, 11)
 plt.xlim(0, 1)
 
+# Remove top and right axes
+ax1.get_xaxis().tick_bottom()
+ax1.get_yaxis().tick_left()
+
 # Add a horizontal grid to the plot, but make it very light in color
 # so we can use it for reading data values but not be distracting
 ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
@@ -185,7 +194,7 @@ ax1.set_axisbelow(True)
 ## Customize ticks
 plt.xticks(np.arange(0, 1.01, 0.1))
 locs, labels = plt.xticks()
-plt.setp(labels, rotation=30)
+# plt.setp(labels, rotation=30)
 
 ## Save figure
 fileName = outDir + "/PCAWG_sourceElements_VAF_hist.pdf"
@@ -194,6 +203,7 @@ plt.savefig(fileName)
 #### 4.2 Number of source elements per donor and ancestry
 header("4.2 Number of source elements per donor and ancestry")
 
+### A) Boxplot
 ## Organize the data for plotting
 tupleListNbSourceElements = []
 
@@ -216,7 +226,7 @@ tmpList = map(list, zip(*tupleListNbSourceElements))
 ancestryCodesList = tmpList[0]
 nbSourceElementsPerDonor = tmpList[1]
 
-#### A) Make boxplot 
+### Plotting 
 fig = plt.figure(figsize=(5,6))           
 fig.suptitle('# Source elements per donor', fontsize=14)
 
@@ -247,7 +257,7 @@ for median in bp['medians']:
 # Add the ancestry codes to the x-axis
 ax1.set_xticklabels(ancestryCodesList, fontsize = 10)
 locs, labels = plt.xticks()
-plt.setp(labels, rotation=25)
+# plt.setp(labels, rotation=25)
 
 # Remove top and right axes
 ax1.get_xaxis().tick_bottom()
@@ -262,6 +272,56 @@ ax1.set_axisbelow(True)
 fileName = outDir + "/PCAWG_nbSourceElementsPerDonor_boxplot.pdf"
 fig.savefig(fileName)
 
+### B) Violin plot
+## Organize the data for plotting into a dictionary:
+# - dict1: 
+#	nbSourceElements -> list[nbSourceElementsDonor1, nbSourceElementsDonor2, ..., nbSourceElementsDonorN]
+#	ancestryPerDonor -> list[ancestryDonor1, ancestryDonor2, ..., nbSourceElementsDonorN]
+
+dict4pandas = {}
+dict4pandas['nbSourceElements'] = []
+dict4pandas['ancestry'] = []
+
+for ancestryCode in sorted(nbSourceElementsDict):
+	 
+	nbSourceElementsPerDonorList = nbSourceElementsDict[ancestryCode].values()
+	nbDonors = len(nbSourceElementsPerDonorList)
+	
+	xLabel = ancestryCode + '(' +  str(nbDonors) + ')'
+	xLabelList = [ xLabel ] * nbDonors
+
+	dict4pandas['nbSourceElements'] = dict4pandas['nbSourceElements'] + nbSourceElementsPerDonorList
+	dict4pandas['ancestry'] = dict4pandas['ancestry'] + xLabelList
+
+# Make pandas dataframe from dict:
+dataframe = pd.DataFrame(dict4pandas)
+
+### Plotting 
+
+fig = plt.figure(figsize=(5,6))           
+fig.suptitle('# Source elements per donor', fontsize=14)
+
+# Create the violin plot
+ax = sns.violinplot(x='ancestry', y='nbSourceElements', data=dataframe, palette="muted")
+
+# y limit
+sns.plt.ylim(0,21)
+
+## Modify axis labels
+ax.set(xlabel='', ylabel='# Source L1')
+
+# Remove top and right axes
+ax.get_xaxis().tick_bottom()
+ax.get_yaxis().tick_left()
+
+# Add a horizontal grid to the plot, but make it very light in color
+# so we can use it for reading data values but not be distracting
+ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+ax.set_axisbelow(True)
+
+## Save figure
+fileName = outDir + "/PCAWG_nbSourceElementsPerDonor_violinplot.pdf"
+fig.savefig(fileName)
 
 ####
 header("Finished")
