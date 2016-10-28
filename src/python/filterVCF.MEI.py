@@ -62,6 +62,8 @@ VCFObj.read_VCF(inputVCF)
 # Iterate over each MEI in the VCF
 for VCFlineObj in VCFObj.lineList:
 
+    VCFlineObj.filter =  '.'
+
     ## 2.1 Apply score filter:
     # score < minScore_threshold -> filter out
     
