@@ -1812,94 +1812,97 @@ class fasta():
 
         return fastaDict
 
+def parse_args():
+    """Define and parse command line parameters."""
+    parser = argparse.ArgumentParser(description= """""")
+    parser.add_argument('inputPaths', help='...')
+    parser.add_argument('donorId', help='...')
+    parser.add_argument('genome', help='...')
+    parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
+    args = parser.parse_args()
+    return args
 
 #### MAIN ####
 
+if __name__ == "__main__":
+    ## Get user's input ##
+    args = parse_args()
+    inputPaths = args.inputPaths
+    donorId = args.donorId
+    genome = args.genome
+    outDir = args.outDir
 
-## Get user's input ##
-parser = argparse.ArgumentParser(description= """""")
-parser.add_argument('inputPaths', help='...')
-parser.add_argument('donorId', help='...')
-parser.add_argument('genome', help='...')
-parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
+    scriptName = os.path.basename(sys.argv[0])
 
-args = parser.parse_args()
-inputPaths = args.inputPaths
-donorId = args.donorId
-genome = args.genome
-outDir = args.outDir
-
-scriptName = os.path.basename(sys.argv[0])
-
-## Display configuration to standard output ##
-print
-print "***** ", scriptName, " configuration *****"
-print "paths2bkpAnalysis: ", inputPaths
-print "donorId: ", donorId
-print "genome: ", genome
-print "outDir: ", outDir
-print
-print "***** Executing ", scriptName, " *****"
-print
+    ## Display configuration to standard output ##
+    print
+    print "***** ", scriptName, " configuration *****"
+    print "paths2bkpAnalysis: ", inputPaths
+    print "donorId: ", donorId
+    print "genome: ", genome
+    print "outDir: ", outDir
+    print
+    print "***** Executing ", scriptName, " *****"
+    print
 
 
-## Start ## 
+    ## Start ## 
 
-outFilePath = outDir + '/' + donorId + '.vcf'
+    outFilePath = outDir + '/' + donorId + '.vcf'
 
-## 0. Create reference genome fasta object
+    ## 0. Create reference genome fasta object
 
-header("Creating reference genome fasta object")
-genomeObj = fasta(genome)
+    header("Creating reference genome fasta object")
+    genomeObj = fasta(genome)
 
-## 1. Create VCF object and print VCF header
+    ## 1. Create VCF object and print VCF header
 
-header("Creating VCF object and printing VCF header into the output file")
-VCFObj = VCF()
-VCFObj.print_header(outFilePath, donorId)
+    header("Creating VCF object and printing VCF header into the output file")
+    VCFObj = VCF()
+    VCFObj.print_header(outFilePath, donorId)
 
-## 2. Per each insertion perform breakpoint analysis
+    ## 2. Per each insertion perform breakpoint analysis
 
-inputFile = open(inputPaths, 'r')
+    inputFile = open(inputPaths, 'r')
 
-# Analyze one insertion per iteration
-for line in inputFile:
-    line = line.rstrip('\n')
-    line = line.split("\t")
+    # Analyze one insertion per iteration
+    for line in inputFile:
+        line = line.rstrip('\n')
+        line = line.split("\t")
 
-    # Get TE insertion info and files
-    TEClass, insertionCoord = line[0].split(":")
-    contigsPlusPath, contigsMinusPath = line[1].split(",")
-    blatPlusPath, blatMinusPath = line[2].split(",")
-    readPairsPlus = line[3]
-    readPairsMinus = line[4]
+        # Get TE insertion info and files
+        TEClass, insertionCoord = line[0].split(":")
+        contigsPlusPath, contigsMinusPath = line[1].split(",")
+        blatPlusPath, blatMinusPath = line[2].split(",")
+        readPairsPlus = line[3]
+        readPairsMinus = line[4]
 
-    # Perform breakpoint analysis for the TE insertion
-    header("Tranposable Element Insertion Breakpoint Analysis (TEIBA) for: " + insertionCoord)
+        # Perform breakpoint analysis for the TE insertion
+        header("Tranposable Element Insertion Breakpoint Analysis (TEIBA) for: " + insertionCoord)
 
-    # A) All the input files exist
-    if os.path.isfile(contigsPlusPath) and os.path.isfile(blatPlusPath) and os.path.isfile(contigsMinusPath) and os.path.isfile(blatMinusPath):
+        # A) All the input files exist
+        if os.path.isfile(contigsPlusPath) and os.path.isfile(blatPlusPath) and os.path.isfile(contigsMinusPath) and os.path.isfile(blatMinusPath):
 
-        ## Create insertion object and identify breakpoints from assembled contigs
-        insertionObj = insertion(TEClass, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus)
-        insertionObj.find_insertionBkp(genomeObj, outDir)
+            ## Create insertion object and identify breakpoints from assembled contigs
+            insertionObj = insertion(TEClass, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus)
+            insertionObj.find_insertionBkp(genomeObj, outDir)
 
-        ## Create VCFline object
-        VCFlineObj = VCFline(insertionObj, genomeObj)
+            ## Create VCFline object
+            VCFlineObj = VCFline(insertionObj, genomeObj)
 
-        ## Add VCFline to the list in VCF object
-        VCFObj.addLine(VCFlineObj)
+            ## Add VCFline to the list in VCF object
+            VCFObj.addLine(VCFlineObj)
 
-    else:
-        message = "Input files for " + insertionCoord + " insertion do not exist"
-        log("ERROR", message)
+        else:
+            message = "Input files for " + insertionCoord + " insertion do not exist"
+            log("ERROR", message)
 
-## 3. Write lines describing the TE insertions into the VCF file
-VCFObj.print_lines(outFilePath)
+    ## 3. Write lines describing the TE insertions into the VCF file
+    VCFObj.print_lines(outFilePath)
 
 
-## Finish ##
-print
-print "***** Finished! *****"
-print
+    ## Finish ##
+    print
+    print "***** Finished! *****"
+    print
