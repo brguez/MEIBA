@@ -34,26 +34,26 @@ Execute for one dataset (sample).
 
 *** MANDATORY 
         
-    -i    <TXT>            TraFiC MEI somatic insertion calls for a given sample.        
+    -i     <TXT>              TraFiC MEI somatic insertion calls for a given sample.        
 
-    -f    <FASTA>            Fasta containing MEI insertions supporting reads. 
+    -f     <FASTA>            Fasta containing MEI insertions supporting reads. 
 
     -g     <FASTA>            Reference Genome in fasta format (RG). Please make sure you provide the same RG version you used to run TraFiC. 
-                    Also, make sure the same chromosome naming conventions are used.
+                              Also, make sure the same chromosome naming conventions are used.
     
-    -d      <BED>            Database of repetitive sequences according to RepeatMasker in BED format. 
+    -d     <BED>              Database of repetitive sequences according to RepeatMasker in BED format. 
 
     
-    -s    <STRING>        Sample id. Output file will be named accordingly.    
+    -s     <STRING>           Sample id. Output file will be named accordingly.    
         
 *** [OPTIONS] can be:
 * General:
  
-    -k     <INTEGER>            K-mer length of the words being hashed for the assembly. Default: N=21.
+    -k     <INTEGER>          K-mer length of the words being hashed for the assembly. Default: N=21.
 
-    -o    <PATH>            Output directory. Default current working directory. 
+    -o     <PATH>             Output directory. Default current working directory. 
     
-    -h                Display usage information.
+    -h                        Display usage information.
         
 
 help
@@ -175,7 +175,7 @@ function run {
 ############################
 
 # TEIBA version 
-version=0.3.2
+version=0.4.0
 
 # Enable extended pattern matching 
 shopt -s extglob
