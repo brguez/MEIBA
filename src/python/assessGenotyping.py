@@ -1,79 +1,79 @@
 #!/usr/bin/env python
-#coding: utf-8 
+#coding: utf-8
 
 
 #### FUNCTIONS ####
 def header(string):
-    """ 
+    """
         Display  header
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print '\n', timeInfo, "****", string, "****"
 
 
 def subHeader(string):
-    """ 
+    """
         Display  subheader
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, "**", string, "**"
 
 
 def info(string):
-    """ 
+    """
         Display basic information
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, string
-    
+
 
 def info(string):
-    """ 
+    """
         Display basic information
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, string
 
 
 def genotypes2df(VCFObj):
-	""" 
-        
-	""" 
-	donorGtList = []
+    """
 
-	## For each MEI in the VCF
-	for MEIObj in VCFObj.lineList:
-	
-		# Create a series of genotype (donorId labeled) 
-		MEIid = MEIObj.infoDict['CLASS'] + '_' + MEIObj.chrom + "_" + str(MEIObj.pos)
-		donorGt =  pd.Series(MEIObj.genotypesDict, name=MEIid)
+    """
+    donorGtList = []
 
-		# Add the series to the list of series
-		donorGtList.append(donorGt)
+    ## For each MEI in the VCF
+    for MEIObj in VCFObj.lineList:
 
-	## Merge line series into dataframe (row <- donor_ids, columns <- MEI_ids):
-	df1 = pd.concat(donorGtList, axis=1)
+        # Create a series of genotype (donorId labeled)
+        MEIid = MEIObj.infoDict['CLASS'] + '_' + MEIObj.chrom + "_" + str(MEIObj.pos)
+        donorGt =  pd.Series(MEIObj.genotypesDict, name=MEIid)
 
-	## Transpose dataframe (row <- MEI_ids, columns <- donor_ids)
-	df2 = df1.transpose()
+        # Add the series to the list of series
+        donorGtList.append(donorGt)
 
-	return df2
+    ## Merge line series into dataframe (row <- donor_ids, columns <- MEI_ids):
+    df1 = pd.concat(donorGtList, axis=1)
+
+    ## Transpose dataframe (row <- MEI_ids, columns <- donor_ids)
+    df2 = df1.transpose()
+
+    return df2
 
 def gt2binary(gtString):
-	"""
+    """
 
-	"""
-	genotype = gtString.split(':')[0]
+    """
+    genotype = gtString.split(':')[0]
 
-	# A) Homozygous reference	
-	if (genotype == '0') or (genotype == '0|0') or (genotype == '0/0'):
-		boolean = 0
-	
-	# B) Heterozygous or homozygous MEI 
-	else:
-		boolean = 1
+    # A) Homozygous reference
+    if (genotype == '0') or (genotype == '0|0') or (genotype == '0/0'):
+        boolean = 0
 
-	return boolean
+    # B) Heterozygous or homozygous MEI
+    else:
+        boolean = 1
+
+    return boolean
 
 
 #### MAIN ####
@@ -88,7 +88,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 import numpy as np
 
-## Get user's input ## 
+## Get user's input ##
 parser = argparse.ArgumentParser(description= "")
 parser.add_argument('VCFPCAWG', help='Multi-sample VCF file containing genotyped MEI from PCAWG project')
 parser.add_argument('VCF1KGP', help='Multi-sample VCF file containing genotyped MEI from 1000 genomes project')
@@ -107,7 +107,7 @@ print "***** ", scriptName, " configuration *****"
 print "VCFPCAWG: ", VCFPCAWG
 print "VCF1KGP: ", VCF1KGP
 print "outDir: ", outDir
-print 
+print
 print "***** Executing ", scriptName, ".... *****"
 
 
@@ -158,90 +158,90 @@ nbTNdict = {}
 nbFPdict = {}
 nbFNdict = {}
 
-# For each ronorId 
+# For each ronorId
 for colName in colNamesList:
-	nbTPdict[colName] = 0	
-	nbTNdict[colName] = 0	 
-	nbFPdict[colName] = 0	 
-	nbFNdict[colName] = 0	 
+    nbTPdict[colName] = 0
+    nbTNdict[colName] = 0
+    nbFPdict[colName] = 0
+    nbFNdict[colName] = 0
 
-print 'TPdict: ', nbTPdict 
-print 'TNdict: ', nbTNdict 
-print 'FPdict: ', nbFPdict 
-print 'FNdict: ', nbFNdict 
+print 'TPdict: ', nbTPdict
+print 'TNdict: ', nbTNdict
+print 'FPdict: ', nbFPdict
+print 'FNdict: ', nbFNdict
 print '************************'
 
-## Create output files 
+## Create output files
 # Create dictionary with the following format:
 # donorId_1 -> output filehandle
 # ....
 # donorId_n -> output filehandle
 
 outFilesDict = {}
- 
-# For each donorId 
+
+# For each donorId
 for colName in colNamesList:
 
-	# Create output filehandler
-	fileName = colName + '_FP.txt'
-	outFilePath = outDir + '/' + fileName
-	outFile = open(outFilePath, 'w')	
-	
-	# Write header
-	row = 'chrom' + '\t' + 'pos' + '\t' + 'class' + '\n'
-	outFile.write(row)	
+    # Create output filehandler
+    fileName = colName + '_FP.txt'
+    outFilePath = outDir + '/' + fileName
+    outFile = open(outFilePath, 'w')
 
-	# Save filehandler into dictionary
-	outFilesDict[colName] = outFile	
+    # Write header
+    row = 'chrom' + '\t' + 'pos' + '\t' + 'class' + '\n'
+    outFile.write(row)
 
-	
+    # Save filehandler into dictionary
+    outFilesDict[colName] = outFile
+
+
 ## Count number of TP, TN, FP, FN
 # For each row name (rowName <- MEI_id)
 for rowName in rowNamesList:
 
-	#print "MEI: ", rowName
+    #print "MEI: ", rowName
 
-	# For each column name (columnName <- donor_id)
-	for colName in colNamesList:
+    # For each column name (columnName <- donor_id)
+    for colName in colNamesList:
 
-		#print "DONOR: ", colName		
+        #print "DONOR: ", colName
 
-		# a) True positive (TP)
-		if (gtBinaryDfPCAWG.loc[rowName, colName] == 1) and (gtBinaryDf1KGP.loc[rowName, colName] == 1):
-			# print 'TP', gtBinaryDfPCAWG.loc[rowName, colName], gtBinaryDf1KGP.loc[rowName, colName]			
-			nbTPdict[colName] += 1
-	
-		# b) True negative (TN)
-		elif (gtBinaryDfPCAWG.loc[rowName, colName] == 0) and (gtBinaryDf1KGP.loc[rowName, colName] == 0):
-			#print 'TN', gtBinaryDfPCAWG.loc[rowName, colName], gtBinaryDf1KGP.loc[rowName, colName]			
-			nbTNdict[colName] += 1
+        # a) True positive (TP)
+        if (gtBinaryDfPCAWG.loc[rowName, colName] == 1) and (gtBinaryDf1KGP.loc[rowName, colName] == 1):
+            # print 'TP', gtBinaryDfPCAWG.loc[rowName, colName], gtBinaryDf1KGP.loc[rowName, colName]
+            nbTPdict[colName] += 1
 
-		# c) False positive (FP)
-		elif (gtBinaryDfPCAWG.loc[rowName, colName] == 1) and (gtBinaryDf1KGP.loc[rowName, colName] == 0):
-			#print 'FP', gtBinaryDfPCAWG.loc[rowName, colName], gtBinaryDf1KGP.loc[rowName, colName]			
-			#print 'FP', rowName, colName 
-			nbFPdict[colName] += 1
-		
-			# Save false positive into the output file:
-			outFile = outFilesDict[colName] 
-			rowNameList = rowName.split('_')
-			row = rowNameList[1] + '\t' + rowNameList[2] + '\t' + rowNameList[0] + '\n'
-			outFile.write(row)
+        # b) True negative (TN)
+        elif (gtBinaryDfPCAWG.loc[rowName, colName] == 0) and (gtBinaryDf1KGP.loc[rowName, colName] == 0):
+            #print 'TN', gtBinaryDfPCAWG.loc[rowName, colName], gtBinaryDf1KGP.loc[rowName, colName]
+            nbTNdict[colName] += 1
 
-		# d) False negative (FN)
-		else:
-			# print 'FN', gtBinaryDfPCAWG.loc[rowName, colName], gtBinaryDf1KGP.loc[rowName, colName]			
-			nbFNdict[colName] += 1
-			
-print 'TPdict: ', nbTPdict 
-print 'TNdict: ', nbTNdict 
-print 'FPdict: ', nbFPdict 
-print 'FNdict: ', nbFNdict 
+        # c) False positive (FP)
+        elif (gtBinaryDfPCAWG.loc[rowName, colName] == 1) and (gtBinaryDf1KGP.loc[rowName, colName] == 0):
+            #print 'FP', gtBinaryDfPCAWG.loc[rowName, colName], gtBinaryDf1KGP.loc[rowName, colName]
+            #print 'FP', rowName, colName
+            nbFPdict[colName] += 1
+
+            # Save false positive into the output file:
+            outFile = outFilesDict[colName]
+            rowNameList = rowName.split('_')
+            row = rowNameList[1] + '\t' + rowNameList[2] + '\t' + rowNameList[0] + '\n'
+            outFile.write(row)
+
+        # d) False negative (FN)
+        else:
+            # print 'FN', gtBinaryDfPCAWG.loc[rowName, colName], gtBinaryDf1KGP.loc[rowName, colName]
+            nbFNdict[colName] += 1
+
+print 'TPdict: ', nbTPdict
+print 'TNdict: ', nbTNdict
+print 'FPdict: ', nbFPdict
+print 'FNdict: ', nbFNdict
 
 
-#### 4. Compute recall and precision for TraFiC genotyping results 
+#### 4. Compute recall and precision for TraFiC genotyping results
 ##################################################################
-# using 1000 genomes genotyping as reference 
+# using 1000 genomes genotyping as reference
 ############################################
 ### Recall (also known as sensitivity): is the fraction of relevant instances that are retrieved
 
@@ -256,23 +256,23 @@ seriesList = []
 
 for donorId in colNamesList:
 
-	TP = nbTPdict[donorId]
-	FN = nbFNdict[donorId]
-	FP = nbFPdict[donorId]
+    TP = nbTPdict[donorId]
+    FN = nbFNdict[donorId]
+    FP = nbFPdict[donorId]
 
-	# Compute recall
-	recall = float(TP) / (TP + FN)
-	
-	# Compute precision	
-	precision = float(TP) / (TP + FP)
+    # Compute recall
+    recall = float(TP) / (TP + FN)
 
-	print donorId, TP, FN, FP, recall, precision
-	
-	# Create series containing recall and precision for a given donor
-	series =  pd.Series([recall, precision], index=['recall', 'precision'], name=donorId)
+    # Compute precision
+    precision = float(TP) / (TP + FP)
 
-	# Add series to the list
-	seriesList.append(series)
+    print donorId, TP, FN, FP, recall, precision
+
+    # Create series containing recall and precision for a given donor
+    series =  pd.Series([recall, precision], index=['recall', 'precision'], name=donorId)
+
+    # Add series to the list
+    seriesList.append(series)
 
 ## Merge line series into dataframe (row <- recall and precision, columns <- donor_ids):
 df1 = pd.concat(seriesList, axis=1)
@@ -291,7 +291,7 @@ fig = plt.figure()
 ax = fig.add_subplot(111)
 
 ## Setting the positions and width for the bars
-pos = np.array(range(len(df2['recall']))) 
+pos = np.array(range(len(df2['recall'])))
 width = 0.35
 
 # Create a bar with recall data
@@ -350,4 +350,3 @@ plt.savefig(fileName)
 
 #### END
 header("Finished")
-

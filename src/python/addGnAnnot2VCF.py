@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-#coding: utf-8 
+#coding: utf-8
 
 def header(string):
-    """ 
+    """
         Display  header
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print '\n', timeInfo, "****", string, "****"
 
@@ -17,7 +17,7 @@ import sys
 import os.path
 import formats
 
-## Get user's input ## 
+## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('VCF', help='...')
 parser.add_argument('annovarOut', help='...')
@@ -39,9 +39,9 @@ print "vcf: ", inputVCF
 print "annovar-output: ", annovarOut
 print "donorId: ", donorId
 print "outDir: ", outDir
-print 
+print
 print "***** Executing ", scriptName, ".... *****"
-print 
+print
 
 
 ## Start ## 
@@ -59,7 +59,7 @@ annovarObj.read_annovar(annovarOut)
 ## 3. Add annovar annotation information to output VCF file
 annovarObj.info2VCF(VCFObj)
 
-## 4. Make output VCF 
+## 4. Make output VCF
 
 # 4.1 Write header
 VCFObj.write_header(outFilePath)
@@ -68,8 +68,6 @@ VCFObj.write_header(outFilePath)
 VCFObj.write_variants(outFilePath)
 
 ## End ##
-print 
+print
 print "***** Finished! *****"
-print 
-
-
+print

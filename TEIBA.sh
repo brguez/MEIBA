@@ -3,17 +3,17 @@
 
 <<authors
 ******************************************************************************
-	
-	TEIBA.sh
+    
+    TEIBA.sh
 
-	Transposable Element Insertion Breakpoint Analyzer (TEIBA)
-	
-	Copyright (c) 2016 Bernardo Rodríguez-Martín
-	
-	Mobile Genomes & Disease Lab.
-	Universidad de Vigo (Spain)
+    Transposable Element Insertion Breakpoint Analyzer (TEIBA)
+    
+    Copyright (c) 2016 Bernardo Rodríguez-Martín
+    
+    Mobile Genomes & Disease Lab.
+    Universidad de Vigo (Spain)
 
-	Licenced under the GNU General Public License 3.0 license.
+    Licenced under the GNU General Public License 3.0 license.
 ******************************************************************************
 authors
 
@@ -23,38 +23,38 @@ authors
 function usageDoc
 {
 cat <<help
-	
+    
 
 **** TEIBA version $version ****
 Execute for one dataset (sample).
-	
+    
 *** USAGE
 
-	$0 -i <insertions> -f <insertions_fasta> -g <genome> -d <driver_db> -s <sample_identifier> [OPTIONS]
+    $0 -i <insertions> -f <insertions_fasta> -g <genome> -d <driver_db> -s <sample_identifier> [OPTIONS]
 
 *** MANDATORY 
-		
-	-i	<TXT>			TraFiC MEI somatic insertion calls for a given sample.		
+        
+    -i     <TXT>              TraFiC MEI somatic insertion calls for a given sample.        
 
-	-f	<FASTA>			Fasta containing MEI insertions supporting reads. 
+    -f     <FASTA>            Fasta containing MEI insertions supporting reads. 
 
-	-g 	<FASTA>			Reference Genome in fasta format (RG). Please make sure you provide the same RG version you used to run TraFiC. 
-					Also, make sure the same chromosome naming conventions are used.
-	
-	-d      <BED>			Database of repetitive sequences according to RepeatMasker in BED format. 
+    -g     <FASTA>            Reference Genome in fasta format (RG). Please make sure you provide the same RG version you used to run TraFiC. 
+                              Also, make sure the same chromosome naming conventions are used.
+    
+    -d     <BED>              Database of repetitive sequences according to RepeatMasker in BED format. 
 
-	
-	-s	<STRING>		Sample id. Output file will be named accordingly.	
-		
+    
+    -s     <STRING>           Sample id. Output file will be named accordingly.    
+        
 *** [OPTIONS] can be:
 * General:
  
-	-k 	<INTEGER>        	K-mer length of the words being hashed for the assembly. Default: N=21.
+    -k     <INTEGER>          K-mer length of the words being hashed for the assembly. Default: N=21.
 
-	-o	<PATH>			Output directory. Default current working directory. 
-	
-	-h				Display usage information.
-		
+    -o     <PATH>             Output directory. Default current working directory. 
+    
+    -h                        Display usage information.
+        
 
 help
 }
@@ -65,63 +65,63 @@ function getoptions {
 
 while getopts ":i:f:g:d:s:k:o:h" opt "$@"; 
 do
-   case $opt in   	
+   case $opt in       
       
       ## MANDATORY ARGUMENTS
       i)
-	  if [ -n "$OPTARG" ];
-	  then
+      if [ -n "$OPTARG" ];
+      then
               insertions=$OPTARG
-	  fi
-	  ;;
+      fi
+      ;;
       
       f)
-	  if [ -n "$OPTARG" ];
-	  then
+      if [ -n "$OPTARG" ];
+      then
               fasta=$OPTARG
-	  fi
-	  ;;
+      fi
+      ;;
 
       g)
-	  if [ -n "$OPTARG" ];
-	  then
+      if [ -n "$OPTARG" ];
+      then
               genome=$OPTARG
-	  fi
-	  ;;    
+      fi
+      ;;    
 
       d)
-	  if [ -n "$OPTARG" ];
-	  then
+      if [ -n "$OPTARG" ];
+      then
               repeatsDb=$OPTARG
-	  fi
-	  ;; 	
+      fi
+      ;;     
 
       s)
-	  if [ -n "$OPTARG" ];
-	  then
+      if [ -n "$OPTARG" ];
+      then
               sampleId=$OPTARG
-	  fi
-	  ;;
+      fi
+      ;;
       
       ## OPTIONS
       k)
-	  if [ -n "$OPTARG" ];
-	  then
+      if [ -n "$OPTARG" ];
+      then
               kmerLen=$OPTARG
-	  fi
-	  ;;
+      fi
+      ;;
 
       o)
-	  if [ -n "$OPTARG" ];
-	  then
-       	      outDir=$OPTARG
-	  fi
-	  ;;
+      if [ -n "$OPTARG" ];
+      then
+                 outDir=$OPTARG
+      fi
+      ;;
 
       h)
-	  usageDoc;
-	  exit 1
-	  ;;
+      usageDoc;
+      exit 1
+      ;;
       
       :)
           echo "Option -$OPTARG requires an argument." >&2
@@ -175,7 +175,7 @@ function run {
 ############################
 
 # TEIBA version 
-version=0.3.2
+version=0.4.0
 
 # Enable extended pattern matching 
 shopt -s extglob
@@ -208,7 +208,7 @@ then
     usageDoc
     exit 0
 else
-    getoptions $@ # call Function 2 and passing two parameters (name of the script and command used to call it)	
+    getoptions $@ # call Function 2 and passing two parameters (name of the script and command used to call it)    
 fi
 
 # 3. Check input variables 
@@ -230,20 +230,20 @@ if [[ $sampleId == "" ]]; then log "Sample id does not provided. Mandatory argum
 # K-mer length for assembly
 if [[ "$kmerLen" == "" ]]; 
 then 
-	kmerLen='21'; 
+    kmerLen='21'; 
 fi
 
 # Output directory
 if [[ "$outDir" == "" ]]; 
 then 
-	outDir=${SGE_O_WORKDIR-$PWD};
+    outDir=${SGE_O_WORKDIR-$PWD};
 else
-	if [[ ! -e "$outDir" ]]; 
-	then
-		log "Your output directory does not exist. Option -o" "ERROR" >&2;
-		usageDoc; 
-		exit -1; 
-	fi	
+    if [[ ! -e "$outDir" ]]; 
+    then
+        log "Your output directory does not exist. Option -o" "ERROR" >&2;
+        usageDoc; 
+        exit -1; 
+    fi    
 fi
 
 # 4. Directories
@@ -312,7 +312,7 @@ eval "for i in {1..${#header}};do printf \"-\";done"
 printf "\n\n"
 start=$(date +%s)
 
-########################    	
+########################        
 # 0) PRELIMINARY STEPS #
 ########################
 
@@ -327,21 +327,21 @@ if [[ ! -d $logsDir ]]; then mkdir $logsDir; fi
 ########################################################
 # - ${fastaDir}/${family}:${chr}_${beg}_${end}:${orientation}.fa
 # where:
-#	- family: MEI family (L1, ALU, SVA...)
-#	- chr: insertion chromosome
-# 	- beg: insertion beginning
-#	- end: insertion end
-#	- orientation: cluster (+ or -)
+#    - family: MEI family (L1, ALU, SVA...)
+#    - chr: insertion chromosome
+#     - beg: insertion beginning
+#    - end: insertion end
+#    - orientation: cluster (+ or -)
 
 ## Make fasta for assembly directory:
 if [[ ! -d $fastaDir ]]; then mkdir $fastaDir; fi
- 	
+     
 ## Execute the step 
 step="CLUSTERS2FASTA"
 startTime=$(date +%s)
 printHeader "Prepare fasta for assembly"  
 log "Producing per MEI two fasta for insertion bkp assembly" $step
-run "python $CLUSTERS2FASTA $insertions $fasta --outDir $fastaDir 1> $logsDir/1_clusters2fasta.out 2> $logsDir/1_clusters2fasta.err" "$ECHO"	
+run "python $CLUSTERS2FASTA $insertions $fasta --outDir $fastaDir 1> $logsDir/1_clusters2fasta.out 2> $logsDir/1_clusters2fasta.err" "$ECHO"    
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
@@ -353,36 +353,36 @@ printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs
 ########################### 
 # - ${contigsDir}/${family}:${chr}_${beg}_${end}:${orientation}.contigs.fa
 # where:
-#	- family: MEI family (L1, ALU, SVA...)
-#	- chr: insertion chromosome
-# 	- beg: insertion beginning
-#	- end: insertion end
-#	- orientation: cluster (+ or -)
+#    - family: MEI family (L1, ALU, SVA...)
+#    - chr: insertion chromosome
+#     - beg: insertion beginning
+#    - end: insertion end
+#    - orientation: cluster (+ or -)
 
 ## Make assembly directory:
 if [[ ! -d $contigsDir ]]; then mkdir $contigsDir; fi
- 	
+     
 ## Execute the step 
 step="BKP-ASSEMBLY"
 startTime=$(date +%s)
 printHeader "Assembling the 5' and 3' MEI breakpoints with velvet"  
 
 ls $fastaDir | grep '.*fa' | while read bkpFasta; 
-do 	
-	bkpId=${bkpFasta%.fa}	
-	fastaPath=${fastaDir}/${bkpFasta}	
-	contigPath=${contigsDir}/${bkpId}".contigs.fa"
-		
-	log "** ${bkpId} breakpoint **" $step
-	log "1. Preparing files for assembly" $step
-	run "velveth $contigsDir $kmerLen -fasta -short $fastaPath 1>> $logsDir/2_assembly.out 2>> $logsDir/2_assembly.err" "$ECHO"
-	log "2. Breakpoint assembly with velvet" $step
-	run "velvetg $contigsDir -exp_cov auto -cov_cutoff auto 1>> $logsDir/2_assembly.out 2>> $logsDir/2_assembly.err" "$ECHO"
-	log "3. Rename output files" $step
-	run "mv ${contigsDir}/contigs.fa ${contigsDir}/${bkpId}.contigs.fa" "$ECHO"
-	log "4. Second Cleaning" $step
-	run "rm $fastaPath ${contigsDir}/Log ${contigsDir}/Sequences ${contigsDir}/Roadmaps ${contigsDir}/PreGraph ${contigsDir}/stats.txt ${contigsDir}/LastGraph ${contigsDir}/Graph2" "$ECHO"
-	
+do     
+    bkpId=${bkpFasta%.fa}    
+    fastaPath=${fastaDir}/${bkpFasta}    
+    contigPath=${contigsDir}/${bkpId}".contigs.fa"
+        
+    log "** ${bkpId} breakpoint **" $step
+    log "1. Preparing files for assembly" $step
+    run "velveth $contigsDir $kmerLen -fasta -short $fastaPath 1>> $logsDir/2_assembly.out 2>> $logsDir/2_assembly.err" "$ECHO"
+    log "2. Breakpoint assembly with velvet" $step
+    run "velvetg $contigsDir -exp_cov auto -cov_cutoff auto 1>> $logsDir/2_assembly.out 2>> $logsDir/2_assembly.err" "$ECHO"
+    log "3. Rename output files" $step
+    run "mv ${contigsDir}/contigs.fa ${contigsDir}/${bkpId}.contigs.fa" "$ECHO"
+    log "4. Second Cleaning" $step
+    run "rm $fastaPath ${contigsDir}/Log ${contigsDir}/Sequences ${contigsDir}/Roadmaps ${contigsDir}/PreGraph ${contigsDir}/stats.txt ${contigsDir}/LastGraph ${contigsDir}/Graph2" "$ECHO"
+    
 done
 
 ## Remove temporary fasta directory
@@ -402,15 +402,15 @@ printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs
 ########################### 
 # - ${blatPath}/${family}:${chr}_${beg}_${end}:${orientation}.psl
 # where:
-#	- family: MEI family (L1, ALU, SVA...)
-#	- chr: insertion chromosome
-# 	- beg: insertion beginning
-#	- end: insertion end
-#	- orientation: cluster (+ or -)
+#    - family: MEI family (L1, ALU, SVA...)
+#    - chr: insertion chromosome
+#     - beg: insertion beginning
+#    - end: insertion end
+#    - orientation: cluster (+ or -)
 
 ## Make blat directory:
 if [[ ! -d $blatDir ]]; then mkdir $blatDir; fi
- 	
+     
 ## Execute the step 
 step="BLAT"
 startTime=$(date +%s)
@@ -419,34 +419,34 @@ printHeader "Aligning the assembled bkp contigs into the reference genome with b
 
 ls $contigsDir | grep '.*fa' | while read bkpContig;
 do
-	bkpContigPath=${contigsDir}/${bkpContig}	
-	bkpId=${bkpContig%.contigs.fa}
-	category=`echo $bkpId | awk '{split($1,a,":"); print a[1];}'` 	
+    bkpContigPath=${contigsDir}/${bkpContig}    
+    bkpId=${bkpContig%.contigs.fa}
+    category=`echo $bkpId | awk '{split($1,a,":"); print a[1];}'`     
 
-	# For each insertion, select the corresponding consensus MEI sequence to align the contigs into
-	case $category in   	
+    # For each insertion, select the corresponding consensus MEI sequence to align the contigs into
+    case $category in       
             
-	    L1)
-              	consensusMEI=$consensusL1
-	       	;;
+        L1)
+                  consensusMEI=$consensusL1
+               ;;
       
             Alu)
                 consensusMEI=$consensusAlu
-	       	;;
+               ;;
 
-	    SVA)
-		consensusMEI=$consensusSVA	
-		;;
+        SVA)
+        consensusMEI=$consensusSVA    
+        ;;
 
- 	    ERVK)
-		consensusMEI=$consensusERVK
-		;;
-	esac
-	
-	# Align contigs into the insertion target region and MEI sequence
-	log "** ${bkpId} breakpoint **" $step
-	log "1. Blat alignment" $step
-	run "bash $ALIGN_CONTIGS $bkpContigPath $bkpId $genome $consensusMEI 1000 $blatDir 1>> $logsDir/3_blat.out 2>> $logsDir/3_blat.err" "$ECHO"
+         ERVK)
+        consensusMEI=$consensusERVK
+        ;;
+    esac
+    
+    # Align contigs into the insertion target region and MEI sequence
+    log "** ${bkpId} breakpoint **" $step
+    log "1. Blat alignment" $step
+    run "bash $ALIGN_CONTIGS $bkpContigPath $bkpId $genome $consensusMEI 1000 $blatDir 1>> $logsDir/3_blat.out 2>> $logsDir/3_blat.err" "$ECHO"
 done 
 
 endTime=$(date +%s)
@@ -463,7 +463,7 @@ printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs
 
 ## Make bkp analysis directory:
 if [[ ! -d $bkpAnalysisDir ]]; then mkdir $bkpAnalysisDir; fi
- 	
+     
 ### Execute the step 
 ## 4.1 Make a list with the MEI ids:
 # Output:
@@ -489,13 +489,13 @@ paths2bkpAnalysis=$outDir/paths2bkpAnalysis.txt
 echo -n "" > $paths2bkpAnalysis
  
 cat $insertionListSupReads | while read insertionId readPairsPlus readPairsMinus; 
-do 	
-	contigPlusPath=${contigsDir}/${insertionId}:+.contigs.fa
-	contigMinusPath=${contigsDir}/${insertionId}:-.contigs.fa
-	blatPlusPath=${blatDir}/${insertionId}:+.psl
-	blatMinusPath=${blatDir}/${insertionId}:-.psl
-	
-	printf ${insertionId}"\t"${contigPlusPath}","${contigMinusPath}"\t"${blatPlusPath}","${blatMinusPath}"\t"${readPairsPlus}"\t"${readPairsMinus}"\n" >> $paths2bkpAnalysis
+do     
+    contigPlusPath=${contigsDir}/${insertionId}:+.contigs.fa
+    contigMinusPath=${contigsDir}/${insertionId}:-.contigs.fa
+    blatPlusPath=${blatDir}/${insertionId}:+.psl
+    blatMinusPath=${blatDir}/${insertionId}:-.psl
+    
+    printf ${insertionId}"\t"${contigPlusPath}","${contigMinusPath}"\t"${blatPlusPath}","${blatMinusPath}"\t"${readPairsPlus}"\t"${readPairsMinus}"\n" >> $paths2bkpAnalysis
 done
 
 # Remove intermediate files:
@@ -508,22 +508,22 @@ rawVCF=$bkpAnalysisDir/$sampleId.vcf
 
 if [ ! -s $rawVCF ]; 
 then
-	step="BKP-ANALYSIS"
-	startTime=$(date +%s)
-	printHeader "Performing MEI breakpoint analysis"
-	log "Identifying insertion breakpoints, TSD, MEI length, orientation and structure" $step  
-	run "python $BKP_ANALYSIS $paths2bkpAnalysis $sampleId $genome --outDir $bkpAnalysisDir 1>> $logsDir/4_bkpAnalysis.out 2>> $logsDir/4_bkpAnalysis.err" "$ECHO"
-	
-	if [ ! -s $rawVCF ]; 
-	then	
-		log "Error performing breakpoint analysis" "ERROR" 
-        	exit -1
-	else
-		endTime=$(date +%s)
-		printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
-	fi
+    step="BKP-ANALYSIS"
+    startTime=$(date +%s)
+    printHeader "Performing MEI breakpoint analysis"
+    log "Identifying insertion breakpoints, TSD, MEI length, orientation and structure" $step  
+    run "python $BKP_ANALYSIS $paths2bkpAnalysis $sampleId $genome --outDir $bkpAnalysisDir 1>> $logsDir/4_bkpAnalysis.out 2>> $logsDir/4_bkpAnalysis.err" "$ECHO"
+    
+    if [ ! -s $rawVCF ]; 
+    then    
+        log "Error performing breakpoint analysis" "ERROR" 
+            exit -1
+    else
+        endTime=$(date +%s)
+        printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
+    fi
 else
-	printHeader "Output file already exists... skipping step"
+    printHeader "Output file already exists... skipping step"
 fi
 
 ## Remove temporary contigs and blat directories
@@ -539,26 +539,26 @@ annotVCF=$annotDir/$sampleId.annotated.vcf
 
 ## Make MEI annotation directory:
 if [[ ! -d $annotDir ]]; then mkdir $annotDir; fi
-	
+    
 ### Execute the step 
 if [ ! -s $annotVCF ]; 
 then
-	step="ANNOTATION"
-	startTime=$(date +%s)
-	printHeader "Performing MEI breakpoint annotation"
-	log "Annotating MEI" $step  
-	run "bash $ANNOTATOR $rawVCF $repeatsDb $driverDb $germlineMEIdb $sampleId $annotDir 1>> $logsDir/5_annotation.out 2>> $logsDir/5_annotation.err" "$ECHO"
-	
-	if [ ! -s $annotVCF ]; 
-	then	
-		log "Error performing annotation" "ERROR" 
-        	exit -1
-	else
-		endTime=$(date +%s)
-		printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
-	fi
+    step="ANNOTATION"
+    startTime=$(date +%s)
+    printHeader "Performing MEI breakpoint annotation"
+    log "Annotating MEI" $step  
+    run "bash $ANNOTATOR $rawVCF $repeatsDb $driverDb $germlineMEIdb $sampleId $annotDir 1>> $logsDir/5_annotation.out 2>> $logsDir/5_annotation.err" "$ECHO"
+    
+    if [ ! -s $annotVCF ]; 
+    then    
+        log "Error performing annotation" "ERROR" 
+            exit -1
+    else
+        endTime=$(date +%s)
+        printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
+    fi
 else
-	printHeader "Output file already exists... skipping step"
+    printHeader "Output file already exists... skipping step"
 fi
 
 ## Remove temporary bkp analysis directory
@@ -573,26 +573,26 @@ filteredVCF=$filterDir/$sampleId.filtered.vcf
 
 ## Make MEI filtering directory:
 if [[ ! -d $filterDir ]]; then mkdir $filterDir; fi
-	
+    
 ### Execute the step 
 if [ ! -s $filteredVCF ]; 
 then
-	step="FILTER"
-	startTime=$(date +%s)
-	printHeader "Performing MEI filtering"
-	log "Filtering MEI" $step  
-	run "$FILTER $annotVCF $sampleId --min-score 5 --min-score-ERVK 3 --max-divergence 300 --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err" "$ECHO"
-	
-	if [ ! -s $filteredVCF ]; 
-	then	
-		log "Error performing filtering" "ERROR" 
-        	exit -1
-	else
-		endTime=$(date +%s)
-		printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
-	fi
+    step="FILTER"
+    startTime=$(date +%s)
+    printHeader "Performing MEI filtering"
+    log "Filtering MEI" $step  
+    run "$FILTER $annotVCF $sampleId --min-score 5 --min-score-ERVK 3 --max-divergence 300 --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err" "$ECHO"
+    
+    if [ ! -s $filteredVCF ]; 
+    then    
+        log "Error performing filtering" "ERROR" 
+            exit -1
+    else
+        endTime=$(date +%s)
+        printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
+    fi
 else
-	printHeader "Output file already exists... skipping step"
+    printHeader "Output file already exists... skipping step"
 fi
 
 ## Remove temporary annotation directory

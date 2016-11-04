@@ -3,15 +3,15 @@
 
 <<authors
 ******************************************************************************
-	
-	variants_annotator.sh
-	
-	Copyright (c) 2016 Bernardo Rodríguez-Martín
-	
-	Mobile Genomes & Disease Lab.
-	Universidad de Vigo (Spain)
+    
+    variants_annotator.sh
+    
+    Copyright (c) 2016 Bernardo Rodríguez-Martín
+    
+    Mobile Genomes & Disease Lab.
+    Universidad de Vigo (Spain)
 
-	Licenced under the GNU General Public License 3.0 license.
+    Licenced under the GNU General Public License 3.0 license.
 ******************************************************************************
 authors
 
@@ -55,7 +55,7 @@ then
     echo "" >&2
     echo "Input:" >&2
     echo "1) VCF" >&2
-    echo "2) RepeatMasker repeats database in bed format" >&2	
+    echo "2) RepeatMasker repeats database in bed format" >&2    
     echo "3) Cancer drivers database" >&2 
     echo "4) Germline MEI database in bed format" >&2 
     echo "5) Sample identifier" >&2
@@ -80,10 +80,10 @@ donorId=$5
 
 if [ ! -n "$6" ]
 then
-	outDir=.
+    outDir=.
 else
-	outDir=$6
-fi	
+    outDir=$6
+fi    
 
 
 # Directories 

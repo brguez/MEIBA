@@ -1,31 +1,31 @@
 #!/usr/bin/env python
-#coding: utf-8 
+#coding: utf-8
 
 
 #### FUNCTIONS ####
 def header(string):
-    """ 
+    """
         Display  header
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print '\n', timeInfo, "****", string, "****"
 
 
 def subHeader(string):
-    """ 
+    """
         Display  subheader
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, "**", string, "**"
 
 
 def info(string):
-    """ 
+    """
         Display basic information
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, string
-    
+
 #### MAIN ####
 
 ## Import modules ##
@@ -44,7 +44,7 @@ import seaborn as sns
 sns.set_style("white")
 sns.set_style("ticks")
 
-## Get user's input ## 
+## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('inputVCF', help='multi-sample VCF file containing genotyped source elements')
 parser.add_argument('ancestryFile', help='text file with the ancestry code per donor Id')
@@ -62,9 +62,9 @@ print "***** ", scriptName, " configuration *****"
 print "inputVCF: ", inputVCF
 print "ancestryFile: ", ancestryFile
 print "outDir: ", outDir
-print 
+print
 print "***** Executing ", scriptName, ".... *****"
-print 
+print
 
 
 ## Start ## 
@@ -85,35 +85,35 @@ donorIdList = VCFObj.read_VCF_multiSample(inputVCF)
 header("2. Read ancestry codes file")
 ancestryFile = open(ancestryFile, 'r')
 
-nbSourceElementsDict = {} 
+nbSourceElementsDict = {}
 donorIdAncestryDict = {}
 
 for line in ancestryFile:
-	    
-	line = line.rstrip('\r\n')
 
-	#print "line", line
+    line = line.rstrip('\r\n')
 
-	if not line.startswith("#"):
-		line = line.split('\t')
+    #print "line", line
 
-		donorId = line[0]
-		ancestryCode = line[1]
+    if not line.startswith("#"):
+        line = line.split('\t')
 
-		# print 'values: ', donorId, ancestryCode
-		
-		## Dict1a and Dict1b
-		if ancestryCode not in nbSourceElementsDict:
+        donorId = line[0]
+        ancestryCode = line[1]
 
-			# Create dictionary
-			nbSourceElementsDict[ancestryCode] = {}
+        # print 'values: ', donorId, ancestryCode
+
+        ## Dict1a and Dict1b
+        if ancestryCode not in nbSourceElementsDict:
+
+            # Create dictionary
+            nbSourceElementsDict[ancestryCode] = {}
 
 
-		# Initialize to 0 values:
-		nbSourceElementsDict[ancestryCode][donorId] = 0
+        # Initialize to 0 values:
+        nbSourceElementsDict[ancestryCode][donorId] = 0
 
-		## dict3
-		donorIdAncestryDict[donorId] = ancestryCode
+        ## dict3
+        donorIdAncestryDict[donorId] = ancestryCode
 
 
 #### 3. Compute parameters:
@@ -124,39 +124,39 @@ header("3. Compute parameters")
 
 for MEIObj in VCFObj.lineList:
 
-	sourceElementId = MEIObj.chrom + '_' + str(MEIObj.pos) + '_' + MEIObj.infoDict["CLASS"]
+    sourceElementId = MEIObj.chrom + '_' + str(MEIObj.pos) + '_' + MEIObj.infoDict["CLASS"]
 
-	## Total number of chromosome copies in the population
-	# Number of donors * 2 (diploid, two copies of a given chromosome)
-	totalNbChrom = len(MEIObj.genotypesDict) * 2
+    ## Total number of chromosome copies in the population
+    # Number of donors * 2 (diploid, two copies of a given chromosome)
+    totalNbChrom = len(MEIObj.genotypesDict) * 2
 
-	## Compute MEI allele frequency per L1 source element
-	alleleCount = 0
+    ## Compute MEI allele frequency per L1 source element
+    alleleCount = 0
 
- 	for donorId, genotypeField in MEIObj.genotypesDict.iteritems():		
+    for donorId, genotypeField in MEIObj.genotypesDict.iteritems():
 
-		ancestryCode = donorIdAncestryDict[donorId] 
-		genotypeFieldList = genotypeField.split(":")
-		genotype = genotypeFieldList[0]
-		nbReadsMEI = float(genotypeFieldList[1])
-		totalNbReads = float(genotypeFieldList[2])
+        ancestryCode = donorIdAncestryDict[donorId]
+        genotypeFieldList = genotypeField.split(":")
+        genotype = genotypeFieldList[0]
+        nbReadsMEI = float(genotypeFieldList[1])
+        totalNbReads = float(genotypeFieldList[2])
 
-		## Update counters and store VAF values		
-		# A) Heterozygous
-		if (genotype == "0/1"):
-			nbSourceElementsDict[ancestryCode][donorId] += 1
-			alleleCount +=  1
-	
-		# B) Homozygous		
-		elif (genotype == "1/1"):
-			nbSourceElementsDict[ancestryCode][donorId] += 1
-			alleleCount += 2
+        ## Update counters and store VAF values
+        # A) Heterozygous
+        if (genotype == "0/1"):
+            nbSourceElementsDict[ancestryCode][donorId] += 1
+            alleleCount +=  1
 
-	## Compute MEI allele frequency:
-	alleleFrequency = float(alleleCount) / totalNbChrom
-	
-	## Save into list. One per MEI type
-	alleleFreqDict[sourceElementId] = alleleFrequency
+        # B) Homozygous
+        elif (genotype == "1/1"):
+            nbSourceElementsDict[ancestryCode][donorId] += 1
+            alleleCount += 2
+
+    ## Compute MEI allele frequency:
+    alleleFrequency = float(alleleCount) / totalNbChrom
+
+    ## Save into list. One per MEI type
+    alleleFreqDict[sourceElementId] = alleleFrequency
 
 #### 4. Make plots:
 #####################
@@ -166,12 +166,12 @@ header("4. Make plots")
 # - Number of source elements per donor and ancestry. Boxplot (done)
 # - Number of source elements per donor and ancestry. Violin Plot (done)
 
-#### 4.1 Source element variant allele frequencies across PCAWG donors 
+#### 4.1 Source element variant allele frequencies across PCAWG donors
 header("4.1 Make variant allele frequencies plot")
 
-alleleFreqList = alleleFreqDict.values() 
+alleleFreqList = alleleFreqDict.values()
 
-fig = plt.figure(figsize=(5,6))                
+fig = plt.figure(figsize=(5,6))
 fig.suptitle('Variant allele frequencies (VAF)', fontsize=14)
 
 ## Make plot
@@ -208,26 +208,26 @@ header("4.2 Number of source elements per donor and ancestry")
 tupleListNbSourceElements = []
 
 for ancestryCode in sorted(nbSourceElementsDict):
-	 
-	# Make tuple (ancestryCode, list with number of source elements per donor) 
-	nbDonors= len(nbSourceElementsDict[ancestryCode].values())
-	xLabel = ancestryCode + '(' +  str(nbDonors) + ')'
-	nbSourceElementsTuple = (xLabel, nbSourceElementsDict[ancestryCode].values())
 
-	# Add tuple to the list
-	tupleListNbSourceElements.append(nbSourceElementsTuple)	
+    # Make tuple (ancestryCode, list with number of source elements per donor)
+    nbDonors= len(nbSourceElementsDict[ancestryCode].values())
+    xLabel = ancestryCode + '(' +  str(nbDonors) + ')'
+    nbSourceElementsTuple = (xLabel, nbSourceElementsDict[ancestryCode].values())
+
+    # Add tuple to the list
+    tupleListNbSourceElements.append(nbSourceElementsTuple)
 
 
 ## Make nested list with the following format:
-# [donor1_nbSourceElements, donor2_nbSourceElements, ..., donorN_nbSourceElements], [donor1_nbSourceElements, donor2_nbSourceElements, ..., donorN_nbSourceElements] , ... [donor1_nbSourceElements, donor2_nbSourceElements, ..., donorN_nbSourceElements] 
-# 		   		ancestry1_list				  					ancestry2_list										ancestryN_list
+# [donor1_nbSourceElements, donor2_nbSourceElements, ..., donorN_nbSourceElements], [donor1_nbSourceElements, donor2_nbSourceElements, ..., donorN_nbSourceElements] , ... [donor1_nbSourceElements, donor2_nbSourceElements, ..., donorN_nbSourceElements]
+#                               ancestry1_list                                                                  ancestry2_list                                                                          ancestryN_list
 
 tmpList = map(list, zip(*tupleListNbSourceElements))
 ancestryCodesList = tmpList[0]
 nbSourceElementsPerDonor = tmpList[1]
 
-### Plotting 
-fig = plt.figure(figsize=(5,6))           
+### Plotting
+fig = plt.figure(figsize=(5,6))
 fig.suptitle('# Source elements per donor', fontsize=14)
 
 ax1 = fig.add_subplot(1, 1, 1)
@@ -239,20 +239,20 @@ plt.ylabel("# Source L1", fontsize=12)
 ## Customize boxplot:
 # change outline color, fill color and linewidth of the boxes
 for box in bp['boxes']:
-	# change outline color
-	box.set( color='#696969', linewidth=1)
+    # change outline color
+    box.set( color='#696969', linewidth=1)
 
 # change color and linewidth of the whiskers
 for whisker in bp['whiskers']:
-	whisker.set(color='#696969', linewidth=1)
+    whisker.set(color='#696969', linewidth=1)
 
 # change color and linewidth of the caps
 for cap in bp['caps']:
-	cap.set(color='#696969', linewidth=1)
+    cap.set(color='#696969', linewidth=1)
 
 # change color and linewidth of the medians
 for median in bp['medians']:
-	median.set(color='#8b0000', linewidth=2)
+    median.set(color='#8b0000', linewidth=2)
 
 # Add the ancestry codes to the x-axis
 ax1.set_xticklabels(ancestryCodesList, fontsize = 10)
@@ -274,31 +274,31 @@ fig.savefig(fileName)
 
 ### B) Violin plot
 ## Organize the data for plotting into a dictionary:
-# - dict1: 
-#	nbSourceElements -> list[nbSourceElementsDonor1, nbSourceElementsDonor2, ..., nbSourceElementsDonorN]
-#	ancestryPerDonor -> list[ancestryDonor1, ancestryDonor2, ..., nbSourceElementsDonorN]
+# - dict1:
+#       nbSourceElements -> list[nbSourceElementsDonor1, nbSourceElementsDonor2, ..., nbSourceElementsDonorN]
+#       ancestryPerDonor -> list[ancestryDonor1, ancestryDonor2, ..., nbSourceElementsDonorN]
 
 dict4pandas = {}
 dict4pandas['nbSourceElements'] = []
 dict4pandas['ancestry'] = []
 
 for ancestryCode in sorted(nbSourceElementsDict):
-	 
-	nbSourceElementsPerDonorList = nbSourceElementsDict[ancestryCode].values()
-	nbDonors = len(nbSourceElementsPerDonorList)
-	
-	xLabel = ancestryCode + '(' +  str(nbDonors) + ')'
-	xLabelList = [ xLabel ] * nbDonors
 
-	dict4pandas['nbSourceElements'] = dict4pandas['nbSourceElements'] + nbSourceElementsPerDonorList
-	dict4pandas['ancestry'] = dict4pandas['ancestry'] + xLabelList
+    nbSourceElementsPerDonorList = nbSourceElementsDict[ancestryCode].values()
+    nbDonors = len(nbSourceElementsPerDonorList)
+
+    xLabel = ancestryCode + '(' +  str(nbDonors) + ')'
+    xLabelList = [ xLabel ] * nbDonors
+
+    dict4pandas['nbSourceElements'] = dict4pandas['nbSourceElements'] + nbSourceElementsPerDonorList
+    dict4pandas['ancestry'] = dict4pandas['ancestry'] + xLabelList
 
 # Make pandas dataframe from dict:
 dataframe = pd.DataFrame(dict4pandas)
 
-### Plotting 
+### Plotting
 
-fig = plt.figure(figsize=(5,6))           
+fig = plt.figure(figsize=(5,6))
 fig.suptitle('# Source elements per donor', fontsize=14)
 
 # Create the violin plot

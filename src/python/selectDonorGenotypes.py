@@ -1,31 +1,31 @@
 #!/usr/bin/env python
-#coding: utf-8 
+#coding: utf-8
 
 
 #### FUNCTIONS ####
 def header(string):
-    """ 
+    """
         Display  header
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print '\n', timeInfo, "****", string, "****"
 
 
 def subHeader(string):
-    """ 
+    """
         Display  subheader
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, "**", string, "**"
 
 
 def info(string):
-    """ 
+    """
         Display basic information
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, string
-    
+
 #### MAIN ####
 
 ## Import modules ##
@@ -35,7 +35,7 @@ import os.path
 import formats
 import time
 
-## Get user's input ## 
+## Get user's input ##
 parser = argparse.ArgumentParser(description= "")
 parser.add_argument('inputVCF', help='Multi-sample VCF file containing genotyped MEI')
 parser.add_argument('targetDonors', help='')
@@ -57,9 +57,9 @@ print "inputVCF: ", inputVCF
 print "targetDonors: ", targetDonors
 print "sampleId: ", sampleId
 print "outDir: ", outDir
-print 
+print
 print "***** Executing ", scriptName, ".... *****"
-print 
+print
 
 ## Start ## 
 

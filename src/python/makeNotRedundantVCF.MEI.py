@@ -1,98 +1,98 @@
 #!/usr/bin/env python
-#coding: utf-8 
+#coding: utf-8
 
 def header(string):
-    """ 
+    """
         Display  header
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print '\n', timeInfo, "****", string, "****"
 
 def info(string):
-    """ 
+    """
         Display basic information
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, string
 
 ####### CLASSES #######
 class cohort():
-    """ 
-	.....................
-    
-	Methods:
-	- 
+    """
+        .....................
+
+        Methods:
+        -
     """
     def __init__(self):
-	""" 
-	"""
-	self.VCFlist = []
-	self.MEIDict = {}	
-	self.consensusMEIDict = {}  
+        """
+        """
+        self.VCFlist = []
+        self.MEIDict = {}
+        self.consensusMEIDict = {}
 
     def read_VCFs(self, inputPath):
-	""" 
-	"""
-	inputFile = open(inputPath, 'r')
+        """
+        """
+        inputFile = open(inputPath, 'r')
 
-	info("Read input VCFs ")
+        info("Read input VCFs ")
 
-	# Per iteration, read a VCF, generate a VCF object and add it to the cohort
-	for line in inputFile:
-    	    line = line.rstrip('\n')
-	    line = line.split("\t")
+        # Per iteration, read a VCF, generate a VCF object and add it to the cohort
+        for line in inputFile:
+            line = line.rstrip('\n')
+            line = line.split("\t")
 
-    	    projectCode = line[0]
-	    donorId = line[1]
-	    VCFfile = line[2]
-	
-	    # Create VCF object
-    	    VCFObj = formats.VCF()
-    	    
-	    info("Reading " + VCFfile + "...")
+            projectCode = line[0]
+            donorId = line[1]
+            VCFfile = line[2]
 
-	    # Input VCF available 
-	    if os.path.isfile(VCFfile):
+            # Create VCF object
+            VCFObj = formats.VCF()
 
-		# Read VCF and add information to VCF object
-		VCFObj.read_VCF(VCFfile)
+            info("Reading " + VCFfile + "...")
 
-		# Add projectCode and donorId information to the genotype field in each MEI object
-		for MEIObject in VCFObj.lineList:
-			
-			MEIObject.format = MEIObject.format + ':PRJ:DON' 
-			MEIObject.genotype = MEIObject.genotype + ':' + projectCode + ':' + donorId
- 
-		# Add donor VCF to cohort
-	 	self.addDonor(VCFObj)
-	    else:
-		print "[ERROR] Input file does not exist"
+            # Input VCF available
+            if os.path.isfile(VCFfile):
+
+                # Read VCF and add information to VCF object
+                VCFObj.read_VCF(VCFfile)
+
+                # Add projectCode and donorId information to the genotype field in each MEI object
+                for MEIObject in VCFObj.lineList:
+
+                    MEIObject.format = MEIObject.format + ':PRJ:DON'
+                    MEIObject.genotype = MEIObject.genotype + ':' + projectCode + ':' + donorId
+
+                # Add donor VCF to cohort
+                self.addDonor(VCFObj)
+            else:
+                print "[ERROR] Input file does not exist"
 
     def write_header(self, outFilePath):
-	""" 
-	    ...
-            
-	    Input:
-	    1) ...
-            
-	    Output:
-	    1) ...
-	"""
-		
-	## Define variables 
-	date = time.strftime("%Y%m%d")
-		
-	context = {
-	 "date": date,
-	 "source": "TraFiCv2.0",  
-	 "reference": "hs37d5",  
-	 } 
+        """
+            ...
 
-	## Header template
-  	template = """##fileformat=VCFv4.2
-##fileDate={date} 
-##source={source} 
-##reference={reference} 
+            Input:
+            1) ...
+
+            Output:
+            1) ...
+        """
+
+        ## Define variables
+        date = time.strftime("%Y%m%d")
+
+        context = {
+         "date": date,
+         "source": "TraFiCv2.0",
+         "reference": "hs37d5",
+         }
+
+        ## Header template
+        template = """##fileformat=VCFv4.2
+##fileDate={date}
+##source={source}
+##reference={reference}
 ##contig=<ID=1,assembly=GRCh37,length=249250621,species=human>
 ##contig=<ID=2,assembly=GRCh37,length=243199373,species=human>
 ##contig=<ID=3,assembly=GRCh37,length=198022430,species=human>
@@ -179,7 +179,7 @@ class cohort():
 ##contig=<ID=NC_007605,assembly=GRCh37,length=171823,species=human>
 ##contig=<ID=X,assembly=GRCh37,length=155270560,species=human>
 ##contig=<ID=Y,assembly=GRCh37,length=59373566,species=human>
-##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant. (All sequence is on the plus strand and in the forward direction).">            
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant. (All sequence is on the plus strand and in the forward direction).">
 ##INFO=<ID=CLASS,Number=1,Type=String,Description="Transposable element class (L1, ALU, SVA or ERVK)">
 ##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction)">
 ##INFO=<ID=SCORE,Number=1,Type=String,Description="Insertion score (5: 5' and 3' breakpoints (bkp) assembled, 4: 3'bkp assembled, 3: 5'bkp assembled, 2: no bkp assembled, 1: inconsistent (contradictory orientation, bkp or TSD))">
@@ -208,192 +208,192 @@ class cohort():
 ##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
 ##FORMAT=<ID=PRJ,Number=1,Type=String,Description="Project code for donor selected as representative">
 ##FORMAT=<ID=DON,Number=1,Type=String,Description="Donor identifier for donor selected as representative">
-#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	CONSENSUS
-""" 
-	## Replace variables into the template and print header into the output file
-	with  open(outFilePath,'w') as outFile:
-	    outFile.write(template.format(**context))
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  CONSENSUS
+"""
+        ## Replace variables into the template and print header into the output file
+        with  open(outFilePath,'w') as outFile:
+            outFile.write(template.format(**context))
 
     def write_consensus_MEI(self, outFilePath):
-	""" 
-	"""
+        """
+        """
 
-	outFile = open(outFilePath, 'a')	
+        outFile = open(outFilePath, 'a')
 
-	## 1. Convert dictionary into list of consensus MEI objects
-	tmpList = []	
+        ## 1. Convert dictionary into list of consensus MEI objects
+        tmpList = []
 
-	for chrom in self.consensusMEIDict:
-	    for MEIClass in self.consensusMEIDict[chrom]:
-		tmpList.append( self.consensusMEIDict[chrom][MEIClass])
- 
-	consensusMEIList = [MEI for sublist in tmpList for MEI in sublist]
+        for chrom in self.consensusMEIDict:
+            for MEIClass in self.consensusMEIDict[chrom]:
+                tmpList.append( self.consensusMEIDict[chrom][MEIClass])
 
-	## 2. Sort list of consensus MEI first by chromosome and then by position: 
-	consensusMEIList.sort(key=lambda line: (line.chrom, line.pos))
+        consensusMEIList = [MEI for sublist in tmpList for MEI in sublist]
 
-	# Iterate and print each consensus germline MEI into the output VCF file
-	for MEI in consensusMEIList:
+        ## 2. Sort list of consensus MEI first by chromosome and then by position:
+        consensusMEIList.sort(key=lambda line: (line.chrom, line.pos))
 
-	   row = MEI.chrom + "\t" + str(MEI.pos) + "\t" + MEI.id + "\t" + MEI.ref + "\t" + MEI.alt + "\t" + MEI.qual + "\t" + MEI.filter + "\t" + MEI.info + "\t" + MEI.format + "\t" + MEI.genotype + "\n"
-           outFile.write(row)
+        # Iterate and print each consensus germline MEI into the output VCF file
+        for MEI in consensusMEIList:
 
-	## Close output file
-	outFile.close()
+            row = MEI.chrom + "\t" + str(MEI.pos) + "\t" + MEI.id + "\t" + MEI.ref + "\t" + MEI.alt + "\t" + MEI.qual + "\t" + MEI.filter + "\t" + MEI.info + "\t" + MEI.format + "\t" + MEI.genotype + "\n"
+            outFile.write(row)
+
+        ## Close output file
+        outFile.close()
 
 
     def addDonor(self, VCFobj):
-	""" 
-	"""
-	self.VCFlist.append(VCFobj)
+        """
+        """
+        self.VCFlist.append(VCFobj)
 
     def build_MEI_dict(self):
-	""" 
-	"""
-	### Create a nested dictionary containing for each chromosome and insertion class a list of MEI objects that pass all the filters
-	# key1(chrId) -> value(dict2) -> key1(MEIclass) -> value(insertionObjList)	
-	# Per donor VCF object included in the cohort 
+        """
+        """
+        ### Create a nested dictionary containing for each chromosome and insertion class a list of MEI objects that pass all the filters
+        # key1(chrId) -> value(dict2) -> key1(MEIclass) -> value(insertionObjList)
+        # Per donor VCF object included in the cohort
 
-	for VCFobj in self.VCFlist:
+        for VCFobj in self.VCFlist:
 
-	    # Per MEI VCFline object in a given donor
-	    for MEIObj in VCFobj.lineList:
+            # Per MEI VCFline object in a given donor
+            for MEIObj in VCFobj.lineList:
 
-		## Select only those insertions passing all the filters:
-		if (MEIObj.filter == "PASS"):
-		
-		    # A) First MEI in a given chromosome
-		    if MEIObj.chrom not in self.MEIDict:
- 		        self.MEIDict[MEIObj.chrom] = {}
-		        self.MEIDict[MEIObj.chrom][MEIObj.infoDict["CLASS"]] = [ MEIObj ] 
-	  	
-	   	    # B) There are already MEI in the chromosome
-		    else:
+                ## Select only those insertions passing all the filters:
+                if (MEIObj.filter == "PASS"):
 
-		        # a) First MEI of a given class in the chromosome	
-	 	        if MEIObj.infoDict["CLASS"] not in self.MEIDict[MEIObj.chrom]:
- 		            self.MEIDict[MEIObj.chrom][MEIObj.infoDict["CLASS"]] = {}
-			    self.MEIDict[MEIObj.chrom][MEIObj.infoDict["CLASS"]] = [ MEIObj ]
-		    
-     		        # b) There are already MEI of this class in the chromosome 
-		        else:
-			    self.MEIDict[MEIObj.chrom][MEIObj.infoDict["CLASS"]].append(MEIObj)
+                    # A) First MEI in a given chromosome
+                    if MEIObj.chrom not in self.MEIDict:
+                        self.MEIDict[MEIObj.chrom] = {}
+                        self.MEIDict[MEIObj.chrom][MEIObj.infoDict["CLASS"]] = [ MEIObj ]
+
+                    # B) There are already MEI in the chromosome
+                    else:
+
+                        # a) First MEI of a given class in the chromosome
+                        if MEIObj.infoDict["CLASS"] not in self.MEIDict[MEIObj.chrom]:
+                            self.MEIDict[MEIObj.chrom][MEIObj.infoDict["CLASS"]] = {}
+                            self.MEIDict[MEIObj.chrom][MEIObj.infoDict["CLASS"]] = [ MEIObj ]
+
+                        # b) There are already MEI of this class in the chromosome
+                        else:
+                            self.MEIDict[MEIObj.chrom][MEIObj.infoDict["CLASS"]].append(MEIObj)
 
 
     def make_consensus_MEI_dict(self):
-	""" 
-	"""
+        """
+        """
 
-	###  Create a nested dictionary containing for each chromosome and insertion class the list of consensus MEI objects:
-	# key1(chrId) -> value(dict2) -> key1(MEIclass) -> value(consensusMEIList)
+        ###  Create a nested dictionary containing for each chromosome and insertion class the list of consensus MEI objects:
+        # key1(chrId) -> value(dict2) -> key1(MEIclass) -> value(consensusMEIList)
 
-	# For each chromosome:
-	for chrom in self.MEIDict:
-	
-	    # Per MEI class
-	    for insertionClass in self.MEIDict[chrom]:
-		
-		MEIlist = self.MEIDict[chrom][insertionClass]
-		
-		# 1. Sort each list of MEI objects from lower to upper coordinates 
-		MEIlistSorted = sorted(MEIlist, key=lambda MEIObj: MEIObj.pos)
-				
-		# 2. Cluster MEI objects
-		#  chr1 --------*---------------*-------------*------------ 
-		#     beg    cluster1	     cluster2      cluster3      end
-		# 	  (MEI1,MEI2,MEI3)   (MEI4)	  (MEI5,MEI6)	
-	
-		MEIclusterList = []
+        # For each chromosome:
+        for chrom in self.MEIDict:
 
-		# Per MEI object:
-		for MEIObj in MEIlistSorted:
+            # Per MEI class
+            for insertionClass in self.MEIDict[chrom]:
 
-		    # A) No MEI cluster in the list -> Create first cluster and add MEI object
-		    if not MEIclusterList:
-			MEIclusterObj = MEIcluster([ MEIObj ])
-			MEIclusterList = [ MEIclusterObj ]
-		    
-		    # B) There is already at least one cluster in the list -> Check if current MEI within the latest cluster 
-		    else: 
-			lastMEIcluster = MEIclusterList[-1]	# Last MEI cluster		    	
-			lastMEI = lastMEIcluster.MEIlist[-1] 	# Last MEI within the cluster
-			totalCIPOS = int(MEIObj.infoDict["CIPOS"]) + int(lastMEI.infoDict["CIPOS"]) + overhang # Allow a minimum of nucleotides 
-													       # of difference (CIPOS=0, X=overhang)			
-						
-			## a) Current MEI within previous cluster interval -> add MEI to the cluster
-			##       <---------------------------interval-------------------------------> 
-			# beg(position-total_CIPOS)		<MEI_position>               end(position+total_CIPOS)
-			# NOTE: position determined by the last MEI within the cluster			
-			if ((lastMEI.pos - totalCIPOS) <= MEIObj.pos) and (MEIObj.pos <= (lastMEI.pos + totalCIPOS)):
-			    lastMEIcluster.addMEI(MEIObj) 
+                MEIlist = self.MEIDict[chrom][insertionClass]
 
-			## b) Current MEI outside previous cluster interval -> create new cluster and add it into the list		
-			## <MEI_position> ........ <---------------------------interval-------------------------------> 
-			#                beg(position-total_CIPOS)		                           end(position+total_CIPOS)
-			# NOTE: position determined by the last MEI within the cluster		
-			else:
-			    MEIclusterObj = MEIcluster([ MEIObj ])
-		            MEIclusterList.append(MEIclusterObj)	
-		
-		# 3. Select a consensus MEI per cluster and add it to the list within the dictionary	
-		# Per MEI cluster:
-		for MEIclusterObj in MEIclusterList:  
-		    consensusMEIObj = MEIclusterObj.consensus_MEI()	
-	
-		    # A) First consensus MEI in a given chromosome
-		    if consensusMEIObj.chrom not in self.consensusMEIDict:
- 		        self.consensusMEIDict[consensusMEIObj.chrom] = {}
-		        self.consensusMEIDict[consensusMEIObj.chrom][consensusMEIObj.infoDict["CLASS"]] = [ consensusMEIObj ] 
-	  	
-	   	    # B) There are already consensus MEI in the chromosome
-		    else:
+                # 1. Sort each list of MEI objects from lower to upper coordinates
+                MEIlistSorted = sorted(MEIlist, key=lambda MEIObj: MEIObj.pos)
 
-		        # a) First consensus MEI of a given class in the chromosome	
-	 	        if consensusMEIObj.infoDict["CLASS"] not in self.consensusMEIDict[consensusMEIObj.chrom]:
- 		            self.consensusMEIDict[consensusMEIObj.chrom][consensusMEIObj.infoDict["CLASS"]] = {}
-			    self.consensusMEIDict[consensusMEIObj.chrom][consensusMEIObj.infoDict["CLASS"]] = [ consensusMEIObj ]
-		    
-     		        # b) There are already MEI of this class in the chromosome 
-		        else:
-			    self.consensusMEIDict[consensusMEIObj.chrom][consensusMEIObj.infoDict["CLASS"]].append(consensusMEIObj)	
-	
+                # 2. Cluster MEI objects
+                #  chr1 --------*---------------*-------------*------------
+                #     beg    cluster1        cluster2      cluster3      end
+                #         (MEI1,MEI2,MEI3)   (MEI4)       (MEI5,MEI6)
+
+                MEIclusterList = []
+
+                # Per MEI object:
+                for MEIObj in MEIlistSorted:
+
+                    # A) No MEI cluster in the list -> Create first cluster and add MEI object
+                    if not MEIclusterList:
+                        MEIclusterObj = MEIcluster([ MEIObj ])
+                        MEIclusterList = [ MEIclusterObj ]
+
+                    # B) There is already at least one cluster in the list -> Check if current MEI within the latest cluster
+                    else:
+                        lastMEIcluster = MEIclusterList[-1]     # Last MEI cluster
+                        lastMEI = lastMEIcluster.MEIlist[-1]    # Last MEI within the cluster
+                        totalCIPOS = int(MEIObj.infoDict["CIPOS"]) + int(lastMEI.infoDict["CIPOS"]) + overhang # Allow a minimum of nucleotides
+                                                                                                               # of difference (CIPOS=0, X=overhang)
+
+                        ## a) Current MEI within previous cluster interval -> add MEI to the cluster
+                        ##       <---------------------------interval------------------------------->
+                        # beg(position-total_CIPOS)             <MEI_position>               end(position+total_CIPOS)
+                        # NOTE: position determined by the last MEI within the cluster
+                        if ((lastMEI.pos - totalCIPOS) <= MEIObj.pos) and (MEIObj.pos <= (lastMEI.pos + totalCIPOS)):
+                            lastMEIcluster.addMEI(MEIObj)
+
+                        ## b) Current MEI outside previous cluster interval -> create new cluster and add it into the list
+                        ## <MEI_position> ........ <---------------------------interval------------------------------->
+                        #                beg(position-total_CIPOS)                                         end(position+total_CIPOS)
+                        # NOTE: position determined by the last MEI within the cluster
+                        else:
+                            MEIclusterObj = MEIcluster([ MEIObj ])
+                            MEIclusterList.append(MEIclusterObj)
+
+                # 3. Select a consensus MEI per cluster and add it to the list within the dictionary
+                # Per MEI cluster:
+                for MEIclusterObj in MEIclusterList:
+                    consensusMEIObj = MEIclusterObj.consensus_MEI()
+
+                    # A) First consensus MEI in a given chromosome
+                    if consensusMEIObj.chrom not in self.consensusMEIDict:
+                        self.consensusMEIDict[consensusMEIObj.chrom] = {}
+                        self.consensusMEIDict[consensusMEIObj.chrom][consensusMEIObj.infoDict["CLASS"]] = [ consensusMEIObj ]
+
+                    # B) There are already consensus MEI in the chromosome
+                    else:
+
+                        # a) First consensus MEI of a given class in the chromosome
+                        if consensusMEIObj.infoDict["CLASS"] not in self.consensusMEIDict[consensusMEIObj.chrom]:
+                            self.consensusMEIDict[consensusMEIObj.chrom][consensusMEIObj.infoDict["CLASS"]] = {}
+                            self.consensusMEIDict[consensusMEIObj.chrom][consensusMEIObj.infoDict["CLASS"]] = [ consensusMEIObj ]
+
+                        # b) There are already MEI of this class in the chromosome
+                        else:
+                            self.consensusMEIDict[consensusMEIObj.chrom][consensusMEIObj.infoDict["CLASS"]].append(consensusMEIObj)
+
 
 class MEIcluster():
-    """ 
+    """
     """
     def __init__(self, MEIList):
-	""" 
-	"""
-	self.MEIlist = MEIList
-	
+        """
+        """
+        self.MEIlist = MEIList
+
     def addMEI(self, MEIObj):
-	""" 
-	"""
-	self.MEIlist.append(MEIObj)
+        """
+        """
+        self.MEIlist.append(MEIObj)
 
     def consensus_MEI(self):
-	""" 
-	Select consensus MEI. Selection criteria (ordered by preference order):
-	1) Lowest CIPOS
-	2) Highest total number of supporting reads (+ plus - cluster supporting reads)
-		chr1 --------*---------------*-------------*------------ 
-		   beg    cluster1	  cluster2      cluster3      end
-	     	     (MEI1,MEI2,MEI3)      (MEI4)     (MEI5,MEI6)	
+        """
+        Select consensus MEI. Selection criteria (ordered by preference order):
+        1) Lowest CIPOS
+        2) Highest total number of supporting reads (+ plus - cluster supporting reads)
+                chr1 --------*---------------*-------------*------------
+                   beg    cluster1        cluster2      cluster3      end
+                     (MEI1,MEI2,MEI3)      (MEI4)     (MEI5,MEI6)
         consensus          ****             ****       ****
-	"""
-	    
-	## 1. Sort by total number of supporting paired-ends (decreasing order)
-	sortedList1 = sorted(self.MEIlist, key=methodcaller('nbPE'), reverse=True)
-	
-	## 2. Sort by CIPOS (ascending order)
-	MEItuples = [(MEIobj, int(MEIobj.infoDict["CIPOS"])) for MEIobj in sortedList1]
-	sortedMEItuples = sorted(MEItuples, key=itemgetter(1))
-	sortedList2 = [i[0] for i in sortedMEItuples]
+        """
 
-	## 3. Select consensus MEI (the one with lowest CIPOS and highest total number of supporting paired-ends)
-	consensusMEIobj = sortedList2[0] 
+        ## 1. Sort by total number of supporting paired-ends (decreasing order)
+        sortedList1 = sorted(self.MEIlist, key=methodcaller('nbPE'), reverse=True)
 
-	return consensusMEIobj
+        ## 2. Sort by CIPOS (ascending order)
+        MEItuples = [(MEIobj, int(MEIobj.infoDict["CIPOS"])) for MEIobj in sortedList1]
+        sortedMEItuples = sorted(MEItuples, key=itemgetter(1))
+        sortedList2 = [i[0] for i in sortedMEItuples]
+
+        ## 3. Select consensus MEI (the one with lowest CIPOS and highest total number of supporting paired-ends)
+        consensusMEIobj = sortedList2[0]
+
+        return consensusMEIobj
 
 
 #### MAIN ####
@@ -407,7 +407,7 @@ import time
 from operator import itemgetter, attrgetter, methodcaller
 
 
-## Get user's input ## 
+## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('inputPath', help='Tabular text file containing one row per donor with the following consecutive fields: projectCode donorId vcf_path')
 parser.add_argument('--overhang', default=5, type=int, dest='overhang', help='Maximum overhang for MEI clustering. Default: 5 base pairs.')
@@ -426,19 +426,19 @@ print "***** ", scriptName, " configuration *****"
 print "inputPath: ", inputPath
 print "overhang: ", overhang
 print "outDir: ", outDir
-print 
+print
 print "***** Executing ", scriptName, ".... *****"
-print 
+print
 
-## Start ## 
+## Start ##
 
-## 1. Initialize cohort object 
+## 1. Initialize cohort object
 cohortObj = cohort()
 
-## 2. Read VCF files and make a list of VCF objects. Add donorId and projectCode information 
+## 2. Read VCF files and make a list of VCF objects. Add donorId and projectCode information
 cohortObj.read_VCFs(inputPath)
 
-## 3. Organize MEI by chromosome, insertion class and in increasing cromosomal coordinates 
+## 3. Organize MEI by chromosome, insertion class and in increasing cromosomal coordinates
 cohortObj.build_MEI_dict()
 
 ## 4. Make not redundant list of consensus MEI objects and organize them into a dictionary
@@ -454,8 +454,6 @@ cohortObj.write_header(outFilePath)
 cohortObj.write_consensus_MEI(outFilePath)
 
 ## End ##
-print 
+print
 print "***** Finished! *****"
-print 
-
-
+print

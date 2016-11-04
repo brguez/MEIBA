@@ -1,99 +1,99 @@
 #!/usr/bin/env python
-#coding: utf-8 
+#coding: utf-8
 
 def header(string):
-    """ 
+    """
         Display  header
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, "****", string, "****"
 
 def info(string):
-    """ 
+    """
         Display basic information
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, string,
 
 #### CLASSES ####
 class germlineMEIDb():
-	""" 
-		.....................
-    
-		Methods:
-		- 
+    """
+            .....................
 
-	"""
-	def __init__(self):
-		""" 
-	
-		"""
-		self.germlineMEIDict = {}
+            Methods:
+            -
 
-	def read_bed(self, inputBed):
-		""" 
+    """
+    def __init__(self):
+        """
 
-		"""
-		# Open germline MEI database input file
-		inputBedFile = open(inputBed, 'r')
-	
-		## Read first input file line by line
-		for line in inputBedFile:
-	   		line = line.rstrip('\n')
-		
-			## Skip header
-			if not line.startswith("#"):
-				line = line.split('\t')        
-	
-				## Create germline MEI object:
-				chrom = line[0]
-				pos = line[1]
-				MEIClass = line[3]
-				family = line[4]
-				TSD = line[5]
-				orientation = line[6]
-				length = line [7]
-				germlineMEIObj = germlineMEI(chrom, pos, MEIClass, family, TSD, orientation, length)
-				
-				### Create a nested dictionary containing for each insertion class and chromosome a dictionary of 
-				## germline MEI objects organized by coordinates 
-				# key1(MEIclass) -> value(dict2) -> key2(chrId) -> value(dict3) -> key3(coordinate) -> value(germlineMEIObj)
+        """
+        self.germlineMEIDict = {}
 
-				## Create nested dictionaries as needed
-				# A) First MEI of a given class 
-                                if germlineMEIObj.MEIClass not in self.germlineMEIDict:
-                                	self.germlineMEIDict[germlineMEIObj.MEIClass] = {}
-                                        self.germlineMEIDict[germlineMEIObj.MEIClass][germlineMEIObj.chrom] = {}
-					
-                                # B) First MEI of a given class in the chromosome  
-                                elif germlineMEIObj.chrom not in self.germlineMEIDict[germlineMEIObj.MEIClass]:
-                                        self.germlineMEIDict[germlineMEIObj.MEIClass][germlineMEIObj.chrom] = {}
-                                         
-				## Add germline MEI object to the dictionary
-				self.germlineMEIDict[germlineMEIObj.MEIClass][germlineMEIObj.chrom][germlineMEIObj.pos] = germlineMEIObj
+    def read_bed(self, inputBed):
+        """
 
-		# Close germline MEI database file
-		inputBedFile.close()
+        """
+        # Open germline MEI database input file
+        inputBedFile = open(inputBed, 'r')
+
+        ## Read first input file line by line
+        for line in inputBedFile:
+            line = line.rstrip('\n')
+
+            ## Skip header
+            if not line.startswith("#"):
+                line = line.split('\t')
+
+                ## Create germline MEI object:
+                chrom = line[0]
+                pos = line[1]
+                MEIClass = line[3]
+                family = line[4]
+                TSD = line[5]
+                orientation = line[6]
+                length = line [7]
+                germlineMEIObj = germlineMEI(chrom, pos, MEIClass, family, TSD, orientation, length)
+
+                ### Create a nested dictionary containing for each insertion class and chromosome a dictionary of
+                ## germline MEI objects organized by coordinates
+                # key1(MEIclass) -> value(dict2) -> key2(chrId) -> value(dict3) -> key3(coordinate) -> value(germlineMEIObj)
+
+                ## Create nested dictionaries as needed
+                # A) First MEI of a given class
+                if germlineMEIObj.MEIClass not in self.germlineMEIDict:
+                    self.germlineMEIDict[germlineMEIObj.MEIClass] = {}
+                    self.germlineMEIDict[germlineMEIObj.MEIClass][germlineMEIObj.chrom] = {}
+
+                # B) First MEI of a given class in the chromosome
+                elif germlineMEIObj.chrom not in self.germlineMEIDict[germlineMEIObj.MEIClass]:
+                    self.germlineMEIDict[germlineMEIObj.MEIClass][germlineMEIObj.chrom] = {}
+
+                ## Add germline MEI object to the dictionary
+                self.germlineMEIDict[germlineMEIObj.MEIClass][germlineMEIObj.chrom][germlineMEIObj.pos] = germlineMEIObj
+
+        # Close germline MEI database file
+        inputBedFile.close()
 
 class germlineMEI():
-	""" 
-		.....................
-    
-		Methods:
-		- 
+    """
+            .....................
 
-	"""
-	def __init__(self, chrom, pos, MEIClass, family, TSD, orientation, length):
-		""" 
-	
-		"""
-		self.chrom = chrom
-		self.pos = pos
-		self.MEIClass = MEIClass
-		self.family = family
-		self.TSD = TSD
-		self.orientation = orientation
-		self.length = length
+            Methods:
+            -
+
+    """
+    def __init__(self, chrom, pos, MEIClass, family, TSD, orientation, length):
+        """
+
+        """
+        self.chrom = chrom
+        self.pos = pos
+        self.MEIClass = MEIClass
+        self.family = family
+        self.TSD = TSD
+        self.orientation = orientation
+        self.length = length
 
 
 #### MAIN ####
@@ -112,7 +112,7 @@ import scipy.stats as stats
 from operator import itemgetter, attrgetter, methodcaller
 
 
-## Get user's input ## 
+## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('VCF', help='...')
 parser.add_argument('germlineMEIBed', help='...')
@@ -131,9 +131,9 @@ print "***** ", scriptName, " configuration *****"
 print "VCF: ", VCF
 print "germlineMEIBed: ", germlineMEIBed
 print "outDir: ", outDir
-print 
+print
 print "***** Executing ", scriptName, ".... *****"
-print 
+print
 
 ###########
 ## Start ## 
@@ -158,13 +158,13 @@ germlineMEIDbObj.read_bed(germlineMEIBed)
 ##################################################################
 header("Compare PCAWG with 1K-GENOMES MEI")
 
-# Gather all this information into arrays for plotting. 
-bkpDistances = [] 
+# Gather all this information into arrays for plotting.
+bkpDistances = []
 bkpDistL1 = []
 bkpDistAlu = []
 bkpDistSVA = []
 strandComparisons = []
-TSDSeqComparisons = [] 
+TSDSeqComparisons = []
 TSDLenComparisons = []
 MEILenL1 = []
 MEILenL1Distances = []
@@ -177,114 +177,114 @@ VCFlineObjList = VCFObj.lineList
 
 for VCFlineObj in VCFlineObjList:
 
-	info("Checking if " + VCFlineObj.chrom + ":" + str(VCFlineObj.pos) + " MEI is in 1000 genomes germline database..." )
+    info("Checking if " + VCFlineObj.chrom + ":" + str(VCFlineObj.pos) + " MEI is in 1000 genomes germline database..." )
 
-	# A) MEI already reported in 1000 Genomes
-	if ( 'GERMDB' in VCFlineObj.infoDict ):
+    # A) MEI already reported in 1000 Genomes
+    if ( 'GERMDB' in VCFlineObj.infoDict ):
 
-		print 'yes'
+        print 'yes'
 
-		## Make numpy array with the chromosomal positions for the germline MEI on the same chromosome in the 1000 genomes database
-		MEIDbPosArr = np.array(sorted(germlineMEIDbObj.germlineMEIDict[VCFlineObj.infoDict["CLASS"]][VCFlineObj.chrom].keys(), key=int), dtype='int')
+        ## Make numpy array with the chromosomal positions for the germline MEI on the same chromosome in the 1000 genomes database
+        MEIDbPosArr = np.array(sorted(germlineMEIDbObj.germlineMEIDict[VCFlineObj.infoDict["CLASS"]][VCFlineObj.chrom].keys(), key=int), dtype='int')
 
-		## Identify those MEI in the germline database overlapping the first insertion breakpoint
-		# Determine bkpA beg and end range to search for overlap with 1000 genomes MEI database
-		begBkpA = VCFlineObj.pos - int(VCFlineObj.infoDict["CIPOS"]) - 10
-		endBkpA = VCFlineObj.pos + int(VCFlineObj.infoDict["CIPOS"]) + 10
-	
-		# Select those MEI in the database within bkpA beg and end range
-		filteredArrBkpA = MEIDbPosArr[(MEIDbPosArr >= begBkpA) & (MEIDbPosArr <= endBkpA)] 
+        ## Identify those MEI in the germline database overlapping the first insertion breakpoint
+        # Determine bkpA beg and end range to search for overlap with 1000 genomes MEI database
+        begBkpA = VCFlineObj.pos - int(VCFlineObj.infoDict["CIPOS"]) - 10
+        endBkpA = VCFlineObj.pos + int(VCFlineObj.infoDict["CIPOS"]) + 10
 
-		## A) Target site info available -> Identify those MEI in the germline database overlapping the second insertion breakpoint
-		if 'TSLEN' in VCFlineObj.infoDict:
-	
-			# a) Consistent TSD
-			if (VCFlineObj.infoDict["TSLEN"] != "inconsistent"):	
-				# Determine second breakpoint coordinates and bkpB beg and end range to search for overlap with 1000 genomes MEI database
-				bkpB = VCFlineObj.pos + abs(int(VCFlineObj.infoDict["TSLEN"]))
-				begBkpB = bkpB - int(VCFlineObj.infoDict["CIPOS"]) - 10
-				endBkpB = bkpB + int(VCFlineObj.infoDict["CIPOS"]) + 10
-	
-				# Select those MEI in the database within bkpA beg and end range
-				filteredArrBkpB = MEIDbPosArr[(MEIDbPosArr >= begBkpB) & (MEIDbPosArr <= endBkpB)] 
+        # Select those MEI in the database within bkpA beg and end range
+        filteredArrBkpA = MEIDbPosArr[(MEIDbPosArr >= begBkpA) & (MEIDbPosArr <= endBkpA)]
 
-			# b) Inconsistent TSD
-			else:
-				# Empty array	
-				filteredArrBkpB = np.array([ ]) 
+        ## A) Target site info available -> Identify those MEI in the germline database overlapping the second insertion breakpoint
+        if 'TSLEN' in VCFlineObj.infoDict:
 
-		## B) Target site info not available
-		else:
-			# Empty array	
-			filteredArrBkpB = np.array([ ]) 
-	
-		## Make a single array containing a not redundant list of 1000 genomes MEI coordinates overlapping the first and/or second insertion breakpoints.
-		filteredArr = np.array(np.unique(np.concatenate((filteredArrBkpA, filteredArrBkpB), axis=0)), dtype='int')
+            # a) Consistent TSD
+            if (VCFlineObj.infoDict["TSLEN"] != "inconsistent"):
+                # Determine second breakpoint coordinates and bkpB beg and end range to search for overlap with 1000 genomes MEI database
+                bkpB = VCFlineObj.pos + abs(int(VCFlineObj.infoDict["TSLEN"]))
+                begBkpB = bkpB - int(VCFlineObj.infoDict["CIPOS"]) - 10
+                endBkpB = bkpB + int(VCFlineObj.infoDict["CIPOS"]) + 10
 
-		### Compare insertion characteristics (orientation, TSD, length...)
-		## A) Single 1000G MEI overlapping insertion breakpoint 
-		if (len(filteredArr) == 1):
-			MEI1000G = germlineMEIDbObj.germlineMEIDict[VCFlineObj.infoDict["CLASS"]][VCFlineObj.chrom][str(filteredArr[0])]
-			
-			# a) Breakpoint position
-			if ('TSLEN' in VCFlineObj.infoDict):	
-				bkpB = abs(VCFlineObj.pos + abs(int(VCFlineObj.infoDict["TSLEN"])))
-				diffA = abs(VCFlineObj.pos - int(MEI1000G.pos))
-				diffB = abs(bkpB - int(MEI1000G.pos)) 
-				difference = min(diffA, diffB)
-				bkpDistances.append(difference)
+                # Select those MEI in the database within bkpA beg and end range
+                filteredArrBkpB = MEIDbPosArr[(MEIDbPosArr >= begBkpB) & (MEIDbPosArr <= endBkpB)]
 
-				if (VCFlineObj.infoDict['CLASS'] == "L1"):			
-					bkpDistL1.append(difference)				
+            # b) Inconsistent TSD
+            else:
+                # Empty array
+                filteredArrBkpB = np.array([ ])
 
-				elif (VCFlineObj.infoDict['CLASS'] == "Alu"):
-					bkpDistAlu.append(difference)
-				
-				elif (VCFlineObj.infoDict['CLASS'] == "SVA"):
-					bkpDistSVA.append(difference)		
+        ## B) Target site info not available
+        else:
+            # Empty array
+            filteredArrBkpB = np.array([ ])
 
-			# b) Orientation (+ or -)
-			if (MEI1000G.orientation != "UNK"):
-				comparisonResult = 'consistent' if VCFlineObj.infoDict["STRAND"] == MEI1000G.orientation else 'inconsistent'
-				strandComparisons.append(comparisonResult)
-			
-			# c) Target site duplication length
-			if (MEI1000G.TSD != "UNK") and ('TSSEQ' in VCFlineObj.infoDict):
-				
-				# Compare sequence
-				comparisonResult = 'consistent' if VCFlineObj.infoDict["TSSEQ"] == MEI1000G.TSD else 'inconsistent'
-				TSDSeqComparisons.append(comparisonResult)
+        ## Make a single array containing a not redundant list of 1000 genomes MEI coordinates overlapping the first and/or second insertion breakpoints.
+        filteredArr = np.array(np.unique(np.concatenate((filteredArrBkpA, filteredArrBkpB), axis=0)), dtype='int')
 
-				# Compare length
-				comparisonResult = 'consistent' if int(VCFlineObj.infoDict["TSLEN"]) == len(MEI1000G.TSD) else 'inconsistent'
-				TSDLenComparisons.append(comparisonResult)
-				
-			# d) transposon length 
-			if (MEI1000G.length != "UNK") and ('LEN' in VCFlineObj.infoDict):
+        ### Compare insertion characteristics (orientation, TSD, length...)
+        ## A) Single 1000G MEI overlapping insertion breakpoint
+        if (len(filteredArr) == 1):
+            MEI1000G = germlineMEIDbObj.germlineMEIDict[VCFlineObj.infoDict["CLASS"]][VCFlineObj.chrom][str(filteredArr[0])]
 
-				length = int(VCFlineObj.infoDict['LEN']) 	
-				difference = abs(int(MEI1000G.length) - length) 
-				lenTuple = ( length, int(MEI1000G.length) )
+            # a) Breakpoint position
+            if ('TSLEN' in VCFlineObj.infoDict):
+                bkpB = abs(VCFlineObj.pos + abs(int(VCFlineObj.infoDict["TSLEN"])))
+                diffA = abs(VCFlineObj.pos - int(MEI1000G.pos))
+                diffB = abs(bkpB - int(MEI1000G.pos))
+                difference = min(diffA, diffB)
+                bkpDistances.append(difference)
 
-				if (VCFlineObj.infoDict['CLASS'] == "L1"):			
-					MEILenL1Distances.append(difference)				
-					MEILenL1.append(lenTuple)
+                if (VCFlineObj.infoDict['CLASS'] == "L1"):
+                    bkpDistL1.append(difference)
 
-				elif (VCFlineObj.infoDict['CLASS'] == "Alu"):
-					MEILenAluDistances.append(difference)
-					MEILenAlu.append(lenTuple)
-				
-				elif (VCFlineObj.infoDict['CLASS'] == "SVA"):
-					MEILenSVADistances.append(difference)		
-					MEILenSVA.append(lenTuple)
+                elif (VCFlineObj.infoDict['CLASS'] == "Alu"):
+                    bkpDistAlu.append(difference)
 
-		## B) Multiple 1000G MEI overlapping insertion breakpoint -> Not consider bkp
-		else:
-			print "skip-ambiguous-MEI"
+                elif (VCFlineObj.infoDict['CLASS'] == "SVA"):
+                    bkpDistSVA.append(difference)
 
-	# B) Novel MEI	
-	else:
-		print 'no'		
+            # b) Orientation (+ or -)
+            if (MEI1000G.orientation != "UNK"):
+                comparisonResult = 'consistent' if VCFlineObj.infoDict["STRAND"] == MEI1000G.orientation else 'inconsistent'
+                strandComparisons.append(comparisonResult)
+
+            # c) Target site duplication length
+            if (MEI1000G.TSD != "UNK") and ('TSSEQ' in VCFlineObj.infoDict):
+
+                # Compare sequence
+                comparisonResult = 'consistent' if VCFlineObj.infoDict["TSSEQ"] == MEI1000G.TSD else 'inconsistent'
+                TSDSeqComparisons.append(comparisonResult)
+
+                # Compare length
+                comparisonResult = 'consistent' if int(VCFlineObj.infoDict["TSLEN"]) == len(MEI1000G.TSD) else 'inconsistent'
+                TSDLenComparisons.append(comparisonResult)
+
+            # d) transposon length
+            if (MEI1000G.length != "UNK") and ('LEN' in VCFlineObj.infoDict):
+
+                length = int(VCFlineObj.infoDict['LEN'])
+                difference = abs(int(MEI1000G.length) - length)
+                lenTuple = ( length, int(MEI1000G.length) )
+
+                if (VCFlineObj.infoDict['CLASS'] == "L1"):
+                    MEILenL1Distances.append(difference)
+                    MEILenL1.append(lenTuple)
+
+                elif (VCFlineObj.infoDict['CLASS'] == "Alu"):
+                    MEILenAluDistances.append(difference)
+                    MEILenAlu.append(lenTuple)
+
+                elif (VCFlineObj.infoDict['CLASS'] == "SVA"):
+                    MEILenSVADistances.append(difference)
+                    MEILenSVA.append(lenTuple)
+
+        ## B) Multiple 1000G MEI overlapping insertion breakpoint -> Not consider bkp
+        else:
+            print "skip-ambiguous-MEI"
+
+    # B) Novel MEI
+    else:
+        print 'no'
 
 #######################################
 ## 3. Plot information gathered in 2) #
@@ -295,7 +295,7 @@ for VCFlineObj in VCFlineObjList:
 header("Make barplot")
 
 ## 3.1.1 Gather information
-## Bkp distances 
+## Bkp distances
 # Count number of consistent and inconsistent bkp instances
 # Consistent bkp when exact breakpoint identified
 bkpCategories = [ "consistent" if (x==0) else "inconsistent" for x in bkpDistances ]
@@ -325,7 +325,7 @@ total = (TSDLenDict['consistent'] + TSDLenDict['inconsistent'])
 TSDLenDict['consistent'] = float(TSDLenDict['consistent']) / total * 100
 TSDLenDict['inconsistent'] = float(TSDLenDict['inconsistent']) / total * 100
 
-## Strand 
+## Strand
 # Count number of consistent and inconsistent strand instances
 strandDict = dict([(x, strandComparisons.count(x)) for x in set(strandComparisons)])
 
@@ -339,7 +339,7 @@ consistentList = [ bkpDict['consistent'], TSDLenDict['consistent'], strandDict['
 inconsistentList = [ bkpDict['inconsistent'], TSDLenDict['inconsistent'], strandDict['inconsistent'] ]
 
 ## 3.1.3 Make figure
-# Make bar plot 
+# Make bar plot
 xpos = np.arange(3)    # the x locations for the groups
 width = 0.5       # the width of the bars: can also be len(x) sequence
 fig = plt.figure(figsize=(5,6))
@@ -360,7 +360,7 @@ ax.set_axisbelow(True)
 plt.yticks(np.arange(0, 101, 10))
 plt.xticks(xpos, ('BKP', 'TSD-LEN', 'STRAND'))
 
-## Make legend 
+## Make legend
 circle1 = mpatches.Circle((0, 0), 5, color='#008000', alpha=0.75)
 circle2 = mpatches.Circle((0, 0), 5, color='#ff0000', alpha=0.75)
 plt.figlegend((circle1, circle2), ('Consistent', 'Inconsistent'), loc = 'lower center', ncol=2, labelspacing=0., fontsize=8, fancybox=True )
@@ -373,7 +373,7 @@ plt.savefig(fileName)
 #####################################################
 header("Compute correlations and make scatterplots")
 
-fig = plt.figure(figsize=(10,14))                
+fig = plt.figure(figsize=(10,14))
 fig.suptitle('MEI length correlation', fontsize=18)
 
 ## L1
@@ -383,7 +383,7 @@ L1len1000G = tmpList[1]
 
 # Compute correlation
 corr = stats.pearsonr(L1lenPCAWG, L1len1000G)
-coefficient = format(corr[0], '.3f') 
+coefficient = format(corr[0], '.3f')
 pvalue = corr[1]
 text = 'pearson_corr: ' + str(coefficient)
 
@@ -404,7 +404,7 @@ Alulen1000G = tmpList[1]
 
 # Compute correlation
 corr = stats.pearsonr(AlulenPCAWG, Alulen1000G )
-coefficient = format(corr[0], '.3f') 
+coefficient = format(corr[0], '.3f')
 pvalue = corr[1]
 text = 'pearson_corr: ' + str(coefficient)
 
@@ -418,14 +418,14 @@ plt.xlabel('PCAWG', fontsize=12)
 plt.ylabel('1K-GENOMES', fontsize=12)
 ax2.text(0.5, 0.1, text, transform = ax2.transAxes)
 
-## SVA 
+## SVA
 tmpList = map(list, zip(*MEILenSVA))
 SVAlenPCAWG = tmpList[0]
 SVAlen1000G = tmpList[1]
 
 # Compute correlation
 corr = stats.pearsonr(SVAlenPCAWG, SVAlen1000G )
-coefficient = format(corr[0], '.3f') 
+coefficient = format(corr[0], '.3f')
 pvalue = corr[1]
 text = 'pearson_corr: ' + str(coefficient)
 
@@ -451,7 +451,7 @@ header("Make venn diagrams")
 classesList1000G = [line.rstrip('\n').split('\t')[3] for line in open(germlineMEIBed)]
 
 # Make figure
-fig = plt.figure(figsize=(5,6))                
+fig = plt.figure(figsize=(5,6))
 fig.suptitle('Overlap between MEI calls')
 
 ## L1
@@ -502,7 +502,7 @@ ax4 = fig.add_subplot(2, 2, 4)
 ax4.set_title("ERVK", fontsize=10)
 venn2(subsets=(ERVKPCAWG, ERVK1000G, ERVKBoth), set_labels = ('', ''))
 
-## Make legend 
+## Make legend
 circle1 = mpatches.Circle((0, 0), 5, color='#ff0000', alpha=0.5)
 circle2 = mpatches.Circle((0, 0), 5, color='#008000', alpha=0.5)
 plt.figlegend((circle1, circle2), ('PCAWG', '1K-GENOMES'), loc = 'lower center', ncol=2, labelspacing=0., fontsize=8, fancybox=True )
@@ -518,21 +518,19 @@ plt.savefig(fileName)
 header("Compute bkp distance mean and standard desviation")
 
 #### Alu
-print "ALU-mean: ", np.mean(bkpDistAlu) 
+print "ALU-mean: ", np.mean(bkpDistAlu)
 print "ALU-std: ", np.std(bkpDistAlu)
 
-#### L1 
-print "L1-mean: ", np.mean(bkpDistL1) 
+#### L1
+print "L1-mean: ", np.mean(bkpDistL1)
 print "L1-std: ",np.std(bkpDistL1)
 
 #### SVA
 print "SVA-mean: ", np.mean(bkpDistSVA)
 print "SVA-std: ", np.std(bkpDistSVA)
 
- 
+
 ## End ##
-print 
+print
 print "***** Finished! *****"
-print 
-
-
+print
