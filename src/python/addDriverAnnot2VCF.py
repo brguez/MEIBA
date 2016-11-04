@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-#coding: utf-8 
+#coding: utf-8
 
 def header(string):
-    """ 
+    """
         Display  header
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print '\n', timeInfo, "****", string, "****"
 
@@ -17,7 +17,7 @@ import sys
 import os.path
 import formats
 
-## Get user's input ## 
+## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('VCF', help='...')
 parser.add_argument('driverDb', help='...')
@@ -39,9 +39,9 @@ print "vcf: ", inputVCF
 print "driver-database: ", driverDb
 print "donorId: ", donorId
 print "outDir: ", outDir
-print 
+print
 print "***** Executing ", scriptName, ".... *****"
-print 
+print
 
 ## Start ## 
 
@@ -63,39 +63,39 @@ for line in driverDbFile:
 
     ## Skip header
     if not line.startswith("#"):
-	line = line.split('\t')        
+        line = line.split('\t')
 
-	## Save information into the dictionary:
-	gnSymbol = line[0]
-	role = line[1]
-	cosmic = line[2]
-	cpg = line[3]
+        ## Save information into the dictionary:
+        gnSymbol = line[0]
+        role = line[1]
+        cosmic = line[2]
+        cpg = line[3]
 
-	# Create driver annotation dictionary
-	annotDict = {}
-	annotDict["ROLE"] = role
-	annotDict["COSMIC"] = cosmic
-	annotDict["CPG"] = cpg
+        # Create driver annotation dictionary
+        annotDict = {}
+        annotDict["ROLE"] = role
+        annotDict["COSMIC"] = cosmic
+        annotDict["CPG"] = cpg
 
-	# Add driver annotation dictionary as value
-	cancerDriversDict[gnSymbol] = annotDict 
+        # Add driver annotation dictionary as value
+        cancerDriversDict[gnSymbol] = annotDict
 
-## 3. Add driver annotation info to VCF file	
+## 3. Add driver annotation info to VCF file
 for VCFlineObj in VCFObj.lineList:
 
-	# Insertion overlapping a Gene:
-	if "GENE" in VCFlineObj.infoDict:
-		overlappingGn = VCFlineObj.infoDict["GENE"]
+        # Insertion overlapping a Gene:
+    if "GENE" in VCFlineObj.infoDict:
+        overlappingGn = VCFlineObj.infoDict["GENE"]
 
-		## Gene in cancer driver genes database:
-		if overlappingGn in cancerDriversDict:
+        ## Gene in cancer driver genes database:
+        if overlappingGn in cancerDriversDict:
 
-			## Add cancer driver annotation to the VCF info field
-			VCFlineObj.infoDict.update(cancerDriversDict[overlappingGn])
+            ## Add cancer driver annotation to the VCF info field
+            VCFlineObj.infoDict.update(cancerDriversDict[overlappingGn])
 
-			VCFlineObj.info = VCFlineObj.make_info()
- 
-## 3. Make output VCF 
+            VCFlineObj.info = VCFlineObj.make_info()
+
+## 3. Make output VCF
 
 # 3.1 Write header
 VCFObj.write_header(outFilePath)
@@ -104,8 +104,6 @@ VCFObj.write_header(outFilePath)
 VCFObj.write_variants(outFilePath)
 
 ## End ##
-print 
+print
 print "***** Finished! *****"
-print 
-
-
+print

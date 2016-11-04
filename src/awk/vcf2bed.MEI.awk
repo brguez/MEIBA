@@ -14,7 +14,7 @@
 
 # Description
 ################ 
-		
+        
 # Takes as input a vcf containing TraFiC MEI and convert insertion calls into bed format
 
 # Usage
@@ -39,66 +39,66 @@
 #  1        246817003       246817063
 
 function abs(v) {
-	return v < 0 ? -v : v
+    return v < 0 ? -v : v
 }
 
 ! /^#/ {
-	# Get input 
-	chrom = $1;
-	pos = $2;
-	info = $8;
-	
-	# Parse info field and select class and CIPOS fields
-	split(info, infoList, ";");
+    # Get input 
+    chrom = $1;
+    pos = $2;
+    info = $8;
+    
+    # Parse info field and select class and CIPOS fields
+    split(info, infoList, ";");
 
-	for (field in infoList)
-	{
+    for (field in infoList)
+    {
 
-		split(infoList[field], fieldList, "=");
-		tag = fieldList[1];
-		value = fieldList[2];
+        split(infoList[field], fieldList, "=");
+        tag = fieldList[1];
+        value = fieldList[2];
 
-		# A) Class
-		if (tag == "CLASS")
-		{
-			class = value
-		}
+        # A) Class
+        if (tag == "CLASS")
+        {
+            class = value
+        }
 
-		# B) Score
-		else if (tag == "SCORE")
-		{
-			score = value
-		}		
-	
-		# C) CIPOS (confindence interval around position)
-		else if (tag == "CIPOS")
-		{
-			CIPOS = value;	
-		}
+        # B) Score
+        else if (tag == "SCORE")
+        {
+            score = value
+        }        
+    
+        # C) CIPOS (confindence interval around position)
+        else if (tag == "CIPOS")
+        {
+            CIPOS = value;    
+        }
 
-		# C) TSLEN (target site length)
-		else if (tag == "TSLEN")
-		{
-			targetSiteLen = abs(value); # Absolute value (deletion length -> positive integer)	
-		}
-	}	
+        # C) TSLEN (target site length)
+        else if (tag == "TSLEN")
+        {
+            targetSiteLen = abs(value); # Absolute value (deletion length -> positive integer)    
+        }
+    }    
 
-	# A) Target site identified
-	if ( score == "5")
-	{
-		# Compute beg and end
-		beg = pos - 1;    # Substract 1 to convert from 1-based (VCF) to 0-based (bed) coordinate system
-		end = pos + targetSiteLen;				
-	}
-	# B) Target site not identified
-	else
-	{
-		# Compute beg and end
-		beg = pos - CIPOS - 1;    # Substract 1 to convert from 1-based (VCF) to 0-based (bed) coordinate system
-		end = pos + CIPOS;
-	}
+    # A) Target site identified
+    if ( score == "5")
+    {
+        # Compute beg and end
+        beg = pos - 1;    # Substract 1 to convert from 1-based (VCF) to 0-based (bed) coordinate system
+        end = pos + targetSiteLen;                
+    }
+    # B) Target site not identified
+    else
+    {
+        # Compute beg and end
+        beg = pos - CIPOS - 1;    # Substract 1 to convert from 1-based (VCF) to 0-based (bed) coordinate system
+        end = pos + CIPOS;
+    }
 
-	# Print bed row
-	row=chrom"\t"beg"\t"end"\t"class;		
-	print row;
+    # Print bed row
+    row=chrom"\t"beg"\t"end"\t"class;        
+    print row;
 }

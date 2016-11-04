@@ -1,31 +1,31 @@
 #!/usr/bin/env python
-#coding: utf-8 
+#coding: utf-8
 
 
 #### FUNCTIONS ####
 def header(string):
-    """ 
+    """
         Display  header
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print '\n', timeInfo, "****", string, "****"
 
 
 def subHeader(string):
-    """ 
+    """
         Display  subheader
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, "**", string, "**"
 
 
 def info(string):
-    """ 
+    """
         Display basic information
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, string
-    
+
 #### MAIN ####
 
 ## Import modules ##
@@ -35,7 +35,7 @@ import os.path
 import formats
 import time
 
-## Get user's input ## 
+## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('VCFPaths', help='text file with the path to the VCF files will be merged')
 parser.add_argument('sampleId', help='Identifier to name output file.')
@@ -54,9 +54,9 @@ print "***** ", scriptName, " configuration *****"
 print "VCF: ", VCFPaths
 print "sampleId: ", sampleId
 print "outDir: ", outDir
-print 
+print
 print "***** Executing ", scriptName, ".... *****"
-print 
+print
 
 ## Start ## 
 
@@ -69,22 +69,22 @@ completeVCFObj = formats.VCF()
 
 ## Read one VCF per iteration and add the variants to the merged VCF
 for VCFfile in paths:
-			
-	VCFfile = VCFfile.rstrip('\n')
-	VCFObj = formats.VCF()
-	
-	donorIdList = VCFObj.read_VCF_multiSample(VCFfile)
 
-	# Add variant objects
-	for lineObj in VCFObj.lineList:
-		completeVCFObj.addLine(lineObj)
+    VCFfile = VCFfile.rstrip('\n')
+    VCFObj = formats.VCF()
 
-	# Create header
-	if completeVCFObj.header == "":
-		completeVCFObj.header = VCFObj.header				
+    donorIdList = VCFObj.read_VCF_multiSample(VCFfile)
+
+    # Add variant objects
+    for lineObj in VCFObj.lineList:
+        completeVCFObj.addLine(lineObj)
+
+    # Create header
+    if completeVCFObj.header == "":
+        completeVCFObj.header = VCFObj.header
 
 # Sort variants in the merged VCF object
-completeVCFObj.lineList = completeVCFObj.sort() 
+completeVCFObj.lineList = completeVCFObj.sort()
 
 #### Write output VCF file from merged VCF object
 header("2. Write output VCF file")

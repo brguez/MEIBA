@@ -1,17 +1,17 @@
 #!/usr/bin/env python
-#coding: utf-8 
+#coding: utf-8
 
 def header(string):
-    """ 
+    """
         Display  header
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, "****", string, "****"
 
 def info(string):
-    """ 
+    """
         Display basic information
-    """ 
+    """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, string,
 
@@ -31,7 +31,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
 
-## Get user's input ## 
+## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('VCF', help='...')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
@@ -47,9 +47,9 @@ print
 print "***** ", scriptName, " configuration *****"
 print "VCF: ", VCF
 print "outDir: ", outDir
-print 
+print
 print "***** Executing ", scriptName, ".... *****"
-print 
+print
 
 ###########
 ## Start ## 
@@ -66,7 +66,7 @@ VCFObj.read_VCF(VCF)
 ## 2. Plot information about MEI calls #
 ########################################
 
-## 2.1 Number of MEI per chromosome 
+## 2.1 Number of MEI per chromosome
 ####################################
 header("Number of MEI per chromosome")
 
@@ -79,33 +79,33 @@ ERVKList = [0] * 24
 
 ## Count number of MEI per chromosome
 for MEIObj in VCFObj.lineList:
-	supportingPElist = MEIObj.genotype.split(':')
-	totalSupportingPE = int(supportingPElist[0]) + int(supportingPElist[1])
+    supportingPElist = MEIObj.genotype.split(':')
+    totalSupportingPE = int(supportingPElist[0]) + int(supportingPElist[1])
 
-	if (MEIObj.chrom == "X"):
-		index = 23 - 1
+    if (MEIObj.chrom == "X"):
+        index = 23 - 1
 
-	elif (MEIObj.chrom == "Y"):
-		index = 24 - 1
+    elif (MEIObj.chrom == "Y"):
+        index = 24 - 1
 
-	else:
-		index = int(MEIObj.chrom) - 1 
+    else:
+        index = int(MEIObj.chrom) - 1
 
-	
-	if (MEIObj.infoDict['CLASS'] == 'L1'):		
-		L1List[index] = L1List[index] + 1
 
-	elif (MEIObj.infoDict['CLASS'] == 'Alu'):
-		AluList[index] = AluList[index] + 1
+    if (MEIObj.infoDict['CLASS'] == 'L1'):
+        L1List[index] = L1List[index] + 1
 
-	elif (MEIObj.infoDict['CLASS'] == 'SVA'):
-		SVAList[index] = SVAList[index] + 1
-	
-	else:
-		ERVKList[index] = ERVKList[index] + 1 
+    elif (MEIObj.infoDict['CLASS'] == 'Alu'):
+        AluList[index] = AluList[index] + 1
+
+    elif (MEIObj.infoDict['CLASS'] == 'SVA'):
+        SVAList[index] = SVAList[index] + 1
+
+    else:
+        ERVKList[index] = ERVKList[index] + 1
 
 ## Make figure
-# Make bar plot 
+# Make bar plot
 xpos = np.arange(1, 25)    # the x locations for the groups
 width = 0.5       # the width of the bars: can also be len(x) sequence
 fig = plt.figure(figsize=(8,6))
@@ -140,7 +140,7 @@ plt.xticks(xpos, chrList)
 locs, labels = plt.xticks()
 plt.setp(labels, rotation=30)
 
-## Make legend 
+## Make legend
 circle1 = mpatches.Circle((0, 0), 5, color='#A67D3D', alpha=0.75)
 circle2 = mpatches.Circle((0, 0), 5, color='#008000', alpha=0.75)
 circle3 = mpatches.Circle((0, 0), 5, color='#87CEFA', alpha=0.75)
@@ -151,7 +151,7 @@ plt.figlegend((circle1, circle2, circle3, circle4), ('ALU', 'L1', 'SVA', 'ERVK')
 fileName = outDir + "/PCAWG_MEIperChr_barPlot.pdf"
 plt.savefig(fileName)
 
-## 2.2 MEI total number of supporting discordant paired-ends histogram 
+## 2.2 MEI total number of supporting discordant paired-ends histogram
 #######################################################################
 header("Total number of discordant paired-ends histogram")
 
@@ -162,22 +162,22 @@ SVAPElist = []
 ERVKPElist = []
 
 for MEIObj in VCFObj.lineList:
-	supportingPElist = MEIObj.genotype.split(':')
-	totalSupportingPE = int(supportingPElist[0]) + int(supportingPElist[1])
+    supportingPElist = MEIObj.genotype.split(':')
+    totalSupportingPE = int(supportingPElist[0]) + int(supportingPElist[1])
 
-	if (MEIObj.infoDict['CLASS'] == 'L1'):		
-		L1PElist.append(totalSupportingPE)
+    if (MEIObj.infoDict['CLASS'] == 'L1'):
+        L1PElist.append(totalSupportingPE)
 
-	elif (MEIObj.infoDict['CLASS'] == 'Alu'):
-		AluPElist.append(totalSupportingPE)
-	
-	elif (MEIObj.infoDict['CLASS'] == 'SVA'):
-		SVAPElist.append(totalSupportingPE)
-	else:
-		ERVKPElist.append(totalSupportingPE)
+    elif (MEIObj.infoDict['CLASS'] == 'Alu'):
+        AluPElist.append(totalSupportingPE)
+
+    elif (MEIObj.infoDict['CLASS'] == 'SVA'):
+        SVAPElist.append(totalSupportingPE)
+    else:
+        ERVKPElist.append(totalSupportingPE)
 
 #### Make plot
-fig = plt.figure(figsize=(20,14))                
+fig = plt.figure(figsize=(20,14))
 fig.suptitle('Total discordant paired-end support', fontsize=20)
 
 ### A) L1
@@ -284,22 +284,22 @@ SVAPEtuplelist = []
 ERVKPEtuplelist = []
 
 for MEIObj in VCFObj.lineList:
-	supportingPEtuple = tuple(map(int, MEIObj.genotype.split(':')))
-	
-	if (MEIObj.infoDict['CLASS'] == 'L1'):		
-		L1PEtuplelist.append(supportingPEtuple)
-	
-	elif (MEIObj.infoDict['CLASS'] == 'Alu'):
-		AluPEtuplelist.append(supportingPEtuple)
-	
-	elif (MEIObj.infoDict['CLASS'] == 'SVA'):
-		SVAPEtuplelist.append(supportingPEtuple)
-	
-	else:
-		ERVKPEtuplelist.append(supportingPEtuple)
+    supportingPEtuple = tuple(map(int, MEIObj.genotype.split(':')))
+
+    if (MEIObj.infoDict['CLASS'] == 'L1'):
+        L1PEtuplelist.append(supportingPEtuple)
+
+    elif (MEIObj.infoDict['CLASS'] == 'Alu'):
+        AluPEtuplelist.append(supportingPEtuple)
+
+    elif (MEIObj.infoDict['CLASS'] == 'SVA'):
+        SVAPEtuplelist.append(supportingPEtuple)
+
+    else:
+        ERVKPEtuplelist.append(supportingPEtuple)
 
 ### Make plot
-fig = plt.figure(figsize=(10,14))                
+fig = plt.figure(figsize=(10,14))
 fig.suptitle('Number of discordant paired-ends correlation', fontsize=18)
 
 ## L1
@@ -309,7 +309,7 @@ L1minusPE = tmpList[1]
 
 # Compute correlation
 corr = stats.pearsonr(L1plusPE, L1minusPE)
-coefficient = format(corr[0], '.3f') 
+coefficient = format(corr[0], '.3f')
 pvalue = corr[1]
 text = 'pearson_corr: ' + str(coefficient)
 
@@ -330,7 +330,7 @@ AluMinusPE = tmpList[1]
 
 # Compute correlation
 corr = stats.pearsonr(AluPlusPE, AluMinusPE)
-coefficient = format(corr[0], '.3f') 
+coefficient = format(corr[0], '.3f')
 pvalue = corr[1]
 text = 'pearson_corr: ' + str(coefficient)
 
@@ -351,7 +351,7 @@ SVAMinusPE = tmpList[1]
 
 # Compute correlation
 corr = stats.pearsonr(SVAPlusPE, SVAMinusPE)
-coefficient = format(corr[0], '.3f') 
+coefficient = format(corr[0], '.3f')
 pvalue = corr[1]
 text = 'pearson_corr: ' + str(coefficient)
 
@@ -372,7 +372,7 @@ ERVKMinusPE = tmpList[1]
 
 # Compute correlation
 corr = stats.pearsonr(ERVKPlusPE, ERVKMinusPE)
-coefficient = format(corr[0], '.3f') 
+coefficient = format(corr[0], '.3f')
 pvalue = corr[1]
 text = 'pearson_corr: ' + str(coefficient)
 
@@ -391,7 +391,7 @@ fileName = outDir + "/PCAWG_discordantPE_clusters_correlation.pdf"
 plt.savefig(fileName)
 
 
-## 2.4 MEI TSD length histogram 
+## 2.4 MEI TSD length histogram
 ################################
 header("MEI TSD length histogram")
 
@@ -401,18 +401,18 @@ AluTSDlist = []
 SVATSDlist = []
 
 for MEIObj in VCFObj.lineList:
-	
-	if (MEIObj.infoDict['CLASS'] == 'L1'):		
-		L1TSDlist.append(int(MEIObj.infoDict['TSLEN']))
-	
-	elif (MEIObj.infoDict['CLASS'] == 'Alu'):
-		AluTSDlist.append(int(MEIObj.infoDict['TSLEN']))
-	
-	elif (MEIObj.infoDict['CLASS'] == 'SVA'):
-		SVATSDlist.append(int(MEIObj.infoDict['TSLEN']))
+
+    if (MEIObj.infoDict['CLASS'] == 'L1'):
+        L1TSDlist.append(int(MEIObj.infoDict['TSLEN']))
+
+    elif (MEIObj.infoDict['CLASS'] == 'Alu'):
+        AluTSDlist.append(int(MEIObj.infoDict['TSLEN']))
+
+    elif (MEIObj.infoDict['CLASS'] == 'SVA'):
+        SVATSDlist.append(int(MEIObj.infoDict['TSLEN']))
 
 #### Make plot
-fig = plt.figure(figsize=(14,12))                
+fig = plt.figure(figsize=(14,12))
 fig.suptitle('Target site duplication (TSD)', fontsize=20)
 
 ### A) L1
@@ -476,7 +476,7 @@ plt.setp(labels, rotation=30)
 fileName = outDir + "/PCAWG_TSDlen_hist.pdf"
 plt.savefig(fileName)
 
-## 2.5 MEI strand bar plot 
+## 2.5 MEI strand bar plot
 ###########################
 header("MEI strand bar plot")
 
@@ -487,18 +487,18 @@ SVAStrandList = []
 ERVKStrandList = []
 
 for MEIObj in VCFObj.lineList:
-	
-	if (MEIObj.infoDict['CLASS'] == 'L1'):		
-		L1StrandList.append(MEIObj.infoDict['STRAND'])
-	
-	elif (MEIObj.infoDict['CLASS'] == 'Alu'):
-		AluStrandList.append(MEIObj.infoDict['STRAND'])
-	
-	elif (MEIObj.infoDict['CLASS'] == 'SVA'):
-		SVAStrandList.append(MEIObj.infoDict['STRAND'])
 
-	else:
-		ERVKStrandList.append(MEIObj.infoDict['STRAND'])
+    if (MEIObj.infoDict['CLASS'] == 'L1'):
+        L1StrandList.append(MEIObj.infoDict['STRAND'])
+
+    elif (MEIObj.infoDict['CLASS'] == 'Alu'):
+        AluStrandList.append(MEIObj.infoDict['STRAND'])
+
+    elif (MEIObj.infoDict['CLASS'] == 'SVA'):
+        SVAStrandList.append(MEIObj.infoDict['STRAND'])
+
+    else:
+        ERVKStrandList.append(MEIObj.infoDict['STRAND'])
 
 # Compute the number of times the MEI is inserted in + and - for each MEI type
 nbPlusMinusL1 = [L1StrandList.count(i) for i in set(L1StrandList)]
@@ -506,19 +506,19 @@ nbPlusMinusAlu = [AluStrandList.count(i) for i in set(AluStrandList)]
 nbPlusMinusSVA = [SVAStrandList.count(i) for i in set(SVAStrandList)]
 nbPlusMinusERVK = [ERVKStrandList.count(i) for i in set(ERVKStrandList)]
 
-# Convert into percentages. 
+# Convert into percentages.
 percPlusMinusL1 = [float(i)/sum(nbPlusMinusL1)*100 for i in nbPlusMinusL1]
 percPlusMinusAlu = [float(i)/sum(nbPlusMinusAlu)*100 for i in nbPlusMinusAlu]
 percPlusMinusSVA = [float(i)/sum(nbPlusMinusSVA)*100 for i in nbPlusMinusSVA]
 percPlusMinusERVK = [float(i)/sum(nbPlusMinusERVK)*100 for i in nbPlusMinusERVK]
 
 # Put percentages into two lists
-tmpList = map(list, zip(percPlusMinusL1, percPlusMinusAlu, percPlusMinusSVA, percPlusMinusERVK)) 
+tmpList = map(list, zip(percPlusMinusL1, percPlusMinusAlu, percPlusMinusSVA, percPlusMinusERVK))
 plusList = tmpList[0]
 minusList = tmpList[1]
 
 ## Make figure
-# Make bar plot 
+# Make bar plot
 xpos = np.arange(4)    # the x locations for the groups
 width = 0.5       # the width of the bars: can also be len(x) sequence
 fig = plt.figure(figsize=(5,6))
@@ -539,7 +539,7 @@ ax.set_axisbelow(True)
 plt.yticks(np.arange(0, 101, 10))
 plt.xticks(xpos, ('L1', 'ALU', 'SVA', 'ERVK'))
 
-## Make legend 
+## Make legend
 circle1 = mpatches.Circle((0, 0), 5, color='#A67D3D', alpha=0.75)
 circle2 = mpatches.Circle((0, 0), 5, color='#008000', alpha=0.75)
 plt.figlegend((circle1, circle2), ('+ strand', '- strand'), loc = 'lower center', ncol=2, labelspacing=0., fontsize=8, fancybox=True )
@@ -548,7 +548,7 @@ plt.figlegend((circle1, circle2), ('+ strand', '- strand'), loc = 'lower center'
 fileName = outDir + "/PCAWG_strand_barPlot.pdf"
 plt.savefig(fileName)
 
-## 2.6 MEI structure bar plot 
+## 2.6 MEI structure bar plot
 ##############################
 header("MEI structure bar plot")
 
@@ -558,35 +558,35 @@ AluStructureList = []
 SVAStructureList = []
 
 for MEIObj in VCFObj.lineList:
-	
-	if (MEIObj.infoDict['CLASS'] == 'L1'):		
-		L1StructureList.append(MEIObj.infoDict['STRUCT'])
-	
-	elif (MEIObj.infoDict['CLASS'] == 'Alu'):
-		AluStructureList.append(MEIObj.infoDict['STRUCT'])
-	
-	elif (MEIObj.infoDict['CLASS'] == 'SVA'):
-		SVAStructureList.append(MEIObj.infoDict['STRUCT'])
+
+    if (MEIObj.infoDict['CLASS'] == 'L1'):
+        L1StructureList.append(MEIObj.infoDict['STRUCT'])
+
+    elif (MEIObj.infoDict['CLASS'] == 'Alu'):
+        AluStructureList.append(MEIObj.infoDict['STRUCT'])
+
+    elif (MEIObj.infoDict['CLASS'] == 'SVA'):
+        SVAStructureList.append(MEIObj.infoDict['STRUCT'])
 
 # Compute the number of times the MEI are inserted in + and - for each MEI type
 nbInvFullDelL1 = [L1StructureList.count(i) for i in set(L1StructureList)]
 nbInvFullDelAlu = [AluStructureList.count(i) for i in set(AluStructureList)]
 nbInvFullDelSVA = [SVAStructureList.count(i) for i in set(SVAStructureList)]
 
-# Convert into percentages. 
+# Convert into percentages.
 percInvFullDelL1 = [float(i)/sum(nbInvFullDelL1)*100 for i in nbInvFullDelL1]
 percInvFullDelAlu = [float(i)/sum(nbInvFullDelAlu)*100 for i in nbInvFullDelAlu]
 percInvFullDelSVA = [float(i)/sum(nbInvFullDelSVA)*100 for i in nbInvFullDelSVA]
 
 # Put percentages into two lists
-tmpList = map(list, zip(percInvFullDelL1, percInvFullDelAlu, percInvFullDelSVA)) 
+tmpList = map(list, zip(percInvFullDelL1, percInvFullDelAlu, percInvFullDelSVA))
 
 invList = tmpList[0]
 delList = tmpList[2]
 fullList = tmpList[1]
 
 ## Make figure
-# Make bar plot 
+# Make bar plot
 xpos = np.arange(3)    # the x locations for the groups
 width = 0.5       # the width of the bars: can also be len(x) sequence
 fig = plt.figure(figsize=(5,6))
@@ -609,7 +609,7 @@ ax.set_axisbelow(True)
 plt.yticks(np.arange(0, 101, 10))
 plt.xticks(xpos, ('L1', 'ALU', 'SVA'))
 
-## Make legend 
+## Make legend
 circle1 = mpatches.Circle((0, 0), 5, color='#A67D3D', alpha=0.75)
 circle2 = mpatches.Circle((0, 0), 5, color='#008000', alpha=0.75)
 circle3 = mpatches.Circle((0, 0), 5, color='#FFA500', alpha=0.75)
@@ -619,7 +619,7 @@ plt.figlegend((circle1, circle2, circle3), ('5\' Inverted', '5\' Truncated', 'Fu
 fileName = outDir + "/PCAWG_structure_barPlot.pdf"
 plt.savefig(fileName)
 
-## 2.7 MEI in CPG 
+## 2.7 MEI in CPG
 ###################
 header("MEI CPG region bar plot")
 
@@ -632,24 +632,24 @@ test = []
 genes = []
 
 for MEIObj in VCFObj.lineList:
-# Nota: number of CPG genes inconsistent with input VCf. Investigate...	
+# Nota: number of CPG genes inconsistent with input VCf. Investigate...
 
-	if 'CPG' in MEIObj.infoDict:
+    if 'CPG' in MEIObj.infoDict:
 
-		test.append(MEIObj)
+        test.append(MEIObj)
 
-		# A) Tumor suppresor gene (TSG)		
-		if (MEIObj.infoDict['ROLE'] == 'TSG'):
-			
-			TSGRegionList.append(MEIObj.infoDict['REGION'])
+        # A) Tumor suppresor gene (TSG)
+        if (MEIObj.infoDict['ROLE'] == 'TSG'):
 
-		# B) Oncogene
-		elif (MEIObj.infoDict['ROLE'] == 'oncogene'):
-			oncogeneRegionList.append(MEIObj.infoDict['REGION'])
-		
-		# C) Both
-		else:
-			bothRegionList.append(MEIObj.infoDict['REGION'])
+            TSGRegionList.append(MEIObj.infoDict['REGION'])
+
+        # B) Oncogene
+        elif (MEIObj.infoDict['ROLE'] == 'oncogene'):
+            oncogeneRegionList.append(MEIObj.infoDict['REGION'])
+
+        # C) Both
+        else:
+            bothRegionList.append(MEIObj.infoDict['REGION'])
 
 # Compute the number of times the MEI are inserted in the different genic regions (Only introns for oncogene and both. For TSG two in UTR)
 nbIntronUtrTSG = [TSGRegionList.count(i) for i in set(TSGRegionList)]
@@ -661,13 +661,13 @@ nbIntronUtrOncogene.append(0)
 nbIntronUtrBoth.append(0)
 
 # Put percentages into two lists
-tmpList = map(list, zip(nbIntronUtrTSG, nbIntronUtrOncogene, nbIntronUtrBoth)) 
+tmpList = map(list, zip(nbIntronUtrTSG, nbIntronUtrOncogene, nbIntronUtrBoth))
 
 intronList = tmpList[0]
 utrList = tmpList[1]
 
 ## Make figure
-# Make bar plot 
+# Make bar plot
 xpos = np.arange(3)    # the x locations for the groups
 width = 0.5       # the width of the bars: can also be len(x) sequence
 fig = plt.figure(figsize=(5,6))
@@ -689,7 +689,7 @@ ax.set_axisbelow(True)
 plt.yticks(np.arange(0, 51, 5))
 plt.xticks(xpos, ('TSG', 'ONCOGENE', 'BOTH'), fontsize=12)
 
-## Make legend 
+## Make legend
 circle1 = mpatches.Circle((0, 0), 5, color='#A67D3D', alpha=0.75)
 circle2 = mpatches.Circle((0, 0), 5, color='#008000', alpha=0.75)
 plt.figlegend((circle1, circle2), ('INTRON', '3\' UTR'), loc = 'lower center', ncol=2, labelspacing=0., fontsize=8, fancybox=True )
@@ -709,19 +709,19 @@ regionsList = []
 
 for MEIObj in VCFObj.lineList:
 
-	if (MEIObj.infoDict['REGION']=="splicing") or (MEIObj.infoDict['REGION']=="upstream,downstream") or (MEIObj.infoDict['REGION']=="upstream") or (MEIObj.infoDict['REGION']=="downstream"):
-		region = "Other"
-	
-	elif (MEIObj.infoDict['REGION']=="UTR5") or (MEIObj.infoDict['REGION']=="UTR3"):
-		region = "UTR"
+    if (MEIObj.infoDict['REGION']=="splicing") or (MEIObj.infoDict['REGION']=="upstream,downstream") or (MEIObj.infoDict['REGION']=="upstream") or (MEIObj.infoDict['REGION']=="downstream"):
+        region = "Other"
 
-	elif (MEIObj.infoDict['REGION']=="ncRNA_exonic") or (MEIObj.infoDict['REGION']=="ncRNA_intronic"):
-		region = "ncRNA"
+    elif (MEIObj.infoDict['REGION']=="UTR5") or (MEIObj.infoDict['REGION']=="UTR3"):
+        region = "UTR"
 
-	else:
-		region = MEIObj.infoDict['REGION']
+    elif (MEIObj.infoDict['REGION']=="ncRNA_exonic") or (MEIObj.infoDict['REGION']=="ncRNA_intronic"):
+        region = "ncRNA"
 
-	regionsList.append(region)
+    else:
+        region = MEIObj.infoDict['REGION']
+
+    regionsList.append(region)
 
 regionTuples = [(x, int(regionsList.count(x))) for x in set(regionsList)]
 regionList =  [list(t) for t in zip(*regionTuples)]
@@ -730,7 +730,7 @@ labels = regionList[0]
 sizes = regionList[1]
 
 ## Make plot
-fig = plt.figure(figsize=(6,6))                
+fig = plt.figure(figsize=(6,6))
 fig.suptitle('MEI functional spectrum', fontsize=16)
 colors = ['#008000', '#A67D3D', '#87CEFA', '#ff0000', '#FFD700', '#FFA500']
 patches, texts, perc = plt.pie(sizes, colors=colors, startangle=90, autopct='%1.1f%%', pctdistance=1.2, labeldistance=1)
@@ -742,8 +742,6 @@ plt.savefig(fileName)
 
 
 ## End ##
-print 
+print
 print "***** Finished! *****"
-print 
-
-
+print

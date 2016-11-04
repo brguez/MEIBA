@@ -3,15 +3,15 @@
 
 <<authors
 ******************************************************************************
-	
-	alignContigs2reference.sh
-	
-	Copyright (c) 2016 Bernardo Rodríguez-Martín
-	
-	Mobile Genomes & Disease Lab.
-	Universidad de Vigo (Spain)
+    
+    alignContigs2reference.sh
+    
+    Copyright (c) 2016 Bernardo Rodríguez-Martín
+    
+    Mobile Genomes & Disease Lab.
+    Universidad de Vigo (Spain)
 
-	Licenced under the GNU General Public License 3.0 license.
+    Licenced under the GNU General Public License 3.0 license.
 ******************************************************************************
 authors
 
@@ -30,19 +30,19 @@ authors
 # 1) Assembled contigs fasta file.
 # 2) Transposable element insertion identifier. Format: '${family}:${chr}_${beg}_${end}:${orientation}.fa'
 ## where:
-#	- family: TE family (L1, ALU, SVA...)
-#	- chr: insertion chromosome
-# 	- beg: insertion beginning
-#	- end: insertion end
-#	- orientation: cluster (+ or -)
+#    - family: TE family (L1, ALU, SVA...)
+#    - chr: insertion chromosome
+#     - beg: insertion beginning
+#    - end: insertion end
+#    - orientation: cluster (+ or -)
 # 3) Reference genome fasta file. Mandatory.
 # 4) Consensus transposable element sequence (L1, Alu or SVA depending on the TE's family).
 
 # Output
 ###########
 # .psl file with contig blat aligments.
-# 286	0	0	0	0	0	0	0	+	NODE_2_length_614_cov_6.804560	634	0	286	L1	na	37127581	37127867	1	286,	0,	37127581,
-# 330	0	0	0	0	0	0	0	+	NODE_2_length_614_cov_6.804560	634	304	634	8	na	37122889	37123219	1	330,	304,	37122889,
+# 286    0    0    0    0    0    0    0    +    NODE_2_length_614_cov_6.804560    634    0    286    L1    na    37127581    37127867    1    286,    0,    37127581,
+# 330    0    0    0    0    0    0    0    +    NODE_2_length_614_cov_6.804560    634    304    634    8    na    37122889    37123219    1    330,    304,    37122889,
 
 
 ### will exit if there is an error or in a pipe
@@ -88,18 +88,18 @@ TEseq=$4
 
 if [ ! -n "$5" ]
 then
-	windowSize=1000
-	outDir=.
+    windowSize=1000
+    outDir=.
 else
-	windowSize=$5
-	
-	if [ ! -n "$6" ]
-	then
-		outDir=.
-	else
-		outDir=$6
-	fi
-fi	
+    windowSize=$5
+    
+    if [ ! -n "$6" ]
+    then
+        outDir=.
+    else
+        outDir=$6
+    fi
+fi    
 
 
 # Directories 
