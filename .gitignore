@@ -1,4 +1,6 @@
 .gitignore
+html
 releases
 test
+*.pyc
 *~
