@@ -1824,10 +1824,10 @@ from itertools import groupby
 import os.path
 
 ## Get user's input ##
-parser = argparse.ArgumentParser(description= """""")
-parser.add_argument('inputPaths', help='...')
-parser.add_argument('donorId', help='...')
-parser.add_argument('genome', help='...')
+parser = argparse.ArgumentParser(description= "Per MEI called by TraFiC: 1) Identifies informative contigs spanning 5' and/or 3' insertion ends if possible, 2) Use informative contigs for characterizing MEI in detail (exact breakpoints, length, strand...) and 3) Produce a VCF with the MAI plus all these information")
+parser.add_argument('inputPaths', help='Text file containing, per MEI, the needed files')
+parser.add_argument('donorId', help='Donor identifier. The output vcf will be named accordingly')
+parser.add_argument('genome', help='Reference genome in fasta format')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
