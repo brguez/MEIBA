@@ -166,6 +166,7 @@ read family chr beg end cluster <<<$(echo $insertionId | awk '{split($1, info, "
 
 targetBeg=`expr $beg - $windowSize` 
 targetEnd=`expr $end + $windowSize`
+if [ "$targetBeg" -lt 0 ]; then targetBeg=0; fi # Set lower-bound to 0 (avoid negative coordinates)
 targetInterval=$chr":"$targetBeg"-"$targetEnd
 offset=`expr $targetBeg - 1`
 
