@@ -107,7 +107,7 @@ for line in insertions:
     fieldsList = line.split("\t")
 
     ## A) Line with expected number of columns
-    if (int(len(fieldsList)) == 12):
+    if (int(len(fieldsList)) == 13):
         chrPlus = fieldsList[0]
         begPlus = fieldsList[1]
         endPlus = int(fieldsList[2]) + 100 # Done because this coordinate is the beginning of the read. So, I need to sum the readlength. I need to add an input parameter to specify the read length.
@@ -120,6 +120,7 @@ for line in insertions:
         nbReadsMinus = fieldsList[9]
         familyMinus = fieldsList[10]
         readPairListMinus = fieldsList[11].split(",")
+        insertionType = fieldsList[12]
 
         ### Do more input sanity checks...
         ## A) Insertion in a chromosome not included in the provided reference genome
@@ -143,8 +144,8 @@ for line in insertions:
 
             ## Generate an insertion id for + and - clusters (insertion coordinates defined by the end
             # of + cluster and beg of - cluster)
-            insertionIdPlus = familyPlus + ":" + chrPlus + "_" + str(endPlus) + "_" + begMinus + ":" + "+"
-            insertionIdMinus = familyMinus + ":" + chrMinus + "_" + str(endPlus) + "_" + begMinus + ":" + "-"
+            insertionIdPlus = familyPlus + ":" + insertionType + ":" + chrPlus + "_" + str(endPlus) + "_" + begMinus + ":" + "+"
+            insertionIdMinus = familyMinus + ":" + insertionType + ":" + chrMinus + "_" + str(endPlus) + "_" + begMinus + ":" + "-"
 
             ## Inizialize dictionary keys for + and - clusters if they do not exist
             # a) + Cluster

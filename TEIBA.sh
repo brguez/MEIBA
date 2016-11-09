@@ -325,11 +325,12 @@ if [[ ! -d $logsDir ]]; then mkdir $logsDir; fi
 ###################################################################################################################
 # Each fasta will be named according to this convention: 
 ########################################################
-# - ${fastaDir}/${family}:${chr}_${beg}_${end}:${orientation}.fa
+# - ${fastaDir}/${family}:${type}:${chr}_${beg}_${end}:${orientation}.fa
 # where:
 #    - family: MEI family (L1, ALU, SVA...)
+#    - type: td0 (solo-insertion), td1 (partnered-transduccion) and td2 (orphan-transduction)
 #    - chr: insertion chromosome
-#     - beg: insertion beginning
+#    - beg: insertion beginning
 #    - end: insertion end
 #    - orientation: cluster (+ or -)
 
@@ -351,11 +352,12 @@ printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs
 ######################################################################################
 # Fasta naming convention:
 ########################### 
-# - ${contigsDir}/${family}:${chr}_${beg}_${end}:${orientation}.contigs.fa
+# - ${contigsDir}/${family}:${type}:${chr}_${beg}_${end}:${orientation}.contigs.fa
 # where:
 #    - family: MEI family (L1, ALU, SVA...)
+#    - type: td0 (solo-insertion), td1 (partnered-transduccion) and td2 (orphan-transduction)
 #    - chr: insertion chromosome
-#     - beg: insertion beginning
+#    - beg: insertion beginning
 #    - end: insertion end
 #    - orientation: cluster (+ or -)
 
@@ -381,12 +383,12 @@ do
     log "3. Rename output files" $step
     run "mv ${contigsDir}/contigs.fa ${contigsDir}/${bkpId}.contigs.fa" "$ECHO"
     log "4. Second Cleaning" $step
-    run "rm $fastaPath ${contigsDir}/Log ${contigsDir}/Sequences ${contigsDir}/Roadmaps ${contigsDir}/PreGraph ${contigsDir}/stats.txt ${contigsDir}/LastGraph ${contigsDir}/Graph2" "$ECHO"
+#    run "rm $fastaPath ${contigsDir}/Log ${contigsDir}/Sequences ${contigsDir}/Roadmaps ${contigsDir}/PreGraph ${contigsDir}/stats.txt ${contigsDir}/LastGraph ${contigsDir}/Graph2" "$ECHO"
     
 done
 
 ## Remove temporary fasta directory
-rm -r $fastaDir
+#rm -r $fastaDir
 
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
@@ -397,14 +399,15 @@ printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs
 # It will produce a psl with the blat alignments for the assembled contigs 
 ###########################################################################
 # for each cluster insertion
-##############################
+############################
 # Psl naming convention:
-########################### 
-# - ${blatPath}/${family}:${chr}_${beg}_${end}:${orientation}.psl
+########################
+# - ${blatPath}/${family}:${type}:${chr}_${beg}_${end}:${orientation}.psl
 # where:
 #    - family: MEI family (L1, ALU, SVA...)
+#    - type: td0 (solo-insertion), td1 (partnered-transduccion) and td2 (orphan-transduction)
 #    - chr: insertion chromosome
-#     - beg: insertion beginning
+#    - beg: insertion beginning
 #    - end: insertion end
 #    - orientation: cluster (+ or -)
 
@@ -470,17 +473,18 @@ if [[ ! -d $bkpAnalysisDir ]]; then mkdir $bkpAnalysisDir; fi
 # - $outDir/insertions_list.txt
 insertionList=$bkpAnalysisDir/insertionList.txt
 
-ls $blatDir | grep '.*psl' | grep -v "allContigs"| awk '{split($1,a,":"); print a[1]":"a[2];}' | sort | uniq > $insertionList
+ls $blatDir | grep '.*psl' | grep -v "allContigs"| awk '{split($1,a,":"); print a[1]":"a[2]":"a[3];}' | sort | uniq > $insertionList
 
 ## 4.2 For each insertion add the list of read pairs supporting + and - cluster 
 # Output:
 # - $bkpAnalysisDir/insertionList_supportingReadPairs.txt
 insertionListSupReads=$bkpAnalysisDir/insertionList_supportingReadPairs.txt
 
+## There is a problem at this step with new insertion id...
 awk -v OFS='\t' -v fileRef=$insertions -f $ADD_SUP_READS $insertionList > $insertionListSupReads
 
 # Remove intermediate files:
-rm $insertionList 
+# rm $insertionList 
 
 ## 4.3 Prepare input file for insertion breakpoint analysis
 # Output:
@@ -499,7 +503,7 @@ do
 done
 
 # Remove intermediate files:
-rm $insertionListSupReads
+#rm $insertionListSupReads
 
 ## 4.3 Perform breakpoint analysis
 # Output:
@@ -527,8 +531,8 @@ else
 fi
 
 ## Remove temporary contigs and blat directories
-rm $paths2bkpAnalysis
-rm -r $contigsDir $blatDir
+#rm $paths2bkpAnalysis
+#rm -r $contigsDir $blatDir
 
 
 # 5) Annotate MEI
@@ -562,7 +566,7 @@ else
 fi
 
 ## Remove temporary bkp analysis directory
-rm -r $bkpAnalysisDir 
+#rm -r $bkpAnalysisDir 
 
 
 # 6) Filter MEI 
@@ -596,7 +600,7 @@ else
 fi
 
 ## Remove temporary annotation directory
-rm -r $annotDir 
+#rm -r $annotDir 
 
 #############################
 # 7) MAKE OUTPUT VCF AND END #
@@ -608,7 +612,7 @@ finalVCF=$outDir/$sampleId.vcf
 cp $filteredVCF $finalVCF
 
 ## Remove temporary filter directory
-rm -r $filterDir
+#rm -r $filterDir
 
 ## End
 end=$(date +%s)

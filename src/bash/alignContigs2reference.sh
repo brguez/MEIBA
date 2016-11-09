@@ -28,11 +28,12 @@ authors
 # Input
 ########
 # 1) Assembled contigs fasta file.
-# 2) Transposable element insertion identifier. Format: '${family}:${chr}_${beg}_${end}:${orientation}.fa'
+# 2) Transposable element insertion identifier. Format: '${contigsDir}/${family}:${type}:${chr}_${beg}_${end}:${orientation}'
 ## where:
 #    - family: TE family (L1, ALU, SVA...)
+#    - type: td0 (solo-insertion), td1 (partnered-transduccion) and td2 (orphan-transduction)
 #    - chr: insertion chromosome
-#     - beg: insertion beginning
+#    - beg: insertion beginning
 #    - end: insertion end
 #    - orientation: cluster (+ or -)
 # 3) Reference genome fasta file. Mandatory.
@@ -162,7 +163,7 @@ targetRegionPath=$outDir/insertion_region.fa
 
 echo "1. Make fasta with target dna region for blat alignment" >&1
 
-read family chr beg end cluster <<<$(echo $insertionId | awk '{split($1, info, ":"); family=info[1]; cluster=info[3]; split(info[2], coord, "_"); chr=coord[1]; beg=coord[2]; end=coord[3]; print family, chr, beg, end, cluster;}')
+read family tdType chr beg end cluster <<<$(echo $insertionId | awk '{split($1, info, ":"); family=info[1]; tdType=info[2]; cluster=info[4]; split(info[3], coord, "_"); chr=coord[1]; beg=coord[2]; end=coord[3]; print family, tdType, chr, beg, end, cluster;}')
 
 targetBeg=`expr $beg - $windowSize` 
 targetEnd=`expr $end + $windowSize`

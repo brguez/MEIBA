@@ -299,7 +299,7 @@ class VCFline():
         infoDict = {}
         infoDict["SVTYPE"] = "<MEI>"
         infoDict["CLASS"] = insertionObj.TEClass
-        infoDict["TYPE"] = "TD0"
+        infoDict["TYPE"] = insertionObj.tdType
         infoDict["SCORE"] = insertionObj.score
         infoDict["CIPOS"] = insertionObj.bkpA[2]
         infoDict["STRAND"] = insertionObj.orientation
@@ -344,24 +344,26 @@ class insertion():
     - imprecise_bkp
     """
 
-    def __init__(self, family, coordinates, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus):
+    def __init__(self, family, tdType, coordinates, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus):
         """
             Initialize insertion object.
 
             Input:
             1) family. TE family (L1, Alu, SVA or ERVK)
-            2) coordinates.
-            3) contigsPlusPath. Fasta file containing the assembled contigs for the positive cluster.
-            4) blatPlusPath. psl file containing the blat aligments for the positive cluster's assembled contigs.
-            5) contigsMinusPath. Fasta file containing the assembled contigs for the negative cluster.
-            6) blatMinusPath. psl file containing the blat aligments for the negative cluster's assembled contigs.
-            7) readPairsPlus. List of + cluster supporting reads.
-            8) readPairsMinus. List of - cluster supporting reads.
+            2) tdType. Insertion type:  td0 (solo-insertion), td1 (partnered-transduccion) and td2 (orphan-transduction).
+            3) coordinates. TraFiC insertion range. 
+            4) contigsPlusPath. Fasta file containing the assembled contigs for the positive cluster.
+            5) blatPlusPath. psl file containing the blat aligments for the positive cluster's assembled contigs.
+            6) contigsMinusPath. Fasta file containing the assembled contigs for the negative cluster.
+            7) blatMinusPath. psl file containing the blat aligments for the negative cluster's assembled contigs.
+            8) readPairsPlus. List of + cluster supporting reads.
+            9) readPairsMinus. List of - cluster supporting reads.
 
             Output:
             - Insertion object variables initialized
         """
         self.TEClass = TEClass
+        self.tdType = tdType
         self.coordinates = coordinates
         self.clusterPlusObj = self.create_cluster("+", contigsPlusPath, blatPlusPath, readPairsPlus)
         self.clusterMinusObj = self.create_cluster("-", contigsMinusPath, blatMinusPath, readPairsMinus)
@@ -1875,20 +1877,21 @@ for line in inputFile:
     line = line.split("\t")
 
     # Get TE insertion info and files
-    TEClass, insertionCoord = line[0].split(":")
+    insertionInfo = line[0]
+    TEClass, tdType, insertionCoord = insertionInfo.split(":")
     contigsPlusPath, contigsMinusPath = line[1].split(",")
     blatPlusPath, blatMinusPath = line[2].split(",")
     readPairsPlus = line[3]
     readPairsMinus = line[4]
 
     # Perform breakpoint analysis for the TE insertion
-    header("Tranposable Element Insertion Breakpoint Analysis (TEIBA) for: " + insertionCoord)
+    header("Tranposable Element Insertion Breakpoint Analysis (TEIBA) for: " + insertionInfo)
 
     # A) All the input files exist
     if os.path.isfile(contigsPlusPath) and os.path.isfile(blatPlusPath) and os.path.isfile(contigsMinusPath) and os.path.isfile(blatMinusPath):
 
         ## Create insertion object and identify breakpoints from assembled contigs
-        insertionObj = insertion(TEClass, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus)
+        insertionObj = insertion(TEClass, tdType, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus)
         insertionObj.find_insertionBkp(genomeObj, outDir)
 
         ## Create VCFline object
@@ -1898,7 +1901,7 @@ for line in inputFile:
         VCFObj.addLine(VCFlineObj)
 
     else:
-        message = "Input files for " + insertionCoord + " insertion do not exist"
+        message = "Input files for " + insertionInfo + " insertion do not exist"
         log("ERROR", message)
 
 ## 3. Write lines describing the TE insertions into the VCF file
