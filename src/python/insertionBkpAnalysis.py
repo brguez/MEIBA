@@ -217,6 +217,7 @@ class VCF():
 ##INFO=<ID=CPG,Number=0,Type=Flag,Description="Reported as cancer predisposition gene in 10.1038/nature12981 (DOI).">
 ##INFO=<ID=REP,Number=1,Type=String,Description="Repetitive element overlapping the insertion breakpoint">
 ##INFO=<ID=DIV,Number=1,Type=Integer,Description="Millidivergence of the overlapping repetitive element with respect a consensus sequence">
+##INFO=<ID=MEISEQ,Number=1,Type=String,Description="Assembled sequence of the mobile element 5' boundary">
 ##INFO=<ID=CONTIGA,Number=1,Type=String,Description="Assembled contig sequence spanning 1st bkp (lowest genomic position)">
 ##INFO=<ID=CONTIGB,Number=1,Type=String,Description="Assembled contig sequence spanning 2nd bkp (highest genomic position)">
 ##INFO=<ID=RP,Number=.,Type=String,Description="Reads from the tumour sample and positive cluster that support this insertion">
@@ -298,7 +299,7 @@ class VCFline():
         """
 
         ## Create list containing the order of info fields
-        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "SRC", "TDC", "TDLEN", "TDLENR", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "RP", "RN" ]
+        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "SRC", "TDC", "TDLEN", "TDLENR", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "MEISEQ", "CONTIGA", "CONTIGB", "RP", "RN" ]
 
         ## Build dictionary with info tags as keys
         infoDict = {}
@@ -318,6 +319,7 @@ class VCFline():
         infoDict["TDC"] = insertionObj.tdCoord
         infoDict["TDLEN"] = insertionObj.tdLen
         infoDict["TDLENR"] = insertionObj.tdLenRna
+        infoDict["MEISEQ"] = insertionObj.MEISeq
         infoDict["CONTIGA"] = insertionObj.informativeContigBkpA
         infoDict["CONTIGB"] = insertionObj.informativeContigBkpB
         infoDict["RP"] = insertionObj.clusterPlusObj.readPairIds
@@ -418,6 +420,7 @@ class insertion():
         self.structure = "UNK"
         self.length = "UNK"
         self.percLength = "UNK"
+        self.MEISeq = "UNK"
         self.informativeContigIdBkpA = "UNK"
         self.informativeContigBkpA = "UNK"
         self.informativeContigIdBkpB = "UNK"
@@ -494,7 +497,6 @@ class insertion():
             # No informative contigs, imprecise breakpoint
             self.score = '2'
             self.bkpA = self.imprecise_bkp(self.coordinates)
-            self.bkpB = ["UNK", "UNK", "UNK"]
 
         ## B) Insertion with at least one contig spanning one of the insertion breakpoints
         else:
@@ -660,6 +662,9 @@ class insertion():
                 self.bkpA = bkp5prime
                 self.informativeContigBkpA = informative5primeContigObj.seq
 
+                 # MEI 5' boundary assembled sequence
+                self.MEISeq = informative5primeContigObj.informativeDict["MEISeq"]              
+
             # b) 3' bkp characterized
             elif (bkpCoord5prime == "UNK"):
 
@@ -669,6 +674,9 @@ class insertion():
 
             # c) 5' and 3' bkp characterized
             else:
+
+                # MEI 5' boundary assembled sequence
+                self.MEISeq = informative5primeContigObj.informativeDict["MEISeq"]      
 
                 # c.a) 5' bkp < 3' bkp
                 if (bkpCoord5prime < bkpCoord3prime):
@@ -1194,7 +1202,8 @@ class contig():
         self.informativeDict["type"] = "UNK"                 # type -> 5-prime, 3-prime or none
         self.informativeDict["bkp"] = "UNK"                  # bkp -> list: chrom and pos, 'na' for both if type == none)
         self.informativeDict["info"] = "UNK"                 # info -> 5-prime: aligment object with contig's alignment in TE sequence info; 3-prime: PolyA sequence; none: 'na'
-        self.informativeDict["targetRegionAlignObj"] = "UNK"   # targetRegionAlignObj -> alignment object with contig's alignment in the target region info.
+        self.informativeDict["targetRegionAlignObj"] = "UNK" # targetRegionAlignObj -> alignment object with contig's alignment in the target region info.
+        self.informativeDict["MEISeq"] = "UNK"               # MEISeq -> Assembled sequence of the mobile element 5' boundary
 
     #### FUNCTIONS ####
     def rev_complement(self, seq):
@@ -1297,6 +1306,7 @@ class contig():
                 info -> 5-prime: aligment object with contig's alignment in TE sequence info;
                         3-prime: PolyA sequence; none: 'na'
                 targetRegionAlignObj -> alignment object with contig's alignment in the target region info.
+                MEISeq -> Assembled sequence of the mobile element 5' boundary                
         """
 
         ## Initial status -> no informative
@@ -1325,7 +1335,7 @@ class contig():
             for alignObj in supportingAlignList:
 
                 ## Check if alignment support the contig as informative 5'
-                is5prime, bkpCoord, TEalignmentObj = self.is_5prime_informative(alignObj)
+                is5prime, bkpCoord, TEalignmentObj, MEISeq = self.is_5prime_informative(alignObj)
 
                 # Contig informative 5-prime, it has TE sequence
                 if (is5prime == 1):
@@ -1335,6 +1345,7 @@ class contig():
                     informative5primeDict[alignObj]["bkp"] = bkpCoord
                     informative5primeDict[alignObj]["info"] = TEalignmentObj
                     informative5primeDict[alignObj]["targetRegionAlignObj"] = alignObj
+                    informative5primeDict[alignObj]["MEISeq"] = MEISeq
 
                 ## Check if alignment support the contig as informative 3'
                 is3prime, bkpCoord, polyASeq = self.is_3prime_informative(alignObj)
@@ -1546,7 +1557,8 @@ class contig():
         1) is5prime. Boolean, 1 (5' informative) and 0 (not 5' informative).
         2) bkpCoord. Two elements breakpoint coordinates list. First (bkp chromosome) and second (breakpoint position).
         3) TEalignmentObj. Blat aligment object with the alignment information of the contig in the consensus TE sequence.
-                           'na' if not 5' informative.
+                           'na' if not 5' informative.   
+        4) MEISeq. Assembled sequence of the mobile element 5' boundary                  
         """
 
         ## Select contig target sequence coordinates to search for alignment in TE sequence (L1, Alu or SVA)
@@ -1557,16 +1569,22 @@ class contig():
         #   -------------******TE******
         #   -------------
         # qBeg        *qEnd*
+
         if (alignObj.alignType == "beg"):
             targetBeg = alignObj.qEnd
             targetEnd = alignObj.qSize
-
+            targetSeq = self.seq[alignObj.qEnd:]
             bkpChrom = alignObj.tName
 
+            # a) Positive dna strand
             if (alignObj.strand == "+"):
                 bkpPos = alignObj.tEnd
+                MEISeq = targetSeq
+
+            # b) Negative dna strand
             else:
                 bkpPos = alignObj.tBeg
+                MEISeq = self.rev_complement(targetSeq)
 
         # B) End of the contig sequence aligned in the TE insertion genomic region
         #   ******TE******-------------
@@ -1575,13 +1593,19 @@ class contig():
         elif (alignObj.alignType == "end"):
             targetBeg = 0
             targetEnd = alignObj.qBeg
+            targetSeq = self.seq[:alignObj.qBeg]
 
             bkpChrom = alignObj.tName
 
+            # a) Positive dna strand
             if (alignObj.strand == "+"):
                 bkpPos = alignObj.tBeg
+                MEISeq = targetSeq
+
+            # b) Negative dna strand
             else:
                 bkpPos = alignObj.tEnd
+                MEISeq = self.rev_complement(targetSeq)
 
         # C) No align type information or 'none' align type
         else:
@@ -1618,7 +1642,7 @@ class contig():
                     bkpCoord = [bkpChrom, bkpPos]
                     TEalignmentObj = alignment
 
-        return (is5prime, bkpCoord, TEalignmentObj)
+        return (is5prime, bkpCoord, TEalignmentObj, MEISeq)
 
 class blat_alignment():
     """
