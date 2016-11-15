@@ -107,7 +107,7 @@ for line in insertions:
     fieldsList = line.split("\t")
 
     ## A) Line with expected number of columns
-    if (int(len(fieldsList)) == 13):
+    if (int(len(fieldsList)) == 21):
         chrPlus = fieldsList[0]
         begPlus = fieldsList[1]
         endPlus = int(fieldsList[2]) + 100 # Done because this coordinate is the beginning of the read. So, I need to sum the readlength. I need to add an input parameter to specify the read length.

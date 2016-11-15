@@ -62,9 +62,6 @@ class VCF():
     def read_VCF_multiSample(self, VCFpath):
         """
         """
-# genotype = genotypeMEI(bamFile, VCFlineObj, homVaf, hetVaf)
-# VCFlineObj.genotypesDict[donorId] = genotype
-# def write_variants_multiSample(self, donorIdList, outFilePath):
 
         VCFfile = open(VCFpath, 'r')
         headerList = []
@@ -220,9 +217,10 @@ class VCFline():
         """
         """
 
-        ## Create list containing the order of info fields (provisional)
-        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "RP", "RN" ]
+        ## Create list containing the order of info fields 
+        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "SRC", "TDC", "TDLEN", "TDLENR", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "RP", "RN" ]
 
+    
         flagList = ["COSMIC", "CPG" ]
 
         ## Create info string in the correct order from dictionary
@@ -231,8 +229,8 @@ class VCFline():
         # Iterate over all possible info field keys
         for info in infoOrder:
 
-            # Information about current info field available
-            if (info in self.infoDict.keys()) and (self.infoDict[info] != "unkn"):
+            # Information about current info field available and applicable
+            if (info in self.infoDict.keys()) and (self.infoDict[info] != "UNK") and (self.infoDict[info] != "NA"):
 
                 # A) Flag
                 if (info in flagList):

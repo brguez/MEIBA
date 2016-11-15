@@ -183,13 +183,18 @@ class cohort():
 ##INFO=<ID=CLASS,Number=1,Type=String,Description="Transposable element class (L1, ALU, SVA or ERVK)">
 ##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction)">
 ##INFO=<ID=SCORE,Number=1,Type=String,Description="Insertion score (5: 5' and 3' breakpoints (bkp) assembled, 4: 3'bkp assembled, 3: 5'bkp assembled, 2: no bkp assembled, 1: inconsistent (contradictory orientation, bkp or TSD))">
-##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around POS (insertion breakpoint)">
+##INFO=<ID=BKPB,Number=1,Type=String,Description="MEI right-most breakpoint position (bkp B). Left-most breakpoint position (bkp A) represented in the POS field">
+##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoints">
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
 ##INFO=<ID=STRUCT,Number=1,Type=String,Description="Transposable element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
 ##INFO=<ID=LEN,Number=1,Type=Integer,Description="Transposable element length">
 ##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site duplication length">
 ##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication sequence">
 ##INFO=<ID=POLYA,Number=1,Type=String,Description="Poly-A sequence">
+##INFO=<ID=SRC,Number=1,Type=String,Description="Coordinates of the source element that mediated the transduction in the format: $chrom:beg-end_strand">
+##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the transduced region in the format: $chrom:beg-end">
+##INFO=<ID=TDLEN,Number=1,Type=String,Description="Transduced region length">
+##INFO=<ID=TDLENR,Number=1,Type=String,Description="Transduced region length at RNA level">
 ##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1KGENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), TRAFIC: TraFic in-house database)">
 ##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the transposable element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
 ##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
@@ -206,8 +211,9 @@ class cohort():
 ##FILTER=<ID=REP,Description="Insertion overlapping a satellite region or a repetitive element of the same class">
 ##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting reads">
 ##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
-##FORMAT=<ID=PRJ,Number=1,Type=String,Description="Project code for donor selected as representative">
-##FORMAT=<ID=DON,Number=1,Type=String,Description="Donor identifier for donor selected as representative">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Unphased genotypes">
+##FORMAT=<ID=NV,Number=1,Type=Integer,Description="Number of reads supporting the variant in this sample">
+##FORMAT=<ID=NR,Number=1,Type=Integer,Description="Number of reads covering variant location in this sample">
 #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  CONSENSUS
 """
         ## Replace variables into the template and print header into the output file

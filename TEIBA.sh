@@ -48,8 +48,10 @@ Execute for one dataset (sample).
         
 *** [OPTIONS] can be:
 * General:
- 
+  
     -k     <INTEGER>          K-mer length of the words being hashed for the assembly. Default: N=21.
+
+    -e     <INTEGER>          Minimum MEI score to pass the filtering. Default: N=2.
 
     -o     <PATH>             Output directory. Default current working directory. 
     
@@ -63,7 +65,7 @@ help
 ################################
 function getoptions {
 
-while getopts ":i:f:g:d:s:k:o:h" opt "$@"; 
+while getopts ":i:f:g:d:s:k:e:o:h" opt "$@"; 
 do
    case $opt in       
       
@@ -108,6 +110,13 @@ do
       if [ -n "$OPTARG" ];
       then
               kmerLen=$OPTARG
+      fi
+      ;;
+
+      e)
+      if [ -n "$OPTARG" ];
+      then
+              minScore=$OPTARG
       fi
       ;;
 
@@ -233,6 +242,12 @@ then
     kmerLen='21'; 
 fi
 
+# minimum MEI score
+if [[ "$minScore" == "" ]]; 
+then 
+    minScore='2'; 
+fi
+
 # Output directory
 if [[ "$outDir" == "" ]]; 
 then 
@@ -272,7 +287,7 @@ filterDir=$outDir/Filter
 # scripts
 CLUSTERS2FASTA=$pyDir/clusters2fasta.py
 ALIGN_CONTIGS=$bashDir/alignContigs2reference.sh
-ADD_SUP_READS=$awkDir/addSupReads2insertionList.awk
+ADD_INFO=$awkDir/addInfo2insertionList.awk
 BKP_ANALYSIS=$pyDir/insertionBkpAnalysis.py
 ANNOTATOR=$bashDir/variants_annotator.sh
 FILTER=$pyDir/filterVCF.MEI.py
@@ -300,6 +315,7 @@ printf "  %-34s %s\n" "repeats-db:" "$repeatsDb"
 printf "  %-34s %s\n\n" "sampleId:" "$sampleId"
 printf "  %-34s %s\n" "***** OPTIONAL ARGUMENTS *****"
 printf "  %-34s %s\n" "K-mer length:" "$kmerLen"
+printf "  %-34s %s\n" "min-score:" "$minScore"
 printf "  %-34s %s\n\n" "outDir:" "$outDir"
 
 
@@ -475,16 +491,15 @@ insertionList=$bkpAnalysisDir/insertionList.txt
 
 ls $blatDir | grep '.*psl' | grep -v "allContigs"| awk '{split($1,a,":"); print a[1]":"a[2]":"a[3];}' | sort | uniq > $insertionList
 
-## 4.2 For each insertion add the list of read pairs supporting + and - cluster 
+## 4.2 For each insertion add the list of read pairs supporting the clusters, the source element and transduction info (only for transductions)
 # Output:
-# - $bkpAnalysisDir/insertionList_supportingReadPairs.txt
-insertionListSupReads=$bkpAnalysisDir/insertionList_supportingReadPairs.txt
+# - $bkpAnalysisDir/insertionList_plusInfo.txt
+insertionListInfo=$bkpAnalysisDir/insertionList_plusInfo.txt
 
-## There is a problem at this step with new insertion id...
-awk -v OFS='\t' -v fileRef=$insertions -f $ADD_SUP_READS $insertionList > $insertionListSupReads
+awk -v OFS='\t' -v fileRef=$insertions -f $ADD_INFO $insertionList > $insertionListInfo
 
 # Remove intermediate files:
-# rm $insertionList 
+# rm $insertionListInfo 
 
 ## 4.3 Prepare input file for insertion breakpoint analysis
 # Output:
@@ -492,14 +507,14 @@ awk -v OFS='\t' -v fileRef=$insertions -f $ADD_SUP_READS $insertionList > $inser
 paths2bkpAnalysis=$outDir/paths2bkpAnalysis.txt
 echo -n "" > $paths2bkpAnalysis
  
-cat $insertionListSupReads | while read insertionId readPairsPlus readPairsMinus; 
+cat $insertionListInfo | while read insertionId readPairsPlus readPairsMinus sourceElementInfo transductionInfo; 
 do     
     contigPlusPath=${contigsDir}/${insertionId}:+.contigs.fa
     contigMinusPath=${contigsDir}/${insertionId}:-.contigs.fa
     blatPlusPath=${blatDir}/${insertionId}:+.psl
     blatMinusPath=${blatDir}/${insertionId}:-.psl
     
-    printf ${insertionId}"\t"${contigPlusPath}","${contigMinusPath}"\t"${blatPlusPath}","${blatMinusPath}"\t"${readPairsPlus}"\t"${readPairsMinus}"\n" >> $paths2bkpAnalysis
+    printf ${insertionId}"\t"${contigPlusPath}","${contigMinusPath}"\t"${blatPlusPath}","${blatMinusPath}"\t"${readPairsPlus}"\t"${readPairsMinus}"\t"${sourceElementInfo}"\t"${transductionInfo}"\n" >> $paths2bkpAnalysis
 done
 
 # Remove intermediate files:
@@ -579,13 +594,15 @@ filteredVCF=$filterDir/$sampleId.filtered.vcf
 if [[ ! -d $filterDir ]]; then mkdir $filterDir; fi
     
 ### Execute the step 
+# NOTE: for germline variants use a minimum score of 5...
+
 if [ ! -s $filteredVCF ]; 
 then
     step="FILTER"
     startTime=$(date +%s)
     printHeader "Performing MEI filtering"
     log "Filtering MEI" $step  
-    run "$FILTER $annotVCF $sampleId --min-score 5 --min-score-ERVK 3 --max-divergence 300 --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err" "$ECHO"
+    run "$FILTER $annotVCF $sampleId --min-score $minScore --min-score-ERVK 3 --max-divergence 300 --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err" "$ECHO"
     
     if [ ! -s $filteredVCF ]; 
     then    
