@@ -72,20 +72,56 @@ def genotypeMEI(bamFile, VCFlineObj, homVaf, hetVaf):
 
     ### 1. Compute VAF
     ## 1.1) Estimate VAF for MEI breakpoint A
-    # ------------------__TSD__*********TE******AAA__TSD__------------- Donor genome
-    #                        bkpB                bkpA
-    # -------------------------------__TSD__--------------------------- Reference genome
-    #                            bkpA    bkpB
     msg = "Breakpoint A VAF"
     if debugBool == True: info(msg)
     bkpPos = int(VCFlineObj.pos)
-    nbReadsMEI_A, totalNbReads_A, vaf_A = computeBkpVaf(bamFile, chrom, bkpPos, "A")
+ 
+    ## a) Insertion absent in reference genome
+    # ------------------__TSD__*********TE******AAA__TSD__------------- Donor genome
+    #                          bkpB                bkpA
+    # -------------------------------__TSD__--------------------------- Reference genome
+    #                                bkpA   bkpB
+    # * Clipping at the beginning of the read
+    if (VCFlineObj.alt == "<MEI>"):
+
+        nbReadsMEI_A, totalNbReads_A, vaf_A = computeBkpVaf(bamFile, chrom, bkpPos, "Beg")
+
+    ## b) Insertion in reference genome and absent in donor genome
+    # -------------------------------__TSD__--------------------------- Donor genome
+    #                                bkpB   bkpA                           
+    # ------------------__TSD__*********TE******AAA__TSD__------------- Reference genome genome
+    #                          bkpA                bkpB
+    # * Clipping at the ending of the read
+    elif (VCFlineObj.ref == "<MEI>"):
+        
+        nbReadsMEI_A, totalNbReads_A, vaf_A = computeBkpVaf(bamFile, chrom, bkpPos, "End")
+
+    ## c) Raise error...  
+    else:
+        msg="Incorrectly formated VCF line"
+        info(msg)
 
     ## 1.2) Estimate VAF for MEI breakpoint B
     msg = "Breakpoint B VAF"
     if debugBool == True: info(msg)
     bkpPos = int(VCFlineObj.pos) + int(VCFlineObj.infoDict["TSLEN"])
-    nbReadsMEI_B, totalNbReads_B, vaf_B = computeBkpVaf(bamFile, chrom, bkpPos, "B")
+
+    ## a) Insertion absent in reference genome
+    # * Clipping at the ending of the read
+    if (VCFlineObj.alt == "<MEI>"):
+        
+        nbReadsMEI_B, totalNbReads_B, vaf_B = computeBkpVaf(bamFile, chrom, bkpPos, "End")
+
+    ## b) Insertion in reference genome and absent in donor genome
+    # * Clipping at the beginning of the read
+    elif (VCFlineObj.ref == "<MEI>"):
+
+        nbReadsMEI_B, totalNbReads_B, vaf_B = computeBkpVaf(bamFile, chrom, bkpPos, "Beg")
+
+    ## c) Raise error...  
+    else:
+        msg="Incorrectly formated VCF line"
+        info(msg)
 
     ## 1.3) Compute average VAF for the MEI
     msg = "Average VAF"
@@ -139,10 +175,10 @@ def genotypeMEI(bamFile, VCFlineObj, homVaf, hetVaf):
     return (genotypeField)
 
 
-def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
+def computeBkpVaf(bamFile, chrom, bkpPos, clippingPos):
     '''
     '''
-    tag = "VAF-" + bkpCat
+    tag = "VAF-" + clippingPos
 
     ### 1.Count the number of reads supporting the reference and MEI polymorphism
     nbReadsRef = 0
@@ -185,7 +221,7 @@ def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
             # A) Read supporting the reference allele:
             if (overlap >= 40) and (properPair == True) and (duplicate == False):
                 nbReadsRef += 1
-                msg = "Alignment supports REFERENCE"
+                msg = "Alignment supports REF"
                 if (debugBool == True): log(tag, msg)
 
             # B) Read do not supporting the reference allele
@@ -208,8 +244,11 @@ def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
                 beg = bkpPos - 3
                 end = bkpPos + 3
 
-                # A) Breakpoint A. Clipping at the beginning of the read while not at the end
-                if (bkpCat == "A") and ((firstOperation == 4) or (firstOperation == 5)) and ((lastOperation != 4) and (lastOperation != 5)):
+                # A) Clipping at the beginning of the read while not at the end
+                # *******--------- (clipped bases: *)
+                # It seems I am making a mistake... looking for clipping at the wrong side..
+                
+                if (clippingPos == "Beg") and ((firstOperation == 4) or (firstOperation == 5)) and ((lastOperation != 4) and (lastOperation != 5)):
 
                     # a) clipping breakpoint within range (+-5 bkp in VCF)
                     # beg <---------> end
@@ -220,8 +259,9 @@ def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
                     else:
                         bkpBool = False
 
-                # B) Breakpoint B. Clipping at the end of the read while not at the beginning
-                elif (bkpCat == "B") and ((lastOperation == 4) or (lastOperation == 5)) and ((firstOperation != 4) and (firstOperation != 5)):
+                # B) Clipping at the end of the read while not at the beginning
+                # ---------******* (clipped bases: *)
+                elif (clippingPos == "End") and ((lastOperation == 4) or (lastOperation == 5)) and ((firstOperation != 4) and (firstOperation != 5)):
 
                     # a) clipping breakpoint within range
                     ## beg <---------> end
@@ -240,7 +280,7 @@ def computeBkpVaf(bamFile, chrom, bkpPos, bkpCat):
                 if (bkpBool == True) and (duplicate == False):
                     nbReadsMEI += 1
 
-                    msg = "Alignment supports MEI"
+                    msg = "Alignment supports ALT"
                     if (debugBool == True): log(tag, msg)
 
         msg = "-------------------"
