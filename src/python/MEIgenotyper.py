@@ -32,7 +32,7 @@ def log(label, string):
     print "[" + label + "]", string
 
 
-def worker(VCFObj, donorIdBamPathList, homVaf, hetVaf):
+def worker(VCFObj, donorIdBamPathList, maxDist, minClipped, hetVaf, homVaf):
     '''
     '''
 
@@ -55,7 +55,7 @@ def worker(VCFObj, donorIdBamPathList, homVaf, hetVaf):
 
         ## Genotype each MEI polymorphism for the current donor
         for VCFlineObj in VCFObj.lineList:
-            genotype = genotypeMEI(bamFile, VCFlineObj, homVaf, hetVaf)
+            genotype = genotypeMEI(bamFile, VCFlineObj, maxDist, minClipped, hetVaf, homVaf)
             VCFlineObj.genotypesDict[donorId] = genotype
 
         subHeader("Finished " + donorId + " genotyping")
@@ -63,9 +63,11 @@ def worker(VCFObj, donorIdBamPathList, homVaf, hetVaf):
 
     info( threadId + ' finished')
 
-def genotypeMEI(bamFile, VCFlineObj, homVaf, hetVaf):
+def genotypeMEI(bamFile, VCFlineObj, maxDist, minClipped, hetVaf, homVaf):
     '''
     '''
+
+    print "test1: ", VCFlineObj, maxDist, minClipped, hetVaf, homVaf
 
     subHeader("Genotype " + VCFlineObj.infoDict["CLASS"] + ":" + VCFlineObj.chrom + "_" + str(VCFlineObj.pos) + " with a CIPOS of " + VCFlineObj.infoDict["CIPOS"])
     chrom = str(VCFlineObj.chrom)
@@ -84,7 +86,7 @@ def genotypeMEI(bamFile, VCFlineObj, homVaf, hetVaf):
     # * Clipping at the beginning of the read
     if (VCFlineObj.alt == "<MEI>"):
 
-        nbReadsMEI_A, totalNbReads_A, vaf_A = computeBkpVaf(bamFile, chrom, bkpPos, "Beg")
+        nbReadsMEI_A, totalNbReads_A, vaf_A = computeBkpVaf(bamFile, chrom, bkpPos, "Beg", maxDist)
 
     ## b) Insertion in reference genome and absent in donor genome
     # -------------------------------__TSD__--------------------------- Donor genome
@@ -94,29 +96,29 @@ def genotypeMEI(bamFile, VCFlineObj, homVaf, hetVaf):
     # * Clipping at the ending of the read
     elif (VCFlineObj.ref == "<MEI>"):
         
-        nbReadsMEI_A, totalNbReads_A, vaf_A = computeBkpVaf(bamFile, chrom, bkpPos, "End")
+        nbReadsMEI_A, totalNbReads_A, vaf_A = computeBkpVaf(bamFile, chrom, bkpPos, "End", maxDist)
 
     ## c) Raise error...  
     else:
         msg="Incorrectly formated VCF line"
         info(msg)
 
-    ## 1.2) Estimate VAF for MEI breakpoint B
+    ## 1.2) Estimate VAF for MEI breakpoint B 
     msg = "Breakpoint B VAF"
     if debugBool == True: info(msg)
-    bkpPos = int(VCFlineObj.pos) + int(VCFlineObj.infoDict["TSLEN"])
+    bkpPos = int(VCFlineObj.infoDict["BKPB"])
 
     ## a) Insertion absent in reference genome
     # * Clipping at the ending of the read
     if (VCFlineObj.alt == "<MEI>"):
         
-        nbReadsMEI_B, totalNbReads_B, vaf_B = computeBkpVaf(bamFile, chrom, bkpPos, "End")
+        nbReadsMEI_B, totalNbReads_B, vaf_B = computeBkpVaf(bamFile, chrom, bkpPos, "End", maxDist)
 
     ## b) Insertion in reference genome and absent in donor genome
     # * Clipping at the beginning of the read
     elif (VCFlineObj.ref == "<MEI>"):
 
-        nbReadsMEI_B, totalNbReads_B, vaf_B = computeBkpVaf(bamFile, chrom, bkpPos, "Beg")
+        nbReadsMEI_B, totalNbReads_B, vaf_B = computeBkpVaf(bamFile, chrom, bkpPos, "Beg", maxDist)
 
     ## c) Raise error...  
     else:
@@ -126,33 +128,8 @@ def genotypeMEI(bamFile, VCFlineObj, homVaf, hetVaf):
     ## 1.3) Compute average VAF for the MEI
     msg = "Average VAF"
     if debugBool == True: info(msg)
-
-    minNbClipped = 5
-
-    ## a) Both breakpoints supported by at least X clipped-reads
-    if (nbReadsMEI_A >= minNbClipped) and (nbReadsMEI_B >= minNbClipped):
-        nbReadsMEI = int(nbReadsMEI_A + nbReadsMEI_B) / 2
-        totalNbReads = int(totalNbReads_A + totalNbReads_B) / 2
-        vaf = float(nbReadsMEI) / totalNbReads
-
-    ## b) Breakpoint A supported by at least X clipped-reads
-    elif (nbReadsMEI_A >= minNbClipped):
-        nbReadsMEI = nbReadsMEI_A
-        totalNbReads = totalNbReads_A
-        vaf = vaf_A
-
-    ## c) Breakpoint B supported by at least X clipped-reads
-    elif (nbReadsMEI_B >= minNbClipped):
-        nbReadsMEI = nbReadsMEI_B
-        totalNbReads = totalNbReads_B
-        vaf = vaf_B
-
-    ## d) No breakpoint supported by at least X clipped-reads
-    else:
-        nbReadsMEI = int(nbReadsMEI_A + nbReadsMEI_B) / 2
-        totalNbReads =  int(totalNbReads_A + totalNbReads_B) / 2
-        vaf = 0
-
+    nbReadsMEI, totalNbReads, vaf = computeAverageVaf(nbReadsMEI_A, totalNbReads_A, vaf_A, nbReadsMEI_B, totalNbReads_B, vaf_B, minClipped)
+        
     ### 2. Determine donor genotype for the current variant
     # a) Homozygous for MEI
     if (vaf >= homVaf):
@@ -175,21 +152,24 @@ def genotypeMEI(bamFile, VCFlineObj, homVaf, hetVaf):
     return (genotypeField)
 
 
-def computeBkpVaf(bamFile, chrom, bkpPos, clippingPos):
+def computeBkpVaf(bamFile, chrom, bkpPos, clippingPos, maxDist):
     '''
     '''
+
+    print "test2: ", bamFile, chrom, bkpPos, clippingPos, maxDist
+
     tag = "VAF-" + clippingPos
 
     ### 1.Count the number of reads supporting the reference and MEI polymorphism
     nbReadsRef = 0
     nbReadsMEI = 0
 
-    # Define genomic region +- 5bp around insertion breakpoint
+    # Define genomic region +- X bp (3 default) around insertion breakpoint
     # + 1 for the end interval position, reason:
     # Convert from 1-based in VCF to 0-based half-open intervals in BAM [X,Y)
     # The position X is part of the interval, but Y is not.
-    beg = bkpPos - 5
-    end = bkpPos + 6
+    beg = bkpPos - maxDist
+    end = bkpPos + (maxDist + 1)
 
     # Extract alignments overlapping the genomic region
     iterator = bamFile.fetch(chrom, beg, end)
@@ -240,13 +220,12 @@ def computeBkpVaf(bamFile, chrom, bkpPos, clippingPos):
 
                 ### Assess clipping
 
-                ## Define region to search for clipped reads
-                beg = bkpPos - 3
-                end = bkpPos + 3
+                ## Define genomic region +- X bp (3 default) around insertion breakpoint to search for clipped reads
+                beg = bkpPos - maxDist
+                end = bkpPos + maxDist
 
                 # A) Clipping at the beginning of the read while not at the end
                 # *******--------- (clipped bases: *)
-                # It seems I am making a mistake... looking for clipping at the wrong side..
                 
                 if (clippingPos == "Beg") and ((firstOperation == 4) or (firstOperation == 5)) and ((lastOperation != 4) and (lastOperation != 5)):
 
@@ -300,7 +279,39 @@ def computeBkpVaf(bamFile, chrom, bkpPos, clippingPos):
     return (nbReadsMEI, totalNbReads, vaf)
 
 
-#### CLASSES ####
+def computeAverageVaf(nbReadsMEI_A, totalNbReads_A, vaf_A, nbReadsMEI_B, totalNbReads_B, vaf_B, minClipped):
+    '''
+    '''
+
+    print "test3: ", nbReadsMEI_A, totalNbReads_A, vaf_A, nbReadsMEI_B, totalNbReads_B, vaf_B, minClipped
+
+    ## a) Both breakpoints supported by at least X clipped-reads (default: 5)
+    if (nbReadsMEI_A >= minClipped) and (nbReadsMEI_B >= minClipped):
+        nbReadsMEI = int(nbReadsMEI_A + nbReadsMEI_B) / 2
+        totalNbReads = int(totalNbReads_A + totalNbReads_B) / 2
+        vaf = float(nbReadsMEI) / totalNbReads
+
+    ## b) Breakpoint A supported by at least X clipped-reads (default: 5)
+    elif (nbReadsMEI_A >= minClipped):
+        nbReadsMEI = nbReadsMEI_A
+        totalNbReads = totalNbReads_A
+        vaf = vaf_A
+
+    ## c) Breakpoint B supported by at least X clipped-reads (default: 5)
+    elif (nbReadsMEI_B >= minClipped):
+        nbReadsMEI = nbReadsMEI_B
+        totalNbReads = totalNbReads_B
+        vaf = vaf_B
+
+    ## d) No breakpoint supported by at least X clipped-reads (default: 5)
+    else:
+        nbReadsMEI = int(nbReadsMEI_A + nbReadsMEI_B) / 2
+        totalNbReads =  int(totalNbReads_A + totalNbReads_B) / 2
+        vaf = 0
+
+    return nbReadsMEI, totalNbReads, vaf
+
+
 #### MAIN ####
 
 ## Import modules ##
@@ -319,10 +330,12 @@ import random
 global debugBool ## debug logging mode. Boolean.
 
 ## Get user's input ##
-parser = argparse.ArgumentParser(description= """""")
+parser = argparse.ArgumentParser(description= "Genotype a set of germline mobile element insertions (MEI) across a group of donors. Produce a multi-sample VCF as output")
 parser.add_argument('VCF', help='VCF with the MEI polymorphism to genotype across the set of donors')
 parser.add_argument('BAMPaths', help='Tab separated text file with two columns: 1) donor ids and 2) path to the corresponding donor normal BAM files. One donor per row.')
-parser.add_argument('sampleId', help='Identifier to name output file.')
+parser.add_argument('outFileName', help='Identifier to name the output file.')
+parser.add_argument('--maxDist', default=3, dest='maxDist', type=int, help='Maximum distance to breakpoint when searching for clipped reads supporting the alternative allele' )
+parser.add_argument('--minClipped', default=5, dest='minClipped', type=int, help='Minimum number of clipped reads supporting the alternative allele' )
 parser.add_argument('--hetVaf', default=0.10, dest='hetVaf', type=float, help='Min VAF threshold for heterozygous (0/1). Default: 0.1' )
 parser.add_argument('--homVaf', default=0.9, dest='homVaf', type=float, help='Min VAF threshold for homozygous alternative (1/1). Default: 0.9' )
 parser.add_argument('-t', '--threads', default=1, dest='threads', type=int, help='Number of threads. Default: 1' )
@@ -332,7 +345,9 @@ parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='
 args = parser.parse_args()
 VCF = args.VCF
 BAMPaths = args.BAMPaths
-sampleId =  args.sampleId
+outFileName =  args.outFileName
+maxDist = args.maxDist
+minClipped = args.minClipped
 hetVaf = args.hetVaf
 homVaf = args.homVaf
 threads = args.threads
@@ -346,7 +361,9 @@ print
 print "***** ", scriptName, " configuration *****"
 print "VCF: ", VCF
 print "BAMPaths: ", BAMPaths
-print "sampleId: ", sampleId
+print "outFileName: ", outFileName
+print "max-distance-bkp: ", maxDist
+print "min-nb-clipped: ", minClipped
 print "min-vaf-heterozygous: ", hetVaf
 print "min-vaf-homozygous: ", homVaf
 print "threads: ", threads
@@ -386,7 +403,7 @@ for chunk in BAMChunks:
     print "chunk" + str(counter) + ": " + str(len(chunk)) + " donors to genotype"
 
     threadName = "THREAD-" + str(counter)
-    thread = threading.Thread(target=worker, args=(VCFObj, chunk, homVaf, hetVaf), name=threadName)
+    thread = threading.Thread(target=worker, args=(VCFObj, chunk, maxDist, minClipped, hetVaf, homVaf), name=threadName)
     threads.append(thread)
 
     counter += 1
@@ -400,7 +417,7 @@ for chunk in BAMChunks:
 #### 3. Make output multisample VCF file
 header("3. Produce multi-sample VCF file as ouput")
 
-fileName = sampleId + '.vcf'
+fileName = outFileName + '.vcf'
 outFilePath = outDir + '/' + fileName
 
 # 3.1 Write header
