@@ -197,13 +197,18 @@ class VCF():
 ##INFO=<ID=CLASS,Number=1,Type=String,Description="Transposable element class (L1, ALU, SVA or ERVK)">
 ##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction)">
 ##INFO=<ID=SCORE,Number=1,Type=String,Description="Insertion score (5: 5' and 3' breakpoints (bkp) assembled, 4: 3'bkp assembled, 3: 5'bkp assembled, 2: no bkp assembled, 1: inconsistent (contradictory orientation, bkp or TSD))">
-##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around POS (insertion breakpoint)">
+##INFO=<ID=BKPB,Number=1,Type=String,Description="MEI right-most breakpoint position (bkp B). Left-most breakpoint position (bkp A) represented in the POS field">
+##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoints">
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
 ##INFO=<ID=STRUCT,Number=1,Type=String,Description="Transposable element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
 ##INFO=<ID=LEN,Number=1,Type=Integer,Description="Transposable element length">
 ##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site duplication length">
 ##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication sequence">
 ##INFO=<ID=POLYA,Number=1,Type=String,Description="Poly-A sequence">
+##INFO=<ID=SRC,Number=1,Type=String,Description="Coordinates of the source element that mediated the transduction in the format: $chrom:beg-end_strand">
+##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the transduced region in the format: beg-end">
+##INFO=<ID=TDLEN,Number=1,Type=String,Description="Transduced region length">
+##INFO=<ID=TDLENR,Number=1,Type=String,Description="Transduced region length at RNA level">
 ##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1KGENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), TRAFIC: TraFic in-house database)">
 ##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the transposable element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
 ##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
@@ -212,6 +217,7 @@ class VCF():
 ##INFO=<ID=CPG,Number=0,Type=Flag,Description="Reported as cancer predisposition gene in 10.1038/nature12981 (DOI).">
 ##INFO=<ID=REP,Number=1,Type=String,Description="Repetitive element overlapping the insertion breakpoint">
 ##INFO=<ID=DIV,Number=1,Type=Integer,Description="Millidivergence of the overlapping repetitive element with respect a consensus sequence">
+##INFO=<ID=MEISEQ,Number=1,Type=String,Description="Assembled sequence of the mobile element 5' boundary">
 ##INFO=<ID=CONTIGA,Number=1,Type=String,Description="Assembled contig sequence spanning 1st bkp (lowest genomic position)">
 ##INFO=<ID=CONTIGB,Number=1,Type=String,Description="Assembled contig sequence spanning 2nd bkp (highest genomic position)">
 ##INFO=<ID=RP,Number=.,Type=String,Description="Reads from the tumour sample and positive cluster that support this insertion">
@@ -293,14 +299,15 @@ class VCFline():
         """
 
         ## Create list containing the order of info fields
-        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "CONTIGA", "CONTIGB", "RP", "RN" ]
+        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "SRC", "TDC", "TDLEN", "TDLENR", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "MEISEQ", "CONTIGA", "CONTIGB", "RP", "RN" ]
 
         ## Build dictionary with info tags as keys
         infoDict = {}
         infoDict["SVTYPE"] = "<MEI>"
         infoDict["CLASS"] = insertionObj.TEClass
-        infoDict["TYPE"] = "TD0"
+        infoDict["TYPE"] = insertionObj.tdType
         infoDict["SCORE"] = insertionObj.score
+        infoDict["BKPB"] = insertionObj.bkpB[1]
         infoDict["CIPOS"] = insertionObj.bkpA[2]
         infoDict["STRAND"] = insertionObj.orientation
         infoDict["STRUCT"] = insertionObj.structure
@@ -308,6 +315,11 @@ class VCFline():
         infoDict["TSLEN"] = insertionObj.targetSiteSize
         infoDict["TSSEQ"] = insertionObj.targetSiteSeq
         infoDict["POLYA"] = insertionObj.polyA
+        infoDict["SRC"] = insertionObj.srcElement
+        infoDict["TDC"] = insertionObj.tdCoord
+        infoDict["TDLEN"] = insertionObj.tdLen
+        infoDict["TDLENR"] = insertionObj.tdLenRna
+        infoDict["MEISEQ"] = insertionObj.MEISeq
         infoDict["CONTIGA"] = insertionObj.informativeContigBkpA
         infoDict["CONTIGB"] = insertionObj.informativeContigBkpB
         infoDict["RP"] = insertionObj.clusterPlusObj.readPairIds
@@ -318,7 +330,8 @@ class VCFline():
 
         for info in infoOrder:
 
-            if (infoDict[info] != "unkn"):
+            # Information about current info field available and applicable
+            if (info in infoDict.keys()) and (infoDict[info] != "UNK") and (infoDict[info] != "NA"):
 
                 infoField = info + "=" +str(infoDict[info])
                 infoList.append(infoField)
@@ -344,44 +357,75 @@ class insertion():
     - imprecise_bkp
     """
 
-    def __init__(self, family, coordinates, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus):
+    def __init__(self, family, tdType, coordinates, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo):
         """
             Initialize insertion object.
 
             Input:
             1) family. TE family (L1, Alu, SVA or ERVK)
-            2) coordinates.
-            3) contigsPlusPath. Fasta file containing the assembled contigs for the positive cluster.
-            4) blatPlusPath. psl file containing the blat aligments for the positive cluster's assembled contigs.
-            5) contigsMinusPath. Fasta file containing the assembled contigs for the negative cluster.
-            6) blatMinusPath. psl file containing the blat aligments for the negative cluster's assembled contigs.
-            7) readPairsPlus. List of + cluster supporting reads.
-            8) readPairsMinus. List of - cluster supporting reads.
+            2) tdType. Insertion type:  td0 (solo-insertion), td1 (partnered-transduccion) and td2 (orphan-transduction).
+            3) coordinates. TraFiC insertion range.
+            4) contigsPlusPath. Fasta file containing the assembled contigs for the positive cluster.
+            5) blatPlusPath. psl file containing the blat aligments for the positive cluster's assembled contigs.
+            6) contigsMinusPath. Fasta file containing the assembled contigs for the negative cluster.
+            7) blatMinusPath. psl file containing the blat aligments for the negative cluster's assembled contigs.
+            8) readPairsPlus. List of + cluster supporting reads.
+            9) readPairsMinus. List of - cluster supporting reads.
+            10) srcElement.
+            11) transductionInfo
 
             Output:
             - Insertion object variables initialized
         """
         self.TEClass = TEClass
+        self.tdType = tdType
         self.coordinates = coordinates
         self.clusterPlusObj = self.create_cluster("+", contigsPlusPath, blatPlusPath, readPairsPlus)
         self.clusterMinusObj = self.create_cluster("-", contigsMinusPath, blatMinusPath, readPairsMinus)
+        self.srcElement = srcElement
 
-        ## Unknown values by default:
-        self.traficId = "unkn"
-        self.score = "unkn"
-        self.bkpA = ["unkn", "unkn", "unkn"]
-        self.bkpB = ["unkn", "unkn", "unkn"]
-        self.targetSiteSize = "unkn"
-        self.targetSiteSeq = "unkn"
-        self.orientation = "unkn"
-        self.structure = "unkn"
-        self.length = "unkn"
-        self.percLength = "unkn"
-        self.informativeContigIdBkpA = "unkn"
-        self.informativeContigBkpA = "unkn"
-        self.informativeContigIdBkpB = "unkn"
-        self.informativeContigBkpB = "unkn"
-        self.polyA = "unkn"
+        # A) Solo insertion (TD0). Not applicable
+        if (self.tdType == "TD0"):
+            self.tdCoord = "NA"
+            self.tdLen = "NA"
+            self.tdLenRna = "NA"
+
+        # B) Partnered or orphan transduction (TD1 and TD2)
+        else:
+            transductionInfoList = transductionInfo.split(":")
+            self.tdCoord = transductionInfoList[0] + "-" + transductionInfoList[1]
+
+            status = self.srcElement.split("_")[1]
+
+            print "test_status: ", status
+
+            # A) Putative. Uncharacterized germline or somatic source element
+            if (status == "putative"):
+                self.tdLen = "UNK"
+                self.tdLenRna = "UNK"
+
+            # B) Characterized germline source element
+            else:
+                self.tdLen = transductionInfoList[2]
+                self.tdLenRna = transductionInfoList[3]
+
+        ## Unkown values by default:
+        self.traficId = "UNK"
+        self.score = "UNK"
+        self.bkpA = ["UNK", "UNK", "UNK"]
+        self.bkpB = ["UNK", "UNK", "UNK"]
+        self.targetSiteSize = "UNK"
+        self.targetSiteSeq = "UNK"
+        self.orientation = "UNK"
+        self.structure = "UNK"
+        self.length = "UNK"
+        self.percLength = "UNK"
+        self.MEISeq = "UNK"
+        self.informativeContigIdBkpA = "UNK"
+        self.informativeContigBkpA = "UNK"
+        self.informativeContigIdBkpB = "UNK"
+        self.informativeContigBkpB = "UNK"
+        self.polyA = "UNK"
 
     #### FUNCTIONS ####
     def create_cluster(self, ID, contigsPath, blatPath, readPairsList):
@@ -446,14 +490,13 @@ class insertion():
         self.traficId = self.TEClass + ":" + self.coordinates
 
         ## A) Insertion without any contig spanning one of the insertion breakpoints
-        if (bestInformative5primeContigPlusObj == "unkn") and (bestInformative3primeContigPlusObj == "unkn") and (bestInformative5primeContigMinusObj == "unkn") and (bestInformative3primeContigMinusObj == "unkn"):
+        if (bestInformative5primeContigPlusObj == "UNK") and (bestInformative3primeContigPlusObj == "UNK") and (bestInformative5primeContigMinusObj == "UNK") and (bestInformative3primeContigMinusObj == "UNK"):
 
             info("no-informative-contigs:")
 
             # No informative contigs, imprecise breakpoint
             self.score = '2'
             self.bkpA = self.imprecise_bkp(self.coordinates)
-            self.bkpB = ["unkn", "unkn", "unkn"]
 
         ## B) Insertion with at least one contig spanning one of the insertion breakpoints
         else:
@@ -462,7 +505,7 @@ class insertion():
 
             ## 1. Determine 5' informative contig and insertion breakpoint
             # a) 5' informative contigs in + and - clusters:
-            if (bestInformative5primeContigPlusObj != "unkn") and (bestInformative5primeContigMinusObj != "unkn"):
+            if (bestInformative5primeContigPlusObj != "UNK") and (bestInformative5primeContigMinusObj != "UNK"):
 
                 ## Evaluate breakpoint consistency between both 5' informative contigs (+ and -)
                 informative5primeContigObj = bestInformative5primeContigPlusObj
@@ -482,23 +525,23 @@ class insertion():
                 bkp5prime = [ informative5primeContigObj.informativeDict["bkp"][0], bkpPos5prime, CI]
 
             # b) 5' informative contig in + cluster
-            elif (bestInformative5primeContigPlusObj != "unkn"):
+            elif (bestInformative5primeContigPlusObj != "UNK"):
                 informative5primeContigObj = bestInformative5primeContigPlusObj
                 bkp5prime = informative5primeContigObj.informativeDict["bkp"] + [0]
 
             # c) 5' informative contig in - cluster
-            elif (bestInformative5primeContigMinusObj != "unkn"):
+            elif (bestInformative5primeContigMinusObj != "UNK"):
                 informative5primeContigObj = bestInformative5primeContigMinusObj
                 bkp5prime = informative5primeContigObj.informativeDict["bkp"] + [0]
 
             # d) none 5' informative contig
             else:
-                informative5primeContigObj = "unkn"
-                bkp5prime = ["unkn", "unkn", "unkn"]
+                informative5primeContigObj = "UNK"
+                bkp5prime = ["UNK", "UNK", "UNK"]
 
             ## 2. Determine 3' informative contig and insertion breakpoint
             # a) 3' informative contigs in + and - clusters:
-            if (bestInformative3primeContigPlusObj != "unkn") and (bestInformative3primeContigMinusObj != "unkn"):
+            if (bestInformative3primeContigPlusObj != "UNK") and (bestInformative3primeContigMinusObj != "UNK"):
 
                 ## Evaluate breakpoint consistency between both 3' informative contigs (+ and -)
                 informative3primeContigObj = bestInformative3primeContigPlusObj
@@ -521,22 +564,22 @@ class insertion():
                 self.polyA = informative3primeContigObj.informativeDict["info"]
 
             # b) 3' informative contig in + cluster
-            elif (bestInformative3primeContigPlusObj != "unkn"):
+            elif (bestInformative3primeContigPlusObj != "UNK"):
                 informative3primeContigObj = bestInformative3primeContigPlusObj
                 bkp3prime = informative3primeContigObj.informativeDict["bkp"] + [0]
                 self.polyA = informative3primeContigObj.informativeDict["info"]
 
             # c) 3' informative contig in - cluster
-            elif (bestInformative3primeContigMinusObj != "unkn"):
+            elif (bestInformative3primeContigMinusObj != "UNK"):
                 informative3primeContigObj = bestInformative3primeContigMinusObj
                 bkp3prime = informative3primeContigObj.informativeDict["bkp"] + [0]
                 self.polyA = informative3primeContigObj.informativeDict["info"]
 
             # d) none 3' informative contig
             else:
-                informative3primeContigObj = "unkn"
-                bkp3prime = ["unkn", "unkn", "unkn"]
-                polyA = "unkn"
+                informative3primeContigObj = "UNK"
+                bkp3prime = ["UNK", "UNK", "UNK"]
+                polyA = "UNK"
 
 
             ## 3. Determine insertion score and Target Site Duplication if possible:
@@ -544,29 +587,29 @@ class insertion():
             CI3prime = bkp3prime[2]
 
             # a) Inconsistent bkp 5'
-            if (CI5prime > 8) and (CI5prime != "unkn"):
+            if (CI5prime > 8) and (CI5prime != "UNK"):
                 info("inconsistent bkp 5'")
                 self.score = '1'
-                self.targetSiteSize = "unkn"
-                self.targetSiteSeq = "unkn"
-                self.orientation = "unkn"
-                self.structure = "unkn"
-                self.length = "unkn"
-                self.percLength = "unkn"
+                self.targetSiteSize = "UNK"
+                self.targetSiteSeq = "UNK"
+                self.orientation = "UNK"
+                self.structure = "UNK"
+                self.length = "UNK"
+                self.percLength = "UNK"
 
             # b) Inconsistent bkp 3'
-            elif (CI3prime > 8) and (CI3prime != "unkn"):
+            elif (CI3prime > 8) and (CI3prime != "UNK"):
                 info("inconsistent bkp 3'")
                 self.score = '1'
-                self.targetSiteSize = "unkn"
-                self.targetSiteSeq = "unkn"
-                self.orientation = "unkn"
-                self.structure = "unkn"
-                self.length = "unkn"
-                self.percLength = "unkn"
+                self.targetSiteSize = "UNK"
+                self.targetSiteSeq = "UNK"
+                self.orientation = "UNK"
+                self.structure = "UNK"
+                self.length = "UNK"
+                self.percLength = "UNK"
 
             # c) Consistent 5' and 3' bkps/informative_contigs
-            elif (informative5primeContigObj != "unkn") and (informative3primeContigObj != "unkn"):
+            elif (informative5primeContigObj != "UNK") and (informative3primeContigObj != "UNK"):
                 info("5' and 3' informative contigs:")
                 self.score = '5'
 
@@ -576,13 +619,13 @@ class insertion():
                 # Inconsistent TSD:
                 if (self.targetSiteSize == "inconsistent"):
                     self.score = '1'
-                    self.orientation = "unkn"
-                    self.structure = "unkn"
-                    self.length = "unkn"
-                    self.percLength = "unkn"
+                    self.orientation = "UNK"
+                    self.structure = "UNK"
+                    self.length = "UNK"
+                    self.percLength = "UNK"
 
             # d) 5' bkp/informative_contig
-            elif (informative5primeContigObj != "unkn"):
+            elif (informative5primeContigObj != "UNK"):
                 info("5' informative contig:")
                 self.score = '3'
 
@@ -602,25 +645,28 @@ class insertion():
                 # Inconsistent orientation:
                 if (self.orientation == "inconsistent"):
                     self.score = '1'
-                    self.targetSiteSize = "unkn"
-                    self.targetSiteSeq = "unkn"
-                    self.structure = "unkn"
-                    self.length = "unkn"
-                    self.percLength = "unkn"
+                    self.targetSiteSize = "UNK"
+                    self.targetSiteSeq = "UNK"
+                    self.structure = "UNK"
+                    self.length = "UNK"
+                    self.percLength = "UNK"
 
             ## 5. Order breakpoints by coordinates
             bkpCoord5prime  = bkp5prime[1]
             bkpCoord3prime  = bkp3prime[1]
 
             # a) 5' bkp characterized
-            if (bkpCoord3prime == "unkn"):
+            if (bkpCoord3prime == "UNK"):
 
                 self.informativeContigIdBkpA = informative5primeContigObj.ID
                 self.bkpA = bkp5prime
                 self.informativeContigBkpA = informative5primeContigObj.seq
 
+                 # MEI 5' boundary assembled sequence
+                self.MEISeq = informative5primeContigObj.informativeDict["MEISeq"]
+
             # b) 3' bkp characterized
-            elif (bkpCoord5prime == "unkn"):
+            elif (bkpCoord5prime == "UNK"):
 
                 self.informativeContigIdBkpA = informative3primeContigObj.ID
                 self.bkpA = bkp3prime
@@ -628,6 +674,9 @@ class insertion():
 
             # c) 5' and 3' bkp characterized
             else:
+
+                # MEI 5' boundary assembled sequence
+                self.MEISeq = informative5primeContigObj.informativeDict["MEISeq"]
 
                 # c.a) 5' bkp < 3' bkp
                 if (bkpCoord5prime < bkpCoord3prime):
@@ -665,19 +714,6 @@ class insertion():
         print "bkpBContigId: ", self.informativeContigIdBkpB
         print "bkpBContig: ", self.informativeContigBkpB
         print "poly-A: ", self.polyA
-
-        ## ------ Provisional -------
-        ## Print results into an output file
-        #fileName = "TEIBA.results.txt"
-        #outFilePath = outDir + "/" + fileName
-        #outFile = open( outFilePath, "a" )
-
-        #row = self.traficId + "\t" + str(self.score) + "\t" + str(self.bkpA) + "\t" + str(self.bkpB) + "\t" + str(self.targetSiteSize) + "\t" + self.targetSiteSeq + "\t" + self.orientation + "\t" + self.structure + "\t" + str(self.length) + "\t" + str(self.percLength) + "\t" + self.informativeContigIdBkpA + "\t" + self.informativeContigBkpA + "\t" + self.informativeContigIdBkpB + "\t" + self.informativeContigBkpB + "\t" + self.polyA + "\n"
-        #outFile.write(row)
-
-        # Close output and end
-        #outFile.close()
-
 
     def target_site(self, informative5primeContigObj, informative3primeContigObj):
         """
@@ -763,7 +799,7 @@ class insertion():
         """
 
         ## A) 5' and 3' informative contigs
-        if (informative5primeContigObj != "unkn") and (informative3primeContigObj != "unkn"):
+        if (informative5primeContigObj != "UNK") and (informative3primeContigObj != "UNK"):
             alignType5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"].alignType
             alignType3prime = informative3primeContigObj.informativeDict["targetRegionAlignObj"].alignType
 
@@ -780,7 +816,7 @@ class insertion():
                 orientation = "inconsistent"
 
         ## B) 5' informative contig
-        elif (informative5primeContigObj != "unkn"):
+        elif (informative5primeContigObj != "UNK"):
             alignType5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"].alignType
 
             # a) + strand
@@ -792,7 +828,7 @@ class insertion():
                 orientation = "-"
 
         ## C) 3' informative contig
-        elif (informative3primeContigObj != "unkn"):
+        elif (informative3primeContigObj != "UNK"):
             alignType3prime = informative3primeContigObj.informativeDict["targetRegionAlignObj"].alignType
 
             # a) + strand
@@ -805,7 +841,7 @@ class insertion():
 
         ## D) None informative contig
         else:
-            orientation = "unkn"
+            orientation = "UNK"
 
         return orientation
 
@@ -846,7 +882,7 @@ class insertion():
         """
 
         ## A) 5' informative contig
-        if (informative5primeContigObj != "unkn"):
+        if (informative5primeContigObj != "UNK"):
 
             strand = informative5primeContigObj.informativeDict["info"].strand
 
@@ -855,8 +891,8 @@ class insertion():
             # a) TE inverted in its 5'
             if (strand == "-"):
                 structure = "INV"
-                length = "unkn"
-                percLength = "unkn"
+                length = "UNK"
+                percLength = "UNK"
 
             # b) Full length or 5' truncated
             else:
@@ -880,9 +916,9 @@ class insertion():
 
         ## B) No 5' informative contig
         else:
-            structure = "unkn"
-            length = "unkn"
-            percLength = "unkn"
+            structure = "UNK"
+            length = "UNK"
+            percLength = "UNK"
 
         return (structure, length, percLength)
 
@@ -1049,8 +1085,8 @@ class cluster():
         """
 
         ## Initial status -> none informative contig
-        bestInformative5primeContigObj = "unkn"
-        bestInformative3primeContigObj = "unkn"
+        bestInformative5primeContigObj = "UNK"
+        bestInformative3primeContigObj = "UNK"
 
         informative5primeContigObjList = []
         informative3primeContigObjList = []
@@ -1106,7 +1142,7 @@ class cluster():
             bkpCoord = contigObj.informativeDict["bkp"][1]
             dist = abs(targetPos - bkpCoord)
 
-            if (bestInformative5primeContigObj == "unkn") or (dist < bestDist):
+            if (bestInformative5primeContigObj == "UNK") or (dist < bestDist):
 
                 bestInformative5primeContigObj = contigObj
                 bestDist = dist
@@ -1120,7 +1156,7 @@ class cluster():
             bkpCoord = contigObj.informativeDict["bkp"][1]
             dist = abs(targetPos - bkpCoord)
 
-            if (bestInformative3primeContigObj == "unkn") or (dist < bestDist):
+            if (bestInformative3primeContigObj == "UNK") or (dist < bestDist):
 
                 bestInformative3primeContigObj = contigObj
                 bestDist = dist
@@ -1163,10 +1199,11 @@ class contig():
         # Contig alignment information
         self.alignList = []   # List of blat alignments for this contig
         self.informativeDict = {} # Dictionary key -> value pairs:
-        self.informativeDict["type"] = "unkn"                 # type -> 5-prime, 3-prime or none
-        self.informativeDict["bkp"] = "unkn"                  # bkp -> list: chrom and pos, 'na' for both if type == none)
-        self.informativeDict["info"] = "unkn"                 # info -> 5-prime: aligment object with contig's alignment in TE sequence info; 3-prime: PolyA sequence; none: 'na'
-        self.informativeDict["targetRegionAlignObj"] = "unkn"   # targetRegionAlignObj -> alignment object with contig's alignment in the target region info.
+        self.informativeDict["type"] = "UNK"                 # type -> 5-prime, 3-prime or none
+        self.informativeDict["bkp"] = "UNK"                  # bkp -> list: chrom and pos, 'na' for both if type == none)
+        self.informativeDict["info"] = "UNK"                 # info -> 5-prime: aligment object with contig's alignment in TE sequence info; 3-prime: PolyA sequence; none: 'na'
+        self.informativeDict["targetRegionAlignObj"] = "UNK" # targetRegionAlignObj -> alignment object with contig's alignment in the target region info.
+        self.informativeDict["MEISeq"] = "UNK"               # MEISeq -> Assembled sequence of the mobile element 5' boundary
 
     #### FUNCTIONS ####
     def rev_complement(self, seq):
@@ -1269,11 +1306,12 @@ class contig():
                 info -> 5-prime: aligment object with contig's alignment in TE sequence info;
                         3-prime: PolyA sequence; none: 'na'
                 targetRegionAlignObj -> alignment object with contig's alignment in the target region info.
+                MEISeq -> Assembled sequence of the mobile element 5' boundary
         """
 
         ## Initial status -> no informative
-        bestInformative5primeDict = "unkn"
-        bestInformative3primeDict = "unkn"
+        bestInformative5primeDict = "UNK"
+        bestInformative3primeDict = "UNK"
         informative5primeDict = {}
         informative3primeDict = {}
 
@@ -1297,7 +1335,7 @@ class contig():
             for alignObj in supportingAlignList:
 
                 ## Check if alignment support the contig as informative 5'
-                is5prime, bkpCoord, TEalignmentObj = self.is_5prime_informative(alignObj)
+                is5prime, bkpCoord, TEalignmentObj, MEISeq = self.is_5prime_informative(alignObj)
 
                 # Contig informative 5-prime, it has TE sequence
                 if (is5prime == 1):
@@ -1307,6 +1345,7 @@ class contig():
                     informative5primeDict[alignObj]["bkp"] = bkpCoord
                     informative5primeDict[alignObj]["info"] = TEalignmentObj
                     informative5primeDict[alignObj]["targetRegionAlignObj"] = alignObj
+                    informative5primeDict[alignObj]["MEISeq"] = MEISeq
 
                 ## Check if alignment support the contig as informative 3'
                 is3prime, bkpCoord, polyASeq = self.is_3prime_informative(alignObj)
@@ -1331,7 +1370,7 @@ class contig():
             bkpCoord = informative5primeDict[alignment]["bkp"][1]
             dist = abs(targetPos - bkpCoord)
 
-            if (bestInformative5primeDict == "unkn") or (dist < bestDist5Prime):
+            if (bestInformative5primeDict == "UNK") or (dist < bestDist5Prime):
                 bestInformative5primeDict = informative5primeDict[alignment]
                 bestDist5Prime = dist
 
@@ -1342,7 +1381,7 @@ class contig():
             bkpCoord = informative3primeDict[alignment]["bkp"][1]
             dist = abs(targetPos - bkpCoord)
 
-            if (bestInformative3primeDict == "unkn") or (dist < bestDist3Prime):
+            if (bestInformative3primeDict == "UNK") or (dist < bestDist3Prime):
                 bestInformative3primeDict = informative3primeDict[alignment]
                 bestDist3Prime = dist
 
@@ -1462,8 +1501,8 @@ class contig():
         ## B) No poly-A sequence
         else:
             is3prime = 0
-            bkpCoord = ["unkn", "unkn"]
-            polyASeq = "unkn"
+            bkpCoord = ["UNK", "UNK"]
+            polyASeq = "UNK"
 
         return (is3prime, bkpCoord, polyASeq)
 
@@ -1519,6 +1558,7 @@ class contig():
         2) bkpCoord. Two elements breakpoint coordinates list. First (bkp chromosome) and second (breakpoint position).
         3) TEalignmentObj. Blat aligment object with the alignment information of the contig in the consensus TE sequence.
                            'na' if not 5' informative.
+        4) MEISeq. Assembled sequence of the mobile element 5' boundary
         """
 
         ## Select contig target sequence coordinates to search for alignment in TE sequence (L1, Alu or SVA)
@@ -1529,16 +1569,22 @@ class contig():
         #   -------------******TE******
         #   -------------
         # qBeg        *qEnd*
+
         if (alignObj.alignType == "beg"):
             targetBeg = alignObj.qEnd
             targetEnd = alignObj.qSize
-
+            targetSeq = self.seq[alignObj.qEnd:]
             bkpChrom = alignObj.tName
 
+            # a) Positive dna strand
             if (alignObj.strand == "+"):
                 bkpPos = alignObj.tEnd
+                MEISeq = targetSeq
+
+            # b) Negative dna strand
             else:
                 bkpPos = alignObj.tBeg
+                MEISeq = self.rev_complement(targetSeq)
 
         # B) End of the contig sequence aligned in the TE insertion genomic region
         #   ******TE******-------------
@@ -1547,13 +1593,19 @@ class contig():
         elif (alignObj.alignType == "end"):
             targetBeg = 0
             targetEnd = alignObj.qBeg
+            targetSeq = self.seq[:alignObj.qBeg]
 
             bkpChrom = alignObj.tName
 
+            # a) Positive dna strand
             if (alignObj.strand == "+"):
                 bkpPos = alignObj.tBeg
+                MEISeq = targetSeq
+
+            # b) Negative dna strand
             else:
                 bkpPos = alignObj.tEnd
+                MEISeq = self.rev_complement(targetSeq)
 
         # C) No align type information or 'none' align type
         else:
@@ -1563,8 +1615,8 @@ class contig():
 
         ## Default
         is5prime = 0
-        bkpCoord = ["unkn", "unkn"]
-        TEalignmentObj = "unkn"
+        bkpCoord = ["UNK", "UNK"]
+        TEalignmentObj = "UNK"
 
         for alignment in self.alignList:
 
@@ -1590,7 +1642,7 @@ class contig():
                     bkpCoord = [bkpChrom, bkpPos]
                     TEalignmentObj = alignment
 
-        return (is5prime, bkpCoord, TEalignmentObj)
+        return (is5prime, bkpCoord, TEalignmentObj, MEISeq)
 
 class blat_alignment():
     """
@@ -1814,10 +1866,10 @@ class fasta():
 
 def parse_args():
     """Define and parse command line parameters."""
-    parser = argparse.ArgumentParser(description= """""")
-    parser.add_argument('inputPaths', help='...')
-    parser.add_argument('donorId', help='...')
-    parser.add_argument('genome', help='...')
+    parser = argparse.ArgumentParser(description="Per MEI called by TraFiC: 1) Identifies informative contigs spanning 5' and/or 3' insertion ends if possible, 2) Use informative contigs for characterizing MEI in detail (exact breakpoints, length, strand...) and 3) Produce a VCF with the MAI plus all these information")
+    parser.add_argument('inputPaths', help='Text file containing, per MEI, the needed files')
+    parser.add_argument('donorId', help='Donor identifier. The output vcf will be named accordingly')
+    parser.add_argument('genome', help='Reference genome in fasta format')
     parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
     args = parser.parse_args()
@@ -1872,11 +1924,14 @@ if __name__ == "__main__":
         line = line.split("\t")
 
         # Get TE insertion info and files
-        TEClass, insertionCoord = line[0].split(":")
+        insertionInfo = line[0]
+        TEClass, tdType, insertionCoord = insertionInfo.split(":")
         contigsPlusPath, contigsMinusPath = line[1].split(",")
         blatPlusPath, blatMinusPath = line[2].split(",")
         readPairsPlus = line[3]
         readPairsMinus = line[4]
+        srcElement = line[5]
+        transductionInfo = line[6]
 
         # Perform breakpoint analysis for the TE insertion
         header("Tranposable Element Insertion Breakpoint Analysis (TEIBA) for: " + insertionCoord)
@@ -1885,7 +1940,7 @@ if __name__ == "__main__":
         if os.path.isfile(contigsPlusPath) and os.path.isfile(blatPlusPath) and os.path.isfile(contigsMinusPath) and os.path.isfile(blatMinusPath):
 
             ## Create insertion object and identify breakpoints from assembled contigs
-            insertionObj = insertion(TEClass, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus)
+            insertionObj = insertion(TEClass, tdType, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo)
             insertionObj.find_insertionBkp(genomeObj, outDir)
 
             ## Create VCFline object

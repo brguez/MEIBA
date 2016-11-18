@@ -92,8 +92,6 @@ for line in ancestryFile:
 
     line = line.rstrip('\r\n')
 
-    #print "line", line
-
     if not line.startswith("#"):
         line = line.split('\t')
 
@@ -116,11 +114,21 @@ for line in ancestryFile:
         donorIdAncestryDict[donorId] = ancestryCode
 
 
-#### 3. Compute parameters:
-###########################
+#### 3. Compute parameters and make table 
+###########################################
+# with allele count and VAF values for each source element: 
+###########################################################
 alleleFreqDict = {}
 
 header("3. Compute parameters")
+
+# Open output file
+outFilePath = outDir + '/L1_source_element_VAF.tsv'
+outFile = open(outFilePath, 'a')
+
+# Write header:
+row = '#chrom' + "\t" + 'beg' + "\t" + 'end' + "\t" + 'element' + "\t" + 'alleleCount' + "\t" + 'VAF' + "\n"
+outFile.write(row)
 
 for MEIObj in VCFObj.lineList:
 
@@ -157,6 +165,15 @@ for MEIObj in VCFObj.lineList:
 
     ## Save into list. One per MEI type
     alleleFreqDict[sourceElementId] = alleleFrequency
+
+    # Write allele frequency for the source element in the table
+    chrom = MEIObj.chrom
+    beg = MEIObj.pos
+    end = MEIObj.pos + int(MEIObj.infoDict["TSLEN"])
+    element = MEIObj.infoDict["CLASS"]
+
+    row = chrom + "\t" + str(beg) + "\t" + str(end) + "\t" + element + "\t" + str(alleleCount) + "\t" + str(alleleFrequency) + "\n"
+    outFile.write(row)
 
 #### 4. Make plots:
 #####################
