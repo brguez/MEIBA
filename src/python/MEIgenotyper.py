@@ -425,7 +425,7 @@ for chunk in BAMChunks:
     print "chunk" + str(counter) + ": " + str(len(chunk)) + " donors to genotype"
 
     threadName = "THREAD-" + str(counter)
-    thread = threading.Thread(target=worker, args=(VCFObj, donorIdBamPathList, maxDist, minClipped, minMapQual, minREF, hetVaf, homVaf), name=threadName)
+    thread = threading.Thread(target=worker, args=(VCFObj, chunk, maxDist, minClipped, minMapQual, minREF, hetVaf, homVaf), name=threadName)
     threads.append(thread)
 
     counter += 1
