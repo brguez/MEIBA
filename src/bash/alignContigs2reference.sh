@@ -3,11 +3,11 @@
 
 <<authors
 ******************************************************************************
-    
+
     alignContigs2reference.sh
-    
+
     Copyright (c) 2016 Bernardo Rodríguez-Martín
-    
+
     Mobile Genomes & Disease Lab.
     Universidad de Vigo (Spain)
 
@@ -22,7 +22,7 @@ authors
 
 # usage
 #######
-# Usage:    bash alignContigs2reference.sh contigs.fa insertionId genome.fa TE.fa [windowSize outDir]  
+# Usage:    bash alignContigs2reference.sh contigs.fa insertionId genome.fa TE.fa [windowSize outDir]
 # Example:  bash alignContigs2reference.sh L1:8_37122847_37122890:-.contigs.fa L1:8_37122847_37122890:- hs37d5.fa L1_consensus.fa 1000 blat_test
 
 # Input
@@ -51,7 +51,7 @@ set -e -o pipefail
 
 # In case the user does not provide any input file
 ###################################################
-if [[ ! -e "$1" ]] || [[ "$2" == "" ]] || [[ ! -e "$3" ]] || [[ ! -e "$4" ]] 
+if [[ ! -e "$1" ]] || [[ "$2" == "" ]] || [[ ! -e "$3" ]] || [[ ! -e "$4" ]]
 then
     echo "" >&2
     echo "*** alignContigs2reference ***" >&2
@@ -71,7 +71,7 @@ then
     echo "5) Window size around insertion breakpoints to define blat target region. Default=1000"  >&2
     echo "6) Output directory. Default: current working directory"  >&2
     echo "" >&2
-    echo "Output:" >&2 
+    echo "Output:" >&2
     echo "1) .psl file with contig blat aligments." >&2
     echo "" >&2
     exit -1
@@ -93,27 +93,27 @@ then
     outDir=.
 else
     windowSize=$5
-    
+
     if [ ! -n "$6" ]
     then
         outDir=.
     else
         outDir=$6
     fi
-fi    
+fi
 
 
-# Directories 
+# Directories
 #############
 ## Set root directory
 path="`dirname \"$0\"`"              # relative path
 rootDir="`( cd \"$path\" && pwd )`"  # absolute path
 
-if [ -z "$rootDir" ] ; 
+if [ -z "$rootDir" ] ;
 then
   # error; for some reason, the path is not accessible
   # to the script
-  log "Path not accessible to the script\n" "ERROR" 
+  log "Path not accessible to the script\n" "ERROR"
   exit 1  # fail
 fi
 
@@ -126,7 +126,7 @@ awkDir=$rootDir/../awk
 ## Awk
 ADDOFFSET=$awkDir/addOffset2template.awk
 
-## DISPLAY PROGRAM CONFIGURATION  
+## DISPLAY PROGRAM CONFIGURATION
 ##################################
 printf "\n"
 header="CONFIGURATION FOR $insertionId"
@@ -159,17 +159,16 @@ printf "\n\n"
 ###########################################################
 ## Output:
 # - $outDir/insertion_region.fa
-targetRegionPath=$outDir/insertion_region.fa 
+targetRegionPath=$outDir/insertion_region.fa
 
 echo "1. Make fasta with target dna region for blat alignment" >&1
 
 read family tdType chr beg end cluster <<<$(echo $insertionId | awk '{split($1, info, ":"); family=info[1]; tdType=info[2]; cluster=info[4]; split(info[3], coord, "_"); chr=coord[1]; beg=coord[2]; end=coord[3]; print family, tdType, chr, beg, end, cluster;}')
 
-targetBeg=`expr $beg - $windowSize` 
+targetBeg=`expr $beg - $windowSize`
 targetEnd=`expr $end + $windowSize`
 if [ "$targetBeg" -lt 0 ]; then targetBeg=0; fi # Set lower-bound to 0 (avoid negative coordinates)
 targetInterval=$chr":"$targetBeg"-"$targetEnd
-offset=`expr $targetBeg - 1`
 
 echo "samtools faidx $genome $targetInterval > $targetRegionPath" >&1
 samtools faidx $genome $targetInterval > $targetRegionPath
@@ -179,11 +178,11 @@ samtools faidx $genome $targetInterval > $targetRegionPath
 # 2. BLAT CONTIGS INTO THE TE SEQUENCE AND TARGET REGION #
 ##########################################################
 ## Output:
-# - $outDir/$insertionId".targetRegion.psl" 
-# - $outDir/$insertionId".consensusTE.psl" 
+# - $outDir/$insertionId".targetRegion.psl"
+# - $outDir/$insertionId".consensusTE.psl"
 
-blatTEPath=$outDir/$insertionId".consensusTE.psl" 
-blatTargetRegionPath=$outDir/$insertionId".targetRegion.psl" 
+blatTEPath=$outDir/$insertionId".consensusTE.psl"
+blatTargetRegionPath=$outDir/$insertionId".targetRegion.psl"
 
 echo "2. Blat contigs into the consensus TE sequence and in the target region" >&1
 
@@ -200,8 +199,8 @@ blat -t=dna -q=dna -stepSize=5 -minScore=20 -maxIntron=0 -out=psl -noHead $outDi
 # 2. CONCATENATE TE AND TARGET REGION ALIGNMENTS #
 ##################################################
 ## Output:
-# - $outDir/$insertionId".all.psl" 
-blatAllPath=$outDir/$insertionId".all.psl" 
+# - $outDir/$insertionId".all.psl"
+blatAllPath=$outDir/$insertionId".all.psl"
 
 echo "3. Concatenate TE and target region contig alignments" >&1
 
@@ -218,8 +217,8 @@ blatPath=$outDir/$insertionId".psl"
 
 echo "4. Convert psl template coordenates to genomic coordenates (add offset) " >&1
 
-echo "awk -v OFS='\t' -v offset=$offset -f $ADDOFFSET $blatAllPath > $blatPath" >&1
-awk -v OFS='\t' -v offset=$offset -f $ADDOFFSET $blatAllPath > $blatPath
+echo "awk -v OFS='\t' -f $ADDOFFSET $blatAllPath > $blatPath" >&1
+awk -v OFS='\t' -f $ADDOFFSET $blatAllPath > $blatPath
 
 
 ######################
@@ -228,6 +227,3 @@ awk -v OFS='\t' -v offset=$offset -f $ADDOFFSET $blatAllPath > $blatPath
 echo "5. Cleanup and end" >&1
 echo "rm $targetRegionPath $blatTEPath $blatTargetRegionPath $blatAllPath" >&1
 rm $targetRegionPath $blatTEPath $blatTargetRegionPath $blatAllPath
-
-
-
