@@ -86,6 +86,10 @@
                 }
             }
         }
+        else
+        {
+            printf "[ERROR] addOffset2template: tName should include region coordinates: FILENAME\n";
+        }
     }
 
     # Print a psl row with updated template positions
