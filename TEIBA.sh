@@ -340,7 +340,7 @@ if [[ ! -d $logsDir ]]; then mkdir $logsDir; fi
 ########################################################################################################################
 # Each fasta will be named according to this convention:
 ########################################################
-# - ${srcRegDir}/${family}:${type}:${chr}_${beg}_${end}:${orientation}.src.fa
+# - ${srcRegDir}/${family}:${type}:${chr}_${beg}_${end}.src.fa
 # where:
 #    - MEI: unique identifier
 #    - family: MEI family (L1, ALU, SVA...)
@@ -348,7 +348,6 @@ if [[ ! -d $logsDir ]]; then mkdir $logsDir; fi
 #    - chr: insertion chromosome
 #    - beg: insertion beginning
 #    - end: insertion end
-#    - orientation: cluster (+ or -)
 
 ## parameters
 windowSize=1000
@@ -362,7 +361,7 @@ step="SOURCES2FASTA"
 startTime=$(date +%s)
 printHeader "Prepare fasta for assembly"
 log "Extracting region downstream of source element for orphan transductions" $step
-#run "python $CLUSTERS2FASTA $insertions $fasta $genome --outDir $fastaDir 1> $logsDir/1_clusters2fasta.out 2> $logsDir/1_clusters2fasta.err" "$ECHO"
+
 cat $insertions | while read chrP begP endP nReadsP famP readsP chrM begM endM nReadsM famM readsM tdType chrSrc begSrc endSrc strSrc begTd endTd lenRna lenTd; do
     if [[ $tdType == "TD2" ]]; then
         endP=`expr $endP + $readLen`
@@ -370,6 +369,7 @@ cat $insertions | while read chrP begP endP nReadsP famP readsP chrM begM endM n
         targetRegionFile=${famP}":"${tdType}":"${chrP}"_"${endP}"_"${begM}".src.fa"
         targetBeg=`expr $begTd - $windowSize`
         targetEnd=`expr $endTd + $windowSize`
+        if [ "$targetBeg" -lt 0 ]; then targetBeg=0; fi # Set lower-bound to 0 (avoid negative coordinates)
         targetInterval=$chrSrc":"$targetBeg"-"$targetEnd
         echo "samtools faidx $genome $targetInterval > $srcRegDir/$targetRegionFile" >&1
         samtools faidx $genome $targetInterval > $srcRegDir/$targetRegionFile
@@ -485,7 +485,7 @@ ls $contigsDir | grep '.*fa' | while read bkpContig;
 do
     bkpContigPath=${contigsDir}/${bkpContig}
     bkpId=${bkpContig%.contigs.fa}
-    read family tdType chr beg end cluster <<<$(echo $bkpId | awk '{split($1, info, ":"); family=info[1]; tdType=info[2]; cluster=info[4]; split(info[3], coord, "_"); chr=coord[1]; beg=coord[2]; end=coord[3]; print family, tdType, chr, beg, end, cluster;}')
+    read family tdType <<<$(echo $bkpId | awk '{split($1, info, ":"); family=info[1]; tdType=info[2]; print family, tdType;}')
 
     # For each insertion, select the corresponding consensus MEI sequence to align the contigs into
     case $family in
