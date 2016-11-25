@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 #coding: utf-8
 
+## Import modules ##
+import argparse
+import time
+import sys
+from itertools import groupby
+import os.path
 
 #### FUNCTIONS ####
 
@@ -307,7 +313,7 @@ class VCFline():
         infoDict["CLASS"] = insertionObj.TEClass
         infoDict["TYPE"] = insertionObj.tdType
         infoDict["SCORE"] = insertionObj.score
-        infoDict["BKPB"] = insertionObj.bkpB[1]        
+        infoDict["BKPB"] = insertionObj.bkpB[1]
         infoDict["CIPOS"] = insertionObj.bkpA[2]
         infoDict["STRAND"] = insertionObj.orientation
         infoDict["STRUCT"] = insertionObj.structure
@@ -364,16 +370,16 @@ class insertion():
             Input:
             1) family. TE family (L1, Alu, SVA or ERVK)
             2) tdType. Insertion type:  td0 (solo-insertion), td1 (partnered-transduccion) and td2 (orphan-transduction).
-            3) coordinates. TraFiC insertion range. 
+            3) coordinates. TraFiC insertion range.
             4) contigsPlusPath. Fasta file containing the assembled contigs for the positive cluster.
             5) blatPlusPath. psl file containing the blat aligments for the positive cluster's assembled contigs.
             6) contigsMinusPath. Fasta file containing the assembled contigs for the negative cluster.
             7) blatMinusPath. psl file containing the blat aligments for the negative cluster's assembled contigs.
             8) readPairsPlus. List of + cluster supporting reads.
             9) readPairsMinus. List of - cluster supporting reads.
-            10) srcElement. 
+            10) srcElement.
             11) transductionInfo
-        
+
             Output:
             - Insertion object variables initialized
         """
@@ -383,7 +389,7 @@ class insertion():
         self.clusterPlusObj = self.create_cluster("+", contigsPlusPath, blatPlusPath, readPairsPlus)
         self.clusterMinusObj = self.create_cluster("-", contigsMinusPath, blatMinusPath, readPairsMinus)
         self.srcElement = srcElement
-        
+
         # A) Solo insertion (TD0). Not applicable
         if (self.tdType == "TD0"):
             self.tdCoord = "NA"
@@ -395,17 +401,17 @@ class insertion():
             transductionInfoList = transductionInfo.split(":")
             self.tdCoord = transductionInfoList[0] + "-" + transductionInfoList[1]
 
-            status = self.srcElement.split("_")[1] 
+            status = self.srcElement.split("_")[1]
 
             print "test_status: ", status
 
             # A) Putative. Uncharacterized germline or somatic source element
             if (status == "putative"):
                 self.tdLen = "UNK"
-                self.tdLenRna = "UNK"        
+                self.tdLenRna = "UNK"
 
-            # B) Characterized germline source element    
-            else:                
+            # B) Characterized germline source element
+            else:
                 self.tdLen = transductionInfoList[2]
                 self.tdLenRna = transductionInfoList[3]
 
@@ -663,7 +669,7 @@ class insertion():
                 self.informativeContigBkpA = informative5primeContigObj.seq
 
                  # MEI 5' boundary assembled sequence
-                self.MEISeq = informative5primeContigObj.informativeDict["MEISeq"]              
+                self.MEISeq = informative5primeContigObj.informativeDict["MEISeq"]
 
             # b) 3' bkp characterized
             elif (bkpCoord5prime == "UNK"):
@@ -676,7 +682,7 @@ class insertion():
             else:
 
                 # MEI 5' boundary assembled sequence
-                self.MEISeq = informative5primeContigObj.informativeDict["MEISeq"]      
+                self.MEISeq = informative5primeContigObj.informativeDict["MEISeq"]
 
                 # c.a) 5' bkp < 3' bkp
                 if (bkpCoord5prime < bkpCoord3prime):
@@ -1306,7 +1312,7 @@ class contig():
                 info -> 5-prime: aligment object with contig's alignment in TE sequence info;
                         3-prime: PolyA sequence; none: 'na'
                 targetRegionAlignObj -> alignment object with contig's alignment in the target region info.
-                MEISeq -> Assembled sequence of the mobile element 5' boundary                
+                MEISeq -> Assembled sequence of the mobile element 5' boundary
         """
 
         ## Initial status -> no informative
@@ -1557,8 +1563,8 @@ class contig():
         1) is5prime. Boolean, 1 (5' informative) and 0 (not 5' informative).
         2) bkpCoord. Two elements breakpoint coordinates list. First (bkp chromosome) and second (breakpoint position).
         3) TEalignmentObj. Blat aligment object with the alignment information of the contig in the consensus TE sequence.
-                           'na' if not 5' informative.   
-        4) MEISeq. Assembled sequence of the mobile element 5' boundary                  
+                           'na' if not 5' informative.
+        4) MEISeq. Assembled sequence of the mobile element 5' boundary
         """
 
         ## Select contig target sequence coordinates to search for alignment in TE sequence (L1, Alu or SVA)
@@ -1864,103 +1870,100 @@ class fasta():
 
         return fastaDict
 
+def parse_args():
+    """Define and parse command line parameters."""
+    parser = argparse.ArgumentParser(description="Per MEI called by TraFiC: 1) Identifies informative contigs spanning 5' and/or 3' insertion ends if possible, 2) Use informative contigs for characterizing MEI in detail (exact breakpoints, length, strand...) and 3) Produce a VCF with the MAI plus all these information")
+    parser.add_argument('inputPaths', help='Text file containing, per MEI, the needed files')
+    parser.add_argument('donorId', help='Donor identifier. The output vcf will be named accordingly')
+    parser.add_argument('genome', help='Reference genome in fasta format')
+    parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
+    args = parser.parse_args()
+    return args
 
 #### MAIN ####
 
-## Import modules ##
-import argparse
-import time
-import sys
-from itertools import groupby
-import os.path
+if __name__ == "__main__":
+    ## Get user's input ##
+    args = parse_args()
+    inputPaths = args.inputPaths
+    donorId = args.donorId
+    genome = args.genome
+    outDir = args.outDir
 
-## Get user's input ##
-parser = argparse.ArgumentParser(description= "Per MEI called by TraFiC: 1) Identifies informative contigs spanning 5' and/or 3' insertion ends if possible, 2) Use informative contigs for characterizing MEI in detail (exact breakpoints, length, strand...) and 3) Produce a VCF with the MAI plus all these information")
-parser.add_argument('inputPaths', help='Text file containing, per MEI, the needed files')
-parser.add_argument('donorId', help='Donor identifier. The output vcf will be named accordingly')
-parser.add_argument('genome', help='Reference genome in fasta format')
-parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
+    scriptName = os.path.basename(sys.argv[0])
 
-args = parser.parse_args()
-inputPaths = args.inputPaths
-donorId = args.donorId
-genome = args.genome
-outDir = args.outDir
-
-scriptName = os.path.basename(sys.argv[0])
-
-## Display configuration to standard output ##
-print
-print "***** ", scriptName, " configuration *****"
-print "paths2bkpAnalysis: ", inputPaths
-print "donorId: ", donorId
-print "genome: ", genome
-print "outDir: ", outDir
-print
-print "***** Executing ", scriptName, " *****"
-print
+    ## Display configuration to standard output ##
+    print
+    print "***** ", scriptName, " configuration *****"
+    print "paths2bkpAnalysis: ", inputPaths
+    print "donorId: ", donorId
+    print "genome: ", genome
+    print "outDir: ", outDir
+    print
+    print "***** Executing ", scriptName, " *****"
+    print
 
 
-## Start ## 
+    ## Start ## 
 
-outFilePath = outDir + '/' + donorId + '.vcf'
+    outFilePath = outDir + '/' + donorId + '.vcf'
 
-## 0. Create reference genome fasta object
+    ## 0. Create reference genome fasta object
 
-header("Creating reference genome fasta object")
-genomeObj = fasta(genome)
+    header("Creating reference genome fasta object")
+    genomeObj = fasta(genome)
 
-## 1. Create VCF object and print VCF header
+    ## 1. Create VCF object and print VCF header
 
-header("Creating VCF object and printing VCF header into the output file")
-VCFObj = VCF()
-VCFObj.print_header(outFilePath, donorId)
+    header("Creating VCF object and printing VCF header into the output file")
+    VCFObj = VCF()
+    VCFObj.print_header(outFilePath, donorId)
 
-## 2. Per each insertion perform breakpoint analysis
+    ## 2. Per each insertion perform breakpoint analysis
 
-inputFile = open(inputPaths, 'r')
+    inputFile = open(inputPaths, 'r')
 
-# Analyze one insertion per iteration
-for line in inputFile:
-    line = line.rstrip('\n')
-    line = line.split("\t")
+    # Analyze one insertion per iteration
+    for line in inputFile:
+        line = line.rstrip('\n')
+        line = line.split("\t")
 
-    # Get TE insertion info and files
-    insertionInfo = line[0]
-    TEClass, tdType, insertionCoord = insertionInfo.split(":")
-    contigsPlusPath, contigsMinusPath = line[1].split(",")
-    blatPlusPath, blatMinusPath = line[2].split(",")
-    readPairsPlus = line[3]
-    readPairsMinus = line[4]
-    srcElement = line[5]
-    transductionInfo = line[6]
+        # Get TE insertion info and files
+        insertionInfo = line[0]
+        TEClass, tdType, insertionCoord = insertionInfo.split(":")
+        contigsPlusPath, contigsMinusPath = line[1].split(",")
+        blatPlusPath, blatMinusPath = line[2].split(",")
+        readPairsPlus = line[3]
+        readPairsMinus = line[4]
+        srcElement = line[5]
+        transductionInfo = line[6]
 
-    # Perform breakpoint analysis for the TE insertion
-    header("Tranposable Element Insertion Breakpoint Analysis (TEIBA) for: " + insertionInfo)
+        # Perform breakpoint analysis for the TE insertion
+        header("Tranposable Element Insertion Breakpoint Analysis (TEIBA) for: " + insertionCoord)
 
-    # A) All the input files exist
-    if os.path.isfile(contigsPlusPath) and os.path.isfile(blatPlusPath) and os.path.isfile(contigsMinusPath) and os.path.isfile(blatMinusPath):
+        # A) All the input files exist
+        if os.path.isfile(contigsPlusPath) and os.path.isfile(blatPlusPath) and os.path.isfile(contigsMinusPath) and os.path.isfile(blatMinusPath):
 
-        ## Create insertion object and identify breakpoints from assembled contigs
-        insertionObj = insertion(TEClass, tdType, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo)
-        insertionObj.find_insertionBkp(genomeObj, outDir)
+            ## Create insertion object and identify breakpoints from assembled contigs
+            insertionObj = insertion(TEClass, tdType, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo)
+            insertionObj.find_insertionBkp(genomeObj, outDir)
 
-        ## Create VCFline object
-        VCFlineObj = VCFline(insertionObj, genomeObj)
+            ## Create VCFline object
+            VCFlineObj = VCFline(insertionObj, genomeObj)
 
-        ## Add VCFline to the list in VCF object
-        VCFObj.addLine(VCFlineObj)
+            ## Add VCFline to the list in VCF object
+            VCFObj.addLine(VCFlineObj)
 
-    else:
-        message = "Input files for " + insertionInfo + " insertion do not exist"
-        log("ERROR", message)
+        else:
+            message = "Input files for " + insertionCoord + " insertion do not exist"
+            log("ERROR", message)
 
-## 3. Write lines describing the TE insertions into the VCF file
-VCFObj.print_lines(outFilePath)
+    ## 3. Write lines describing the TE insertions into the VCF file
+    VCFObj.print_lines(outFilePath)
 
 
-## Finish ##
-print
-print "***** Finished! *****"
-print
+    ## Finish ##
+    print
+    print "***** Finished! *****"
+    print
