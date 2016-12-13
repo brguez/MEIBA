@@ -398,8 +398,10 @@ class insertion():
 
         # B) Partnered or orphan transduction (TD1 and TD2)
         else:
+            srcElementList = srcElement.split("_")
+            srcChromosome = srcElement[0]
             transductionInfoList = transductionInfo.split(":")
-            self.tdCoord = transductionInfoList[0] + "-" + transductionInfoList[1]
+            self.tdCoord = srcChromosome + "_" + transductionInfoList[0] + "_" + transductionInfoList[1]
 
             status = self.srcElement.split("_")[1]
 
@@ -482,12 +484,12 @@ class insertion():
         ## Find informative contig for + cluster 
         subHeader("Searching informative contigs for + cluster")
 
-        bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj = self.clusterPlusObj.find_informative_contigs(self.coordinates)
+        bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj = self.clusterPlusObj.find_informative_contigs(self.coordinates, self.tdType, self.tdCoord)
 
         ## Find informative contig for - cluster
         subHeader("Searching informative contigs for - cluster")
 
-        bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj = self.clusterMinusObj.find_informative_contigs(self.coordinates)
+        bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj = self.clusterMinusObj.find_informative_contigs(self.coordinates, self.tdType, self.tdCoord)
 
         ### Determine insertion breakpoints, TS and TE orientation from informative contigs 
         subHeader("Determining insertion breakpoint, TS and TE orientation from informative contigs")
@@ -1058,7 +1060,7 @@ class cluster():
 
     def add_alignments(self, blatPath):
         """
-            Read a psl file containing the contig blat aligments on the reference genome and TE sequences and associate
+            Read a psl file containing the contig blat alignments on the reference genome and TE sequences and associate
             each alignment to the corresponding contig object.
 
             Input:
@@ -1077,13 +1079,15 @@ class cluster():
             alignmentList = alignmentsDict[contigId]
             self.contigsDict[contigId].alignList = alignmentList
 
-    def find_informative_contigs(self, insertionCoord):
+    def find_informative_contigs(self, insertionCoord, tdType, tdCoord):
         """
             Identify 5' and 3' informative contig belonging to the cluster. Informative 5' and 3' contigs span 5' and 3' insertion breakpoints, respectively.
 
             Input:
-            insertionCoord. Region of interest. Format: ${chrom}_${beg}_${end}.
+            1) insertionCoord. Region of interest. Format: ${chrom}_${beg}_${end}.
                                Example: 10_108820680_108820678.
+            2) tdType. Type of transduction event ("TD0": solo, "TD1": partnered, "TD2": orphan)
+            3) tdCoord. Transduced region (relevant only for TD2 events)
 
             Output:
             1) bestInformative5primeContigObj. Best 5' Informative contig object. 'na' if not found
@@ -1114,7 +1118,7 @@ class cluster():
             contigObj.cluster = self.ID
 
             # Check if it is an informative contig
-            informative = contigObj.is_informative(insertionCoord)
+            informative = contigObj.is_informative(insertionCoord, tdType, tdCoord)
 
             # A) Informative contig
             if (informative ==  1):
@@ -1238,7 +1242,7 @@ class contig():
         span the insertion breakpoint.
 
         Candidate contigs are defined as contigs partially aligning in the TE insertion region.
-        Contigs completely alignment on the TE sequence (L1, Alu or SVA) are not considered as candidates.
+        Contigs completely aligning to either the insertion site or the source element (TE or transduced seq) are not considered as candidates.
 
         Input:
             1) insertionCoord. Region of interest. Format: ${chrom}_${beg}_${end}.
@@ -1259,39 +1263,26 @@ class contig():
         # Iterate over all the contig blat alignments
         for alignment in self.alignList:
 
-            alignPerc = float(alignment.qEnd - alignment.qBeg) / alignment.qSize * 100
+            # 1. Check if alignment within the target region
+            insertionRegion = alignment.in_target_region(insertionCoord, windowSize)
 
-            ## A) Discard contig completely aligning in the TE sequence as informative candidate
-            # TE: L1, Alu, SVA or ERVK
-            if (( alignment.tName == "L1" ) or ( alignment.tName == "Alu" ) or ( alignment.tName == "SVA" ) or ( alignment.tName == "ERVK" )) and ( alignPerc > 99 ):
+            # Within target region
+            if (insertionRegion == 1):
 
-                candidate = 0
-                supportingAlignList = []
-                break
+                # 2. Check if it is a partial alignment
+                partial = alignment.partial_alignment(maxAlignPerc)
 
-            ## B) Contig do not alignining in the TE sequence
-            else:
+                # Partial
+                if (partial == 1):
+                    supportingAlignList.append(alignment)
 
-                # 1. Check if alignment within the target region
-                insertionRegion = alignment.in_target_region(insertionCoord, windowSize)
-
-                # Within target region
-                if (insertionRegion == 1):
-
-                    # 2. Check if it is a partial alignment
-                    partial = alignment.partial_alignment(maxAlignPerc)
-
-                    # Partial
-                    if (partial == 1):
-                        supportingAlignList.append(alignment)
-
-                        # Informative candidate contig -> partially alignining on the target region and do not aligning completely on the TE sequence
-                        candidate = 1
+                    # Informative candidate contig -> partially alignining on the target region and do not aligning completely on the TE sequence
+                    candidate = 1
 
         return (candidate, supportingAlignList)
 
 
-    def is_informative(self, insertionCoord):
+    def is_informative(self, insertionCoord, tdType, tdCoord):
         """
         Check if candidate contig is 5' or 3' informative. Defined as contigs spanning
         5' or 3' insertion breakpoints:
@@ -1303,6 +1294,8 @@ class contig():
         Input:
             1) insertionCoord. Region of interest. Format: ${chrom}_${beg}_${end}.
                                Example: 10_108820680_108820678.
+            2) tdType. Type of transduction event ("TD0": solo, "TD1": partnered, "TD2": orphan)
+            3) tdCoord. Transduced region (relevant only for TD2 events)
 
         Output:
             1) informativeBoolean. Boolean, 1 (informative) and 0 (not informative)
@@ -1341,7 +1334,7 @@ class contig():
             for alignObj in supportingAlignList:
 
                 ## Check if alignment support the contig as informative 5'
-                is5prime, bkpCoord, TEalignmentObj, MEISeq = self.is_5prime_informative(alignObj)
+                is5prime, bkpCoord, srcAlignmentObj, MEISeq = self.is_5prime_informative(alignObj, tdType, tdCoord)
 
                 # Contig informative 5-prime, it has TE sequence
                 if (is5prime == 1):
@@ -1349,7 +1342,7 @@ class contig():
                     informative5primeDict[alignObj] = {}
                     informative5primeDict[alignObj]["type"] = "5-prime"
                     informative5primeDict[alignObj]["bkp"] = bkpCoord
-                    informative5primeDict[alignObj]["info"] = TEalignmentObj
+                    informative5primeDict[alignObj]["info"] = srcAlignmentObj
                     informative5primeDict[alignObj]["targetRegionAlignObj"] = alignObj
                     informative5primeDict[alignObj]["MEISeq"] = MEISeq
 
@@ -1548,31 +1541,35 @@ class contig():
 
         return polyASeq
 
-    def is_5prime_informative(self, alignObj):
+    def is_5prime_informative(self, alignObj, tdType, tdCoord):
         """
         Check if candidate contig is 5' informative. Defined as contigs spanning
-        TE sequence - insertion target region breakpoint:
+        source element (TE or transduced seq.) - insertion target region breakpoint:
 
-        5' informative:         ---------------####TE####
-        5' informative:         ####TE####---------------
+        5' informative:         ---------------###SRC####
+        5' informative:         ###SRC####---------------
 
         Input:
         1) alignObj. Blat alignment object.
+        2) tdType. Type of transduction event ("TD0": solo, "TD1": partnered, "TD2": orphan)
+        3) tdCoord. Transduced region (relevant only for TD2 events)
 
         Output:
         1) is5prime. Boolean, 1 (5' informative) and 0 (not 5' informative).
         2) bkpCoord. Two elements breakpoint coordinates list. First (bkp chromosome) and second (breakpoint position).
-        3) TEalignmentObj. Blat aligment object with the alignment information of the contig in the consensus TE sequence.
+        3) srcAlignmentObj. Blat aligment object with the alignment information of the contig in the source sequence (TE or TD).
                            'na' if not 5' informative.
         4) MEISeq. Assembled sequence of the mobile element 5' boundary
         """
 
-        ## Select contig target sequence coordinates to search for alignment in TE sequence (L1, Alu or SVA)
+        ## Select contig target sequence coordinates to search for alignment in source sequence:
+        #   TD0, TD1 events: consensus L1, Alu or SVA for RD
+        #   TD2 events: transduced region downstream of TE
         # The position of the target coordinates in the contig
         # will depend on the blat alignment type
 
         # A) Begin of the contig sequence aligned in the TE insertion genomic region
-        #   -------------******TE******
+        #   -------------******SRC******
         #   -------------
         # qBeg        *qEnd*
 
@@ -1593,7 +1590,7 @@ class contig():
                 MEISeq = self.rev_complement(targetSeq)
 
         # B) End of the contig sequence aligned in the TE insertion genomic region
-        #   ******TE******-------------
+        #   *****SRC******-------------
         #                 -------------
         #              *qBeg*        qEnd
         elif (alignObj.alignType == "end"):
@@ -1622,12 +1619,22 @@ class contig():
         ## Default
         is5prime = 0
         bkpCoord = ["UNK", "UNK"]
-        TEalignmentObj = "UNK"
+        srcAlignmentObj = "UNK"
+        targetMEIs = ["L1", "Alu", "SVA", "ERVK"]
 
         for alignment in self.alignList:
 
-            # Contig alignment in TE sequence (L1, Alu, SVA or ERVK)
-            if ( alignment.tName == "L1" ) or ( alignment.tName == "Alu" ) or ( alignment.tName == "SVA" ) or ( alignment.tName == "ERVK" ):
+            # a breakpoint-spanning contig is expected to align partly to
+            #   TD0 (solo insertion) : consensus MEI sequence
+            #   TD1 (partnered TD)   : consensus MEI sequence
+            #   TD2 (orphan TD)      : transduced region downstream of TE
+            has_expected_target = (
+              ( (tdType != "TD2") and (alignment.tName in targetMEIs) ) or
+              ( (tdType == "TD2") and (alignment.in_target_region(tdCoord, 1000)) )
+            )
+
+            # Contig alignment in TE sequence (L1, Alu, SVA or ERVK) or transduced region
+            if has_expected_target:
 
                 ## Compute percentage of overlap between:
                 # Expected alignment ---------------
@@ -1646,9 +1653,10 @@ class contig():
                 if ( percOverlap > 50 ):
                     is5prime = 1
                     bkpCoord = [bkpChrom, bkpPos]
-                    TEalignmentObj = alignment
+                    srcAlignmentObj = alignment
 
-        return (is5prime, bkpCoord, TEalignmentObj, MEISeq)
+
+        return (is5prime, bkpCoord, srcAlignmentObj, MEISeq)
 
 class blat_alignment():
     """
