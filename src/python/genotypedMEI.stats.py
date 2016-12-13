@@ -133,6 +133,19 @@ ErvkAlleleFreqList = []
 zygosityHeterozList = []
 zygosityHomozList = []
 
+### Make table containing for each germline insertions its VAF
+## Two columns:
+# insertionsId(chrom:pos)   VAF
+
+# Open output file
+outFilePath = outDir + '/MEI_CLASS_VAF.txt'
+outFile = open(outFilePath, 'a')
+
+# Write header:
+row = '#MEI' + "\t" + 'CLASS' + "\t" +'VAF' + "\n"
+outFile.write(row)
+
+
 header("3. Compute parameters")
 
 for MEIObj in VCFObj.lineList:
@@ -197,6 +210,9 @@ for MEIObj in VCFObj.lineList:
         ErvkAlleleCountList.append(alleleCount)
         ErvkAlleleFreqList.append(alleleFrequency)
 
+    ## Add row to the table
+    row = MEIObj.chrom + ":" + str(MEIObj.pos) + "\t" + MEIObj.infoDict['CLASS'] + "\t" + str(alleleFrequency) + "\n"
+    outFile.write(row)
 
 #### 4. Make plots:
 #####################
@@ -515,7 +531,6 @@ alleleCountList = tmpList[0]
 nbMEIList = tmpList[1]
 
 ### Make plot
-
 fig = plt.figure(figsize=(8,8))
 fig.suptitle('Allele count spectrum', fontsize=16)
 ax1 = fig.add_subplot(1, 1, 1)

@@ -380,6 +380,10 @@ endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
 
+##################
+# II) CORE STEPS #
+##################
+
 # 1) Produces for each Mobile Element Insertion (MEI) two fasta (one for read pairs supporting + cluster and another one for read pairs
 ##########################################################################################################################################
 # supporting - cluster) These fasta files will be used to assemble the 5' and 3' MEI insertion breakpoint sequences
