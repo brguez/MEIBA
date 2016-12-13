@@ -401,7 +401,7 @@ class insertion():
             srcElementList = srcElement.split("_")
             srcChromosome = srcElement[0]
             transductionInfoList = transductionInfo.split(":")
-            self.tdCoord = srcChromosome + "_" + transductionInfoList[0] + "_" + transductionInfoList[1]
+            self.tdCoord = srcChromosome + ":" + transductionInfoList[0] + "-" + transductionInfoList[1]
 
             status = self.srcElement.split("_")[1]
 
