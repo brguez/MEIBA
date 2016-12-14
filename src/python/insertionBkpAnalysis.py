@@ -211,8 +211,8 @@ class VCF():
 ##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site duplication length">
 ##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication sequence">
 ##INFO=<ID=POLYA,Number=1,Type=String,Description="Poly-A sequence">
-##INFO=<ID=SRC,Number=1,Type=String,Description="Coordinates of the source element that mediated the transduction in the format: $chrom:beg-end_strand">
-##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the transduced region in the format: beg-end">
+##INFO=<ID=SRC,Number=1,Type=String,Description="Coordinates of the source element that mediated the transduction in the format: chrom_beg_end_strand">
+##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the transduced region in the format: chrom_beg_end">
 ##INFO=<ID=TDLEN,Number=1,Type=String,Description="Transduced region length">
 ##INFO=<ID=TDLENR,Number=1,Type=String,Description="Transduced region length at RNA level">
 ##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1KGENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), TRAFIC: TraFic in-house database)">
@@ -359,7 +359,7 @@ class insertion():
     - find_insertionBkp
     - insertion_orientation
     - polyA
-    - find_TSD
+    - target_site
     - imprecise_bkp
     """
 
@@ -393,15 +393,13 @@ class insertion():
         # A) Solo insertion (TD0). Not applicable
         if (self.tdType == "TD0"):
             self.tdCoord = "NA"
+            self.tdLenRna = "NA"            
             self.tdLen = "NA"
-            self.tdLenRna = "NA"
-
+            
         # B) Partnered or orphan transduction (TD1 and TD2)
         else:
-            srcElementList = srcElement.split("_")
-            srcChromosome = srcElement[0]
-            transductionInfoList = transductionInfo.split(":")
-            self.tdCoord = srcChromosome + ":" + transductionInfoList[0] + "-" + transductionInfoList[1]
+            transductionInfoList = transductionInfo.split("_")
+            self.tdCoord = transductionInfoList[0] + "_" + transductionInfoList[1] + "_" + transductionInfoList[2]
 
             status = self.srcElement.split("_")[1]
 
@@ -409,13 +407,15 @@ class insertion():
 
             # A) Putative. Uncharacterized germline or somatic source element
             if (status == "putative"):
+                self.tdLenRna = "UNK"                
                 self.tdLen = "UNK"
-                self.tdLenRna = "UNK"
+                
 
             # B) Characterized germline source element
             else:
-                self.tdLen = transductionInfoList[2]
-                self.tdLenRna = transductionInfoList[3]
+                self.tdLenRna = transductionInfoList[3]                
+                self.tdLen = transductionInfoList[4]
+                
 
         ## Unkown values by default:
         self.traficId = "UNK"
@@ -806,8 +806,8 @@ class insertion():
             Note: Inconsistent when 5' and 3' informative contigs suggest contradictory orientations (should not happen).
         """
 
-        ## A) 5' and 3' informative contigs
-        if (informative5primeContigObj != "UNK") and (informative3primeContigObj != "UNK"):
+        ## A) Not ERVK and 5' and 3' informative contigs
+        if (self.TEClass != "ERVK") and (informative5primeContigObj != "UNK") and (informative3primeContigObj != "UNK"):
             alignType5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"].alignType
             alignType3prime = informative3primeContigObj.informativeDict["targetRegionAlignObj"].alignType
 
@@ -847,7 +847,7 @@ class insertion():
             else:
                 orientation = "-"
 
-        ## D) None informative contig
+        ## D) ERVK or None informative contig
         else:
             orientation = "UNK"
 
@@ -889,8 +889,8 @@ class insertion():
             3) percLength. Percentage of TE consensus sequence inserted, 'na' if not available.
         """
 
-        ## A) 5' informative contig
-        if (informative5primeContigObj != "UNK"):
+        ## A) Not TD2, not ERVK and 5' informative contig
+        if (self.tdType != "TD2") and (self.TEClass != "ERVK") and (informative5primeContigObj != "UNK"):
 
             strand = informative5primeContigObj.informativeDict["info"].strand
 
@@ -922,7 +922,7 @@ class insertion():
                 else:
                     structure = "DEL"
 
-        ## B) No 5' informative contig
+        ## B) TD2 or ERVK or No 5' informative contig 
         else:
             structure = "UNK"
             length = "UNK"

@@ -109,8 +109,8 @@ BEGIN{
             transductRnaLen = $20
             transductLen = $21
 
-            sourceElementInfo = chromSource":"begSource"-"endSource"_"orientationSource
-            transductionInfo = transductBeg":"transductEnd":"transductRnaLen":"transductLen
+            sourceElementInfo = chromSource"_"begSource"_"endSource"_"orientationSource
+            transductionInfo = chromSource"_"transductBeg"_"transductEnd"_"transductRnaLen"_"transductLen
         }       
     
         ## Keep info in dictionaries
