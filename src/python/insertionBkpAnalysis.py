@@ -511,6 +511,23 @@ class insertion():
 
             info("informative-contig:")
 
+            ## There are two main classes of MEI events:
+            #   1. ERVK-like (insertion without poly-A tail)
+            #   2. L1-like (insertion with poly-A tail)
+
+            # 1. ERVK: two 5' informative contigs are detected,
+            #          but one represents 3' end of insertion
+            if self.TEClass == "ERVK":
+                # sanity check: we are not expecting 3' informative contigs here
+                if (bestInformative3primeContigPlusObj != "UNK"):
+                    log("WARNING", "ERVK event \"%s\" has 3'-informative contig (+ cluster), which is not expected." % self.traficId)
+                if (bestInformative3primeContigMinusObj != "UNK"):
+                    log("WARNING", "ERVK event \"%s\" has 3'-informative contig (- cluster), which is not expected." % self.traficId)
+
+                # treat 5' informative contig of minus cluster as 3' informative
+                bestInformative3primeContigMinusObj = bestInformative5primeContigMinusObj
+                bestInformative5primeContigMinusObj = "UNK"
+
             ## 1. Determine 5' informative contig and insertion breakpoint
             # a) 5' informative contigs in + and - clusters:
             if (bestInformative5primeContigPlusObj != "UNK") and (bestInformative5primeContigMinusObj != "UNK"):
@@ -589,6 +606,10 @@ class insertion():
                 bkp3prime = ["UNK", "UNK", "UNK"]
                 polyA = "UNK"
 
+            # ERVK-like events do not have poly-A signal
+            if self.TEClass == "ERVK":
+                self.polyA = "UNK"
+
 
             ## 3. Determine insertion score and Target Site Duplication if possible:
             CI5prime = bkp5prime[2]
@@ -640,7 +661,11 @@ class insertion():
             # e) 3' bkp/informative_contig
             else:
                 info("3' informative contig:")
-                self.score = '4'
+                # ERVK-like events do not have poly-A signal, so they do not receive score 4
+                if self.TEClass != "ERVK":
+                    self.score = '4'
+                else:
+                    self.score = '3'
 
             ## 4. Compute TE insertion orientation and structure if not inconsistent
             if (self.score != '1'):
