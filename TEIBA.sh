@@ -662,7 +662,7 @@ then
     startTime=$(date +%s)
     printHeader "Performing MEI filtering"
     log "Filtering MEI" $step
-    run "$FILTER $annotVCF $sampleId --min-score $minScore --min-score-ERVK 3 --max-divergence 300 --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err" "$ECHO"
+    run "$FILTER $annotVCF $sampleId --min-score $minScore --min-score-ERVK 5 --max-divergence 300 --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err" "$ECHO"
 
     if [ ! -s $filteredVCF ];
     then
