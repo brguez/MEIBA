@@ -831,8 +831,8 @@ class insertion():
             Note: Inconsistent when 5' and 3' informative contigs suggest contradictory orientations (should not happen).
         """
 
-        ## A) Not ERVK and 5' and 3' informative contigs
-        if (self.TEClass != "ERVK") and (informative5primeContigObj != "UNK") and (informative3primeContigObj != "UNK"):
+        ## A) 5' and 3' informative contigs
+        if (informative5primeContigObj != "UNK") and (informative3primeContigObj != "UNK"):
             alignType5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"].alignType
             alignType3prime = informative3primeContigObj.informativeDict["targetRegionAlignObj"].alignType
 
@@ -872,7 +872,7 @@ class insertion():
             else:
                 orientation = "-"
 
-        ## D) ERVK or None informative contig
+        ## D) None informative contig
         else:
             orientation = "UNK"
 
@@ -1288,21 +1288,33 @@ class contig():
         # Iterate over all the contig blat alignments
         for alignment in self.alignList:
 
-            # 1. Check if alignment within the target region
-            insertionRegion = alignment.in_target_region(insertionCoord, windowSize)
+            # 1. Check if contig completely aligns on the consensus TE sequence
+            inConsensusTE = alignment.in_consensus_TE()
 
-            # Within target region
-            if (insertionRegion == 1):
+            # A) Contig not completely aligning on the consensus TE
+            if (inConsensusTE == 0):
 
-                # 2. Check if it is a partial alignment
-                partial = alignment.partial_alignment(maxAlignPerc)
+                # 2. Check if alignment within the target region
+                insertionRegion = alignment.in_target_region(insertionCoord, windowSize)
 
-                # Partial
-                if (partial == 1):
-                    supportingAlignList.append(alignment)
+                # Within target region
+                if (insertionRegion == 1):
 
-                    # Informative candidate contig -> partially alignining on the target region and do not aligning completely on the TE sequence
-                    candidate = 1
+                    # 3. Check if it is a partial alignment
+                    partial = alignment.partial_alignment(maxAlignPerc)
+
+                    # Partial
+                    if (partial == 1):
+                        supportingAlignList.append(alignment)
+
+                        # Informative candidate contig -> partially alignining on the target region and do not aligning completely on the TE sequence
+                        candidate = 1
+
+            # B) Not informative contig as it completely aligns on the consensus TE
+            else:
+                candidate = 0
+                supportingAlignList = []
+                break
 
         return (candidate, supportingAlignList)
 
@@ -1751,6 +1763,25 @@ class blat_alignment():
         self.qBeg = updatedBeg
         self.qEnd = updatedEnd
 
+    def in_consensus_TE(self):
+        """
+            Check if blat alignment is completely on the mobile element consensus sequence. No gap is allowed
+        """
+        alignLength = self.qEnd - self.qBeg
+        alignPerc = float(alignLength) / float(self.qSize) * 100      
+
+        MEIlist = ["L1", "Alu", "SVA", "ERVK"]
+
+        # A) More than 99% Contig aligning on the mobile element consensus sequence. No gap allowed       
+        if (self.tName in MEIlist) and (alignPerc > 99) and (self.blockCount == 1):
+            inConsensusTE = 1
+
+        # B) Contig do not aligning on the consensus seq.
+        else:
+            inConsensusTE = 0            
+
+        return inConsensusTE
+        
     def in_target_region(self, coords, windowSize):
         """
             Check if blat alignment within a region of interest:
@@ -1774,7 +1805,7 @@ class blat_alignment():
         chrom = coordsList[0]
         beg = int(coordsList[1]) - windowSize
         end = int(coordsList[2]) + windowSize
-
+                
         # A) Within target region
         if (chrom == self.tName) and (self.tBeg >= beg) and (self.tEnd <= end):
             insertionRegion = 1
@@ -1810,7 +1841,8 @@ class blat_alignment():
         alignLength = self.qEnd - self.qBeg
         alignPerc = float(alignLength) / float(self.qSize) * 100
 
-        # A) Partial alignment
+        # A) One block partial alignment 
+        #if (alignPerc < maxAlignPerc) and (self.blockCount == 1):
         if (alignPerc < maxAlignPerc):
             partial = 1
 
