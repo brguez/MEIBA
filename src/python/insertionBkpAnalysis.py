@@ -357,7 +357,8 @@ class insertion():
     Methods:
     - create_cluster
     - find_insertionBkp
-    - insertion_orientation
+    - insertion_orientation_polyA
+    - insertion_orientation_ERVK
     - polyA
     - find_TSD
     - imprecise_bkp
@@ -662,18 +663,24 @@ class insertion():
             else:
                 info("3' informative contig:")
                 # ERVK-like events do not have poly-A signal, so they do not receive score 4
-                if self.TEClass != "ERVK":
+                if (self.TEClass != "ERVK"):
                     self.score = '4'
                 else:
                     self.score = '3'
 
             ## 4. Compute TE insertion orientation and structure if not inconsistent
             if (self.score != '1'):
-                    # TE insertion orientation
-                self.orientation = self.insertion_orientation(informative5primeContigObj, informative3primeContigObj)
 
-                # TE insertion structure
-                self.structure, self.length, self.percLength = self.insertion_structure(informative5primeContigObj)
+                if (self.TEClass != "ERVK"):
+                    # TE insertion orientation
+                    self.orientation = self.insertion_orientation_polyA(informative5primeContigObj, informative3primeContigObj)
+
+                    # TE insertion structure
+                    self.structure, self.length, self.percLength = self.insertion_structure(informative5primeContigObj)
+                else:
+                    # TE insertion orientation
+                    self.orientation = self.insertion_orientation_ERVK(informative5primeContigObj, informative3primeContigObj)
+                    self.structure = "UNK"
 
                 # Inconsistent orientation:
                 if (self.orientation == "inconsistent"):
@@ -809,7 +816,7 @@ class insertion():
         return (targetSiteSize, targetSiteSeq)
 
 
-    def insertion_orientation(self, informative5primeContigObj, informative3primeContigObj):
+    def insertion_orientation_polyA(self, informative5primeContigObj, informative3primeContigObj):
         """
             Determine TE insertion strand/orientation.
 
@@ -866,6 +873,120 @@ class insertion():
 
             # a) + strand
             if (alignType3prime == "end"):
+                orientation = "+"
+
+            # b) - strand
+            else:
+                orientation = "-"
+
+        ## D) None informative contig
+        else:
+            orientation = "UNK"
+
+        return orientation
+
+    def insertion_orientation_ERVK(self, informative5primeContigObj, informative3primeContigObj):
+        """
+            Determine ERVK insertion strand/orientation.
+
+            If informative contigs have a consistent mapping direction
+            over their length, the element has been in normal sense:
+
+            --------|#####TE#####
+            >>>>>>>>|>>>>>>>>>>>>
+
+            A switch in mapping direction indicates that the element has
+            been inserted in an inverted direction:
+
+            --------|#####TE#####
+            >>>>>>>>|<<<<<<<<<<<<
+
+            Input:
+            1) informative5primeContigObj
+            2) informative3primeContigObj
+
+            Output:
+            1) orientation. +, -, UNK or inconsistent dna strand.
+
+            Note: Inconsistent when 5' and 3' informative contigs suggest
+                  contradictory orientations (should not happen).
+        """
+
+        # check if required alignment members are present
+        has_req_aln_5prime = (
+            (informative5primeContigObj == "UNK") or
+            (
+             (informative5primeContigObj.informativeDict["targetRegionAlignObj"] and
+              isinstance(informative5primeContigObj.informativeDict["targetRegionAlignObj"], blat_alignment))
+             and
+             (informative5primeContigObj.informativeDict["info"] and
+              isinstance(informative5primeContigObj.informativeDict["info"], blat_alignment))
+            )
+        )
+        has_req_aln_3prime = (
+            (informative3primeContigObj == "UNK") or
+            (
+             (informative3primeContigObj.informativeDict["targetRegionAlignObj"] and
+              isinstance(informative3primeContigObj.informativeDict["targetRegionAlignObj"], blat_alignment))
+             and
+             (informative3primeContigObj.informativeDict["info"] and
+              isinstance(informative3primeContigObj.informativeDict["info"], blat_alignment))
+            )
+        )
+        has_required_alignments = has_req_aln_5prime and has_req_aln_3prime
+
+        # if any of the expected alignments is missing:
+        # log error and set orientation to "inconsistent"
+        if (not has_required_alignments):
+            log("ERROR", "Alignment object missing for insertion '%s'" % self.traficId)
+            orientation = "inconsistent"
+            return orientation
+
+        ## A) 5' and 3' informative contigs
+        if (informative5primeContigObj != "UNK") and (informative3primeContigObj != "UNK"):
+
+            # get alignment directions
+            targDir5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"].strand
+            consDir5prime = informative5primeContigObj.informativeDict["info"].strand
+            targDir3prime = informative3primeContigObj.informativeDict["targetRegionAlignObj"].strand
+            consDir3prime = informative3primeContigObj.informativeDict["info"].strand
+
+            # a) + strand
+            if (targDir5prime == consDir5prime) and (targDir3prime == consDir3prime):
+                orientation = "+"
+
+            # b) - strand
+            elif (targDir5prime != consDir5prime) and (targDir3prime != consDir3prime):
+                orientation = "-"
+
+            # c) Contradictory/inconsistent
+            else:
+                orientation = "inconsistent"
+
+        ## B) 5' informative contig
+        elif (informative5primeContigObj != "UNK"):
+
+            # get alignment directions
+            targDir5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"].strand
+            consDir5prime = informative5primeContigObj.informativeDict["info"].strand
+
+            # a) + strand
+            if (targDir5Prime == consDir5prime):
+                orientation = "+"
+
+            # b) - strand
+            else:
+                orientation = "-"
+
+        ## C) 3' informative contig
+        elif (informative3primeContigObj != "UNK"):
+
+            # get alignment directions
+            targDir3prime = informative3primeContigObj.informativeDict["targetRegionAlignObj"].strand
+            consDir3prime = informative3primeContigObj.informativeDict["info"].strand
+
+            # a) + strand
+            if (targDir3Prime == consDir3prime):
                 orientation = "+"
 
             # b) - strand
@@ -1390,7 +1511,7 @@ class contig():
         # 1) informative 5-prime
         bestDist5Prime = ""
 
-        for alignment in  informative5primeDict:
+        for alignment in informative5primeDict:
             bkpCoord = informative5primeDict[alignment]["bkp"][1]
             dist = abs(targetPos - bkpCoord)
 
@@ -1679,6 +1800,7 @@ class contig():
                     is5prime = 1
                     bkpCoord = [bkpChrom, bkpPos]
                     srcAlignmentObj = alignment
+                    # NOTE: break from loop here? could following alignments be better?
 
 
         return (is5prime, bkpCoord, srcAlignmentObj, MEISeq)
