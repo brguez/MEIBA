@@ -2,5 +2,6 @@
 html
 releases
 test
+data
 *.pyc
 *~
