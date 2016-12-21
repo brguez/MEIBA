@@ -73,10 +73,13 @@ donorIdList = VCFObj.read_VCF_multiSample(inputVCF)
 #### 2. Read metadata file
 ##########################
 # Make four dictionaries with the following structure:
+
 # - dict1a: key(projectId) -> dict2a: key(donorId) -> totalNbMEI
 # - dict1b: key(projectId) -> dict2a: key(donorId) -> nbHeterozygousMEI
 # - dict1c: key(projectId) -> dict2b: key(donorId) -> nbHomozygousMEI
 # - dict1d: key(donorId) -> projectCode
+# - dict1e: key(projectId) -> dict2a: key(donorId) -> totalNbMEIAlleles
+
 # Note: nbHeterozygousMEI and nbHomozygousMEI are the number of heterozygous and homozygous MEI for a given donor
 # Note: nbHeterozygousMEI and nbHomozygousMEI are iniciated with a value of 0
 header("2. Read metadata file")
@@ -86,6 +89,7 @@ totalNbMEIDict = {}
 nbHeterozMEIDict = {}
 nbHomozMEIDict = {}
 donorIdProjectCodes = {}
+totalNbMEIAllelesDict = {}
 
 for line in metadataFile:
 
@@ -95,27 +99,33 @@ for line in metadataFile:
     projectCode = line[0]
     donorId = line[1]
 
-    ## Dict1a and Dict1b
+    ## Dict1a, Dict1b, Dict1c and Dict1e 
     if projectCode not in nbHeterozMEIDict:
 
         # Create dictionary
         totalNbMEIDict[projectCode] = {}
         nbHeterozMEIDict[projectCode] = {}
         nbHomozMEIDict[projectCode] = {}
+        totalNbMEIAllelesDict[projectCode] = {}
 
     # Initialize to 0 values:
     totalNbMEIDict[projectCode][donorId] = 0
     nbHeterozMEIDict[projectCode][donorId] = 0
     nbHomozMEIDict[projectCode][donorId] = 0
+    totalNbMEIAllelesDict[projectCode][donorId] = 0
 
-    ## Dict1c
+    ## Dict1d
     donorIdProjectCodes[donorId] = projectCode
+
+#print "totalNbMEIAllelesDict-empty: ", len(totalNbMEIAllelesDict), len(totalNbMEIDict), totalNbMEIAllelesDict
+
 
 #### 3. Compute parameters:
 ###########################
 # - Variant allele frequency per MEI across PCAWG cohort
 # - Variant allele count per MEI across PCAWG cohort
 # - Total number of MEI per donor (Save into dictionary generated in step 2)
+# - Total number of MEI alleles per donor (Save into dictionary generated in step 2)
 # - Number of heterozygous MEI per donor (Save into dictionary generated in step 2)
 # - Number of homozygous MEI per donor (Save into dictionary generated in step 2)
 # - Predicted zygosity based on number of supporting reads for heterozygous MEI
@@ -159,6 +169,8 @@ for MEIObj in VCFObj.lineList:
     # Genotyping VAF: Ratio (number_reads_supporting_MEI)/(total_nb_reads_covering_MEI)
     alleleCount = 0
 
+#    print "MEI: ", MEIObj.chrom, MEIObj.pos
+
     for donorId, genotypeField in MEIObj.genotypesDict.iteritems():
 
         projectCode = donorIdProjectCodes[donorId]
@@ -177,16 +189,22 @@ for MEIObj in VCFObj.lineList:
         # A) Heterozygous
         if (genotype == "0/1"):
             totalNbMEIDict[projectCode][donorId] += 1
-            alleleCount +=  1
+            totalNbMEIAllelesDict[projectCode][donorId] += 1
+            alleleCount += 1
             nbHeterozMEIDict[projectCode][donorId] += 1
             zygosityHeterozList.append(zygosity)
+
+#            print "test: ", projectCode, donorId, genotype, totalNbMEIAllelesDict[projectCode][donorId]
 
         # B) Homozygous
         elif (genotype == "1/1"):
             totalNbMEIDict[projectCode][donorId] += 1
+            totalNbMEIAllelesDict[projectCode][donorId] += 2
             alleleCount += 2
             nbHomozMEIDict[projectCode][donorId] += 1
             zygosityHomozList.append(zygosity)
+
+#            print "test: ", projectCode, donorId, genotype, totalNbMEIAllelesDict[projectCode][donorId]
 
     ## Compute MEI allele frequency:
     alleleFrequency = float(alleleCount) / totalNbChrom
@@ -213,6 +231,10 @@ for MEIObj in VCFObj.lineList:
     ## Add row to the table
     row = MEIObj.chrom + ":" + str(MEIObj.pos) + "\t" + MEIObj.infoDict['CLASS'] + "\t" + str(alleleFrequency) + "\n"
     outFile.write(row)
+
+#    print "***********************"
+ 
+print "totalNbMEIAllelesDict-filled: ", len(totalNbMEIAllelesDict), totalNbMEIAllelesDict
 
 #### 4. Make plots:
 #####################
@@ -320,6 +342,7 @@ header("4.2 Make boxplots")
 
 ## Organize the data for plotting
 tupleListTotalMEI = []
+tupleListTotalMEIAlleles = []
 tupleListHeterozMEI = []
 tupleListHomozMEI = []
 
@@ -327,13 +350,17 @@ for projectCode in sorted(nbHeterozMEIDict):
 
     # Make tuple (projectCode, number of MEI per donor) for total number of MEI, number of heterozygous and homozygous MEI
     projectCodeNbTotalMEITuple = (projectCode, totalNbMEIDict[projectCode].values())
+    projectCodeNbTotalMEIAllelesTuple = (projectCode, totalNbMEIAllelesDict[projectCode].values()) 
     projectCodeNbHeterozMEITuple = (projectCode, nbHeterozMEIDict[projectCode].values())
     projectCodeNbHomozMEITuple = (projectCode, nbHomozMEIDict[projectCode].values())
 
     # Add tuple to the list
     tupleListTotalMEI.append(projectCodeNbTotalMEITuple)
+    tupleListTotalMEIAlleles.append(projectCodeNbTotalMEIAllelesTuple)
     tupleListHeterozMEI.append(projectCodeNbHeterozMEITuple)
     tupleListHomozMEI.append(projectCodeNbHomozMEITuple)
+
+print "tuple-list: ", tupleListTotalMEIAlleles
 
 ## Make nested list with the following format:
 # [donor1_nbMEI, donor2_nbMEI, ..., donorN_nbMEI], [donor1_nbMEI, donor2_nbMEI, ..., donorN_nbMEI] , ... [donor1_nbMEI, donor2_nbMEI, ..., donorN_nbMEI]
@@ -343,6 +370,11 @@ for projectCode in sorted(nbHeterozMEIDict):
 tmpList = map(list, zip(*tupleListTotalMEI))
 projectCodesListTotal = tmpList[0]
 nbMEIPerDonorTotal = tmpList[1]
+
+# Total MEI alleles
+tmpList = map(list, zip(*tupleListTotalMEIAlleles))
+projectCodesListTotalAlleles = tmpList[0]
+nbMEIPerDonorTotalAlleles = tmpList[1]
 
 # Heterozygous MEI
 tmpList = map(list, zip(*tupleListHeterozMEI))
@@ -401,15 +433,63 @@ ax1.set_axisbelow(True)
 fileName = outDir + "/PCAWG_totalNbMEIperDonor_boxplot.pdf"
 fig.savefig(fileName)
 
-#### B) Make boxplots for number of homozygous and heterozygous MEI
+#### B) Make boxplot for total number of MEI
+fig = plt.figure(figsize=(14,9))
+fig.suptitle('# MEI Alleles per donor', fontsize=18)
+
+ax2 = fig.add_subplot(1, 1, 1)
+
+# Create the boxplot
+bp = ax2.boxplot(nbMEIPerDonorTotalAlleles)
+plt.ylabel("# MEI Alleles", fontsize=18)
+
+## Customize boxplot:
+# change outline color, fill color and linewidth of the boxes
+for box in bp['boxes']:
+    # change outline color
+    box.set( color='#696969', linewidth=1)
+
+# change color and linewidth of the whiskers
+for whisker in bp['whiskers']:
+    whisker.set(color='#696969', linewidth=1)
+
+# change color and linewidth of the caps
+for cap in bp['caps']:
+    cap.set(color='#696969', linewidth=1)
+
+# change color and linewidth of the medians
+for median in bp['medians']:
+    median.set(color='#8b0000', linewidth=2)
+
+# Add the project codes to the x-axis
+ax2.set_xticklabels(projectCodesListTotalAlleles)
+locs, labels = plt.xticks()
+plt.setp(labels, rotation=75)
+
+# Remove top and right axes
+ax2.get_xaxis().tick_bottom()
+ax2.get_yaxis().tick_left()
+
+# Add a horizontal grid to the plot, but make it very light in color
+# so we can use it for reading data values but not be distracting
+ax2.yaxis.grid(True, linestyle='-', which='major', color='lightgrey',
+               alpha=0.5)
+ax2.set_axisbelow(True)
+
+## Save figure
+fileName = outDir + "/PCAWG_totalNbMEIAllelesPerDonor_boxplot.pdf"
+fig.savefig(fileName)
+
+
+#### C) Make boxplots for number of homozygous and heterozygous MEI
 fig = plt.figure(figsize=(18,12))
 fig.suptitle('# MEI per donor', fontsize=24)
 
-### B.a) Heterozygous MEI
-ax1 = fig.add_subplot(2, 1, 1)
+### C.a) Heterozygous MEI
+ax3 = fig.add_subplot(2, 1, 1)
 
 # Create the boxplot
-bp = ax1.boxplot(nbMEIPerDonorHet)
+bp = ax3.boxplot(nbMEIPerDonorHet)
 plt.ylabel("# Heterozygous MEI", fontsize=18)
 
 ## Customize boxplot:
@@ -431,25 +511,25 @@ for median in bp['medians']:
     median.set(color='#8b0000', linewidth=2)
 
 # Add the project codes to the x-axis
-ax1.set_xticklabels(projectCodesListHet)
+ax3.set_xticklabels(projectCodesListHet)
 locs, labels = plt.xticks()
 plt.setp(labels, rotation=75)
 
 # Remove top and right axes
-ax1.get_xaxis().tick_bottom()
-ax1.get_yaxis().tick_left()
+ax3.get_xaxis().tick_bottom()
+ax3.get_yaxis().tick_left()
 
 # Add a horizontal grid to the plot, but make it very light in color
 # so we can use it for reading data values but not be distracting
-ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey',
+ax3.yaxis.grid(True, linestyle='-', which='major', color='lightgrey',
                alpha=0.5)
-ax1.set_axisbelow(True)
+ax3.set_axisbelow(True)
 
-### B.b) Homozygous MEI
-ax2 = fig.add_subplot(2, 1, 2)
+### C.b) Homozygous MEI
+ax4 = fig.add_subplot(2, 1, 2)
 
 # Create the boxplot
-bp = ax2.boxplot(nbMEIPerDonorHom)
+bp = ax4.boxplot(nbMEIPerDonorHom)
 plt.ylabel("# Homozygous MEI", fontsize=18)
 
 ## Customize boxplot:
@@ -471,19 +551,19 @@ for median in bp['medians']:
     median.set(color='#8b0000', linewidth=2)
 
 # Add the project codes to the x-axis
-ax2.set_xticklabels(projectCodesListHom)
+ax4.set_xticklabels(projectCodesListHom)
 locs, labels = plt.xticks()
 plt.setp(labels, rotation=75)
 
 # Remove top and right axes
-ax2.get_xaxis().tick_bottom()
-ax2.get_yaxis().tick_left()
+ax4.get_xaxis().tick_bottom()
+ax4.get_yaxis().tick_left()
 
 # Add a horizontal grid to the plot, but make it very light in color
 # so we can use it for reading data values but not be distracting
-ax2.yaxis.grid(True, linestyle='-', which='major', color='lightgrey',
+ax4.yaxis.grid(True, linestyle='-', which='major', color='lightgrey',
                alpha=0.5)
-ax2.set_axisbelow(True)
+ax4.set_axisbelow(True)
 
 ## Save figure
 fileName = outDir + "/PCAWG_nbMEIperDonor_boxplot.pdf"
@@ -495,7 +575,7 @@ fig = plt.figure(figsize=(8,6))
 fig.suptitle('Predicted zygosity', fontsize=14)
 
 ## Make plot
-ax = fig.add_subplot(1, 1, 1)
+ax5 = fig.add_subplot(1, 1, 1)
 plt.hist(zygosityHeterozList, bins=20, color='#008000', edgecolor='#000000', alpha=0.75, label='Heterozygous')
 plt.hist(zygosityHomozList, bins=5, color='#A67D3D', edgecolor='#000000', alpha=0.75, label='Homozygous')
 plt.xlabel("Zygosity", fontsize=12)
@@ -504,9 +584,9 @@ plt.xlim(0, 1)
 
 # Add an horizontal grid to the plot, but make it very light in color
 # so we can use it for reading data values but not be distracting
-ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey',
+ax5.yaxis.grid(True, linestyle='-', which='major', color='lightgrey',
                alpha=0.5)
-ax.set_axisbelow(True)
+ax5.set_axisbelow(True)
 
 ## Customize ticks
 plt.xticks(np.arange(0, 1.01, 0.1))
@@ -533,33 +613,33 @@ nbMEIList = tmpList[1]
 ### Make plot
 fig = plt.figure(figsize=(8,8))
 fig.suptitle('Allele count spectrum', fontsize=16)
-ax1 = fig.add_subplot(1, 1, 1)
+ax6 = fig.add_subplot(1, 1, 1)
 plt.scatter(alleleCountList, nbMEIList, color='#008000', alpha=.4)
 plt.xlabel("Variant allele count", fontsize=14)
 plt.ylabel("# MEI")
-ax1.set_xscale('log', basex=10)
-ax1.set_yscale('log', basex=10)
+ax6.set_xscale('log', basex=10)
+ax6.set_yscale('log', basex=10)
 plt.xlim(0.5, max(alleleCountList) + 100)
 plt.ylim(0.5, max(nbMEIList) + 100)
 
 # Add a horizontal grid to the plot, but make it very light in color
 # so we can use it for reading data values but not be distracting
-ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey',
+ax6.yaxis.grid(True, linestyle='-', which='major', color='lightgrey',
                alpha=0.5)
-ax1.set_axisbelow(True)
+ax6.set_axisbelow(True)
 
 ## Customize ticks
 # X axis
 xPosList = [ 1, 5, 10, 50, 100, 200, 300, 400, 500, 1000, 2500, max(alleleCountList) ]
-ax1.set_xticks(xPosList)
-ax1.set_xticklabels(xPosList)
+ax6.set_xticks(xPosList)
+ax6.set_xticklabels(xPosList)
 locs, labels = plt.xticks()
 plt.setp(labels, rotation=90)
 
 # y axis
 yPosList = [ 1, 10, 100, 1000, max(nbMEIList) ]
-ax1.set_yticks(yPosList)
-ax1.set_yticklabels(yPosList)
+ax6.set_yticks(yPosList)
+ax6.set_yticklabels(yPosList)
 
 ## Save figure
 fileName = outDir + "/PCAWG_alleleCount_scatterplot.pdf"
