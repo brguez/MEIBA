@@ -961,7 +961,8 @@ class insertion():
 
             # c) Contradictory/inconsistent
             else:
-                orientation = "inconsistent"
+                #orientation = "inconsistent"
+                orientation = "UNK"
 
         ## B) 5' informative contig
         elif (informative5primeContigObj != "UNK"):
@@ -986,7 +987,7 @@ class insertion():
             consDir3prime = informative3primeContigObj.informativeDict["info"].strand
 
             # a) + strand
-            if (targDir3Prime == consDir3prime):
+            if (targDir3prime == consDir3prime):
                 orientation = "+"
 
             # b) - strand
