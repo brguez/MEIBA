@@ -295,11 +295,18 @@ for item in ax1.get_xticklabels():
 fileName = outDir + "/source_element_contribution_tumorTypes_heatmap6.pdf"
 plt.savefig(fileName)
 
-##### B) Allele frequency per ancestry heatmap
-fig = plt.figure(figsize=(7,4))
+
+##### B) Contribution heatmap
+
+colList = [ "PCAWG", "ESAD" ] 
+totalSrcElementContributionSeries = dfSrcElementContributionFinal.loc[colList, :]
+
+print "tiooo: ", totalSrcElementContributionSeries
+
+fig = plt.figure(figsize=(17,7))
 fig.suptitle('')
 
-ax2 = sns.heatmap(dfAlleleFreqAncestryFiltered, vmin=0, vmax=100, annot=True, fmt=".1f", linewidths=.5, cmap=plt.cm.Blues, annot_kws={"size": 8}, square=True)
+ax2 = sns.heatmap(totalSrcElementContributionSeries, vmin=0, vmax=10, annot=True, fmt=".1f", linewidths=.5, cmap=plt.cm.Oranges, annot_kws={"size": 8}, square=True)
 
 ax2.set_xlabel('')
 ax2.set_ylabel('')
@@ -310,6 +317,28 @@ for item in ax2.get_yticklabels():
     item.set_rotation(0)
 
 for item in ax2.get_xticklabels():
+    item.set_rotation(90)
+
+## Save figure 
+fileName = outDir + "/source_element_contribution_heatmap6.pdf"
+plt.savefig(fileName)
+
+
+##### C) Allele frequency per ancestry heatmap
+fig = plt.figure(figsize=(7,4))
+fig.suptitle('')
+
+ax3 = sns.heatmap(dfAlleleFreqAncestryFiltered, vmin=0, vmax=100, annot=True, fmt=".1f", linewidths=.5, cmap=plt.cm.Blues, annot_kws={"size": 8}, square=True)
+
+ax3.set_xlabel('')
+ax3.set_ylabel('')
+ax3.xaxis.tick_top()
+
+# turn the axis labels
+for item in ax3.get_yticklabels():
+    item.set_rotation(0)
+
+for item in ax3.get_xticklabels():
     item.set_rotation(90)
 
 ## Save figure 
