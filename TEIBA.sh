@@ -184,7 +184,7 @@ function run {
 ############################
 
 # TEIBA version
-version=0.4.0
+version=0.4.8
 
 # Enable extended pattern matching
 shopt -s extglob
@@ -286,6 +286,7 @@ srcRegDir=$outDir/SrcRegions
 # 5. Scripts/references
 ########################
 # scripts
+EMPTYVCF=$pyDir/makeEmptyVCF.py
 CLUSTERS2FASTA=$pyDir/clusters2fasta.py
 ALIGN_CONTIGS=$bashDir/alignContigs2reference.sh
 ADD_INFO=$awkDir/addInfo2insertionList.awk
@@ -336,7 +337,34 @@ start=$(date +%s)
 # Create log directory
 if [[ ! -d $logsDir ]]; then mkdir $logsDir; fi
 
-# 0) For each orphan transduction (TD2) event, extract source region +/- $windowSize to use as target in BLAT alignment.
+
+# 1) Check the number of insertions in the input file, 
+#######################################################
+# stop execution producing an empty VCF if 0 insertions:
+##########################################################
+
+nbLines=`cat $insertions | wc -l`
+nbInsertions=$(( nbLines - 1 )) # Substract one in order not to count the header. 
+
+printHeader "$sampleId donor has $nbInsertions candidate retrotransposition events"
+
+if [[ $nbInsertions == 0 ]]
+then
+
+    log "Donor with 0 retrotransposition events. Generate empty VCF and stop execution\n" "INFO"
+
+    # Print empty VCF only with header
+    run "python $EMPTYVCF $sampleId -o $outDir 1> $logsDir/1_emptyVCF.out 2> $logsDir/1_emptyVCF.err" "$ECHO" 
+
+    ## End
+    end=$(date +%s)
+    printHeader "TEIBA for $sampleId completed in $(echo "($end-$start)/60" | bc -l | xargs printf "%.2f\n") min "
+  
+    exit 0
+        
+fi
+
+# 2) For each orphan transduction (TD2) event, extract source region +/- $windowSize to use as target in BLAT alignment.
 ########################################################################################################################
 # Each fasta will be named according to this convention:
 ########################################################
@@ -375,6 +403,8 @@ cat $insertions | while read chrP begP endP nReadsP famP readsP chrM begM endM n
         samtools faidx $genome $targetInterval > $srcRegDir/$targetRegionFile
     fi
 done
+
+rm -r $srcRegDir
 
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
@@ -453,7 +483,7 @@ do
 done
 
 ## Remove temporary fasta directory
-#rm -r $fastaDir
+rm -r $fastaDir
 
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
@@ -606,8 +636,8 @@ else
 fi
 
 ## Remove temporary contigs and blat directories
-#rm $paths2bkpAnalysis
-#rm -r $contigsDir $blatDir
+rm $paths2bkpAnalysis
+rm -r $contigsDir $blatDir
 
 
 # 5) Annotate MEI
@@ -641,7 +671,7 @@ else
 fi
 
 ## Remove temporary bkp analysis directory
-#rm -r $bkpAnalysisDir
+rm -r $bkpAnalysisDir
 
 
 # 6) Filter MEI
@@ -677,7 +707,7 @@ else
 fi
 
 ## Remove temporary annotation directory
-#rm -r $annotDir
+rm -r $annotDir
 
 #############################
 # 7) MAKE OUTPUT VCF AND END #
@@ -689,7 +719,7 @@ finalVCF=$outDir/$sampleId.vcf
 cp $filteredVCF $finalVCF
 
 ## Remove temporary filter directory
-#rm -r $filterDir
+rm -r $filterDir
 
 ## End
 end=$(date +%s)
