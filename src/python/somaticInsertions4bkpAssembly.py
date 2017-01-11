@@ -36,8 +36,10 @@ print
 
 
 
-### 1) 
-
+### 1) Read insertions file and organize data into a dictionary with the following format:
+# Key1 [tumor_wgs_aliquot_id] -> value [list of insertion dictionaries: insertionDict1, insertionDict2, ...]
+# Note: The number of elements in the list will be equal to the total number of insertions in a given tumor sample. 
+# Note: The insertion dictionary contains all the info regarding a given insertion
 
 insertions = open(insertionsPath, 'r')
 allInsertionsDict = {}
@@ -177,7 +179,9 @@ for line in insertions:
         allInsertionsDict[tumor_wgs_aliquot_id].append(insertionDict)
         
 
-### 2) 
+### 2) For each PCAWG tumor sample generate a properly formated file containing its somatic MEI and
+# organize these files into the following directory architecture:
+# outDir -> dcc_project_code > submitted_donor_id -> tumor_wgs_aliquot_id -> **somaticMEI tsv**
 
 metadata = open(metadataPath, 'r')
 
