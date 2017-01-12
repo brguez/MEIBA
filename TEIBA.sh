@@ -450,8 +450,6 @@ cat $insertions | while read chrP begP endP nReadsP famP readsP chrM begM endM n
     fi
 done
 
-rm -r $srcRegDir
-
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
@@ -603,6 +601,8 @@ do
     log "1. Blat alignment" $step
     run "bash $ALIGN_CONTIGS $bkpContigPath $bkpId $genome $srcTarget 1000 $blatDir 1>> $logsDir/3_blat.out 2>> $logsDir/3_blat.err" "$ECHO"
 done
+
+rm -r $srcRegDir
 
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
