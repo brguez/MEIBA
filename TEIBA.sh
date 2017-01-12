@@ -17,6 +17,52 @@
 ******************************************************************************
 authors
 
+##### TEIBA
+
+## TEIBA is aimed to characterize at base pair resolution a set of mobile element insertions provided as input throught local assembly and breakpoint analysis.
+# It currently handles four types of insertion events:
+
+# - TD0: solo L1, Alu, SVA and ERVK insertions 
+# - TD1: L1 partnered transductions
+# - TD2: L1 orphan transductions
+# - PSD: processed pseudogene insertions
+
+##### DESCRIPTION OF THE FIELDS IN THE INSERTIONS INPUT FILE FORMAT:
+
+### Generic fields (TD0, TD1, TD2 and PSD)
+# 1.  chrom_plus_cluster
+# 2.  beg_plus_cluster
+# 3.  end_plus_cluster
+# 4.  nbReads_plus_cluster
+# 5.  class_plus_cluster, "NA" for PSD
+# 6.  readList_plus_cluster
+# 7.  chrom_minus_cluster
+# 8.  beg_minus_cluster
+# 9.  end_minus_cluster
+# 10. nbReads_minus_cluster
+# 11. class_minus_cluster, "NA" for PSD
+# 12. readList_minus_cluster
+# 13. insertion_type (TD0, TD1, TD2 or PSD)
+
+### L1 transductions specific fields (TD1 and TD2). "NA" for TD0 and PSD
+# 14. chrom_source_element 
+# 15. beg_source_element 
+# 16. end_source_element
+# 17. orientation_source_element
+# 18. transduction_beg
+# 19. transduction_end
+# 20. transduction_rna_length
+# 21. transduction_length
+
+### Processed pseudogene specific fields (PSD). "NA" for TD0, TD1 and TD2
+# 22. psd_gene 
+# 23. chrom_exonA_cluster
+# 24. beg_exonA_cluster
+# 25. end_exonA_cluster
+# 26. chrom_exonB_cluster
+# 27. beg_exonB_cluster
+# 28. end_exonB_cluster
+
 
 # Function 1. Print basic usage information
 ############################################
