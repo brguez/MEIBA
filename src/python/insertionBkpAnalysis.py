@@ -201,7 +201,7 @@ class VCF():
 ##contig=<ID=Y,assembly=GRCh37,length=59373566,species=human>
 ##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant. (All sequence is on the plus strand and in the forward direction).">
 ##INFO=<ID=CLASS,Number=1,Type=String,Description="Transposable element class (L1, ALU, SVA or ERVK)">
-##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction)">
+##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction), PSD: processed-pseudogene">
 ##INFO=<ID=SCORE,Number=1,Type=String,Description="Insertion score (5: 5' and 3' breakpoints (bkp) assembled, 4: 3'bkp assembled, 3: 5'bkp assembled, 2: no bkp assembled, 1: inconsistent (contradictory orientation, bkp or TSD))">
 ##INFO=<ID=BKPB,Number=1,Type=String,Description="MEI right-most breakpoint position (bkp B). Left-most breakpoint position (bkp A) represented in the POS field">
 ##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoints">
@@ -215,6 +215,8 @@ class VCF():
 ##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the transduced region in the format: chrom_beg_end">
 ##INFO=<ID=TDLEN,Number=1,Type=String,Description="Transduced region length">
 ##INFO=<ID=TDLENR,Number=1,Type=String,Description="Transduced region length at RNA level">
+##INFO=<ID=TDLENR,Number=1,Type=String,Description="Transduced region length at RNA level">
+##INFO=<ID=PSDGENE,Number=1,Type=String,Description="Parent gene of the somatically adquired processed pseudogene">
 ##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1KGENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), TRAFIC: TraFic in-house database)">
 ##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the transposable element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
 ##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
@@ -2154,4 +2156,4 @@ if __name__ == "__main__":
     ## Finish ##
     print
     print "***** Finished! *****"
-    print
+    printREGION
