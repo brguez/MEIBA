@@ -36,7 +36,7 @@ print "..."
 print
 
 
-### 0) Make list with chromosome ids. 
+### 0) Make list with chromosome ids.
 chrIdsList = []
 
 genome = open(genome, 'r')
@@ -50,7 +50,7 @@ for line in genome:
 
         # drop the info
         chrom = header.split(" ")[0]
-        
+
         # Add chromosome to the list
         chrIdsList.append(chrom)
 
@@ -103,11 +103,15 @@ supportingReadsDict = {}
 
 ## Read insertions file line by line
 for line in insertions:
+    # ignore comment lines (e.g. header)
+    if line.startswith('#'):
+        continue
+        
     line = line.rstrip('\n')
     fieldsList = line.split("\t")
 
     ## A) Line with expected number of columns
-    if (int(len(fieldsList)) == 21):
+    if (int(len(fieldsList)) == 28):
         chrPlus = fieldsList[0]
         begPlus = fieldsList[1]
         endPlus = int(fieldsList[2]) + 100 # Done because this coordinate is the beginning of the read. So, I need to sum the readlength. I need to add an input parameter to specify the read length.
@@ -124,9 +128,9 @@ for line in insertions:
 
         ### Do more input sanity checks...
         ## A) Insertion in a chromosome not included in the provided reference genome
-        if (chrPlus not in chrIdsList) or (chrMinus not in chrIdsList):        
+        if (chrPlus not in chrIdsList) or (chrMinus not in chrIdsList):
             print >>sys.stderr, "[ERROR] Filtering out an insertion in a chromosome not included in the provided reference genome: ", line
-        
+
         ## B) Insertion with inconsistent number of supporting reads. Number does not match with readId list length
         elif (int(nbReadsPlus) != len(readPairListPlus)) or (int(nbReadsMinus) != len(readPairListMinus)):
             print >>sys.stderr, "[ERROR] Filtering out an insertion with inconsistent number of supporting reads. Number does not match with read identifier list length: ", line
