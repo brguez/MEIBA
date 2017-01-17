@@ -246,6 +246,7 @@ percHighList, percLowList, percModerateList, percNoneList, percVeryHigh = catego
 
 tumorTypeList = categoryPercSortedDataframe.columns.values.tolist()
 
+print "tumorTypeList: ", tumorTypeList
 donorCountsSortedSeries = donorsPerTumorTypeSerie.reindex(tumorTypeList)
 
 
@@ -307,7 +308,7 @@ circle2 = mpatches.Circle((0, 0), 5, color='#fff68f', alpha=0.90)
 circle3 = mpatches.Circle((0, 0), 5, color='#fdb913', alpha=0.90)
 circle4 = mpatches.Circle((0, 0), 5, color='#f15a22', alpha=0.90)
 circle5 = mpatches.Circle((0, 0), 5, color='#ff0000', alpha=0.90)
-a
+
 l = plt.figlegend((circle1, circle2, circle3, circle4, circle5), ('0', '[1-10]', '(10-100]', '(100-500]', '>500'), loc = 'center', ncol=2, labelspacing=0.75, title="Number of retrotransposition events", fontsize=11, fancybox=True, bbox_to_anchor=(0.75, 0.75))
 
 ## Save figure
