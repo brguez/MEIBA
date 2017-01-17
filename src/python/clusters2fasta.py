@@ -91,7 +91,7 @@ for line in fasta:
             fastaDict[pairId][1] = seq
 
 
-### 2) Read TraFiC somatic output file and generates a nested dictionary with the following info:
+### 2) Read TraFiC output file and generates a nested dictionary with the following info:
 # * Key 1: insertion id (A different insertion id for + and - clusters)
 # * Value 1: dictionary
 #         - Key 1: Read pair id
@@ -103,6 +103,7 @@ supportingReadsDict = {}
 
 ## Read insertions file line by line
 for line in insertions:
+
     # ignore comment lines (e.g. header)
     if line.startswith('#'):
         continue
@@ -164,15 +165,17 @@ for line in insertions:
             # a) + Cluster
             for pairId in readPairListPlus:
                 supportingReadsDict[insertionIdPlus][pairId] = fastaDict[pairId]
-
+    
             # b) - Cluster
             for pairId in readPairListMinus:
                 supportingReadsDict[insertionIdMinus][pairId] = fastaDict[pairId]
 
+
+    ## Line without the expected number of columns            
     else:
         print >>sys.stderr, "[ERROR] Filtering out an insertion with unexpected number of columns: ", line
-
-
+    
+    
 ### 3) Generate a fasta per insertion and cluster containing the
 # read pairs supporting it
 

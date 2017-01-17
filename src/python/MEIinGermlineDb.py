@@ -157,9 +157,9 @@ for VCFlineObj in VCFlineObjList:
     info("Checking if " + VCFlineObj.chrom + ":" + str(VCFlineObj.pos) + " MEI is in 1000 genomes germline database..." )
 
     # A) There are MEI in the germline database in the same chromosome as the input MEI
-    if VCFlineObj.chrom in germlineMEIDbObj.germlineMEIDict[VCFlineObj.infoDict["CLASS"]]:
-
-        ## Make numpy array with the chromosomal positions for the germline MEI on the same chromosome in the 1000 genomes database
+    if VCFlineObj.chrom in germlineMEIDbObj.germlineMEIDict[VCFlineObj.infoDict["CLASS"]].keys():
+        
+	## Make numpy array with the chromosomal positions for the germline MEI on the same chromosome in the 1000 genomes database
         MEIDbPosArr = np.array(sorted(germlineMEIDbObj.germlineMEIDict[VCFlineObj.infoDict["CLASS"]][VCFlineObj.chrom].keys(), key=int), dtype='int')
 
         ## Identify those MEI in the germline database overlapping the first insertion breakpoint
@@ -195,7 +195,8 @@ for VCFlineObj in VCFlineObjList:
 
     # B) There are not MEI in the germline database in the same chromosome as the input MEI
     else:
-        # Empty array
+        # Empty arrays
+	filteredArrBkpA = np.array([ ])
         filteredArrBkpB = np.array([ ])
 
     ## Make a single array containing a not redundant list of 1000 genomes MEI coordinates overlapping the first and/or second insertion breakpoints.

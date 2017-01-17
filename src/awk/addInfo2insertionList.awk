@@ -120,9 +120,8 @@ BEGIN{
             transductEnd = $19
             transductRnaLen = $20
             transductLen = $21
-
-            sourceElementInfo = chromSource":"begSource"-"endSource"_"orientationSource
-            transductionInfo = transductBeg":"transductEnd":"transductRnaLen":"transductLen
+            sourceElementInfo = chromSource"_"begSource"_"endSource"_"orientationSource
+            transductionInfo = chromSource"_"transductBeg"_"transductEnd"_"transductRnaLen"_"transductLen
             pseudogeneInfo = "NA"
         }
         # C) pseudogene insertion
@@ -146,7 +145,7 @@ BEGIN{
             sourceElementInfo = "NA"
             transductionInfo = "NA"
             pseudogeneInfo = "NA"
-        }
+        }    
 
         ## Keep info in dictionaries
         insertionId = familyPlus":"tdType":"chrPlus"_"endPlus"_"begMinus;
