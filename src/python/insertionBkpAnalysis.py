@@ -710,12 +710,13 @@ class insertion():
                     # TE insertion orientation
                     self.orientation = self.insertion_orientation_polyA(informative5primeContigObj, informative3primeContigObj)
 
-                    # TE insertion structure
-                    self.structure, self.length, self.percLength = self.insertion_structure(informative5primeContigObj)
+                    if (self.tdType != "PSD"):
+                        # TE insertion structure
+                        self.structure, self.length, self.percLength = self.insertion_structure(informative5primeContigObj)
                 else:
                     # TE insertion orientation
                     self.orientation = self.insertion_orientation_ERVK(informative5primeContigObj, informative3primeContigObj)
-                    self.structure = "UNK"
+                    #self.structure = "UNK"
 
                 # Inconsistent orientation:
                 if (self.orientation == "inconsistent"):
