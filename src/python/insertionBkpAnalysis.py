@@ -2156,4 +2156,4 @@ if __name__ == "__main__":
     ## Finish ##
     print
     print "***** Finished! *****"
-    printREGION
+    print
