@@ -202,7 +202,7 @@ class VCF():
 ##contig=<ID=Y,assembly=GRCh37,length=59373566,species=human>
 ##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant. (All sequence is on the plus strand and in the forward direction).">
 ##INFO=<ID=CLASS,Number=1,Type=String,Description="Transposable element class (L1, ALU, SVA or ERVK)">
-##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction, PSD: pseudogene insertion)">
+##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction), PSD: processed-pseudogene">
 ##INFO=<ID=SCORE,Number=1,Type=String,Description="Insertion score (5: 5' and 3' breakpoints (bkp) assembled, 4: 3'bkp assembled, 3: 5'bkp assembled, 2: no bkp assembled, 1: inconsistent (contradictory orientation, bkp or TSD))">
 ##INFO=<ID=BKPB,Number=1,Type=String,Description="MEI right-most breakpoint position (bkp B). Left-most breakpoint position (bkp A) represented in the POS field">
 ##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoints">
@@ -212,11 +212,11 @@ class VCF():
 ##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site duplication length">
 ##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication sequence">
 ##INFO=<ID=POLYA,Number=1,Type=String,Description="Poly-A sequence">
-##INFO=<ID=SRC,Number=1,Type=String,Description="Coordinates of the source element that mediated the transduction in the format: $chrom:beg-end_strand">
-##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the transduced region in the format: beg-end">
+##INFO=<ID=SRC,Number=1,Type=String,Description="Coordinates of the source element that mediated the transduction in the format: chrom_beg_end_strand">
+##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the transduced region in the format: chrom_beg_end">
 ##INFO=<ID=TDLEN,Number=1,Type=String,Description="Transduced region length">
 ##INFO=<ID=TDLENR,Number=1,Type=String,Description="Transduced region length at RNA level">
-##INFO=<ID=PSDGENE,Number=1,Type=String,Description="Source gene of pseudogene insertion">
+##INFO=<ID=PSDGENE,Number=1,Type=String,Description="Source gene of the processed pseudogene insertion">
 ##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1KGENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), TRAFIC: TraFic in-house database)">
 ##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the transposable element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
 ##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
@@ -368,7 +368,7 @@ class insertion():
     - insertion_orientation_polyA
     - insertion_orientation_ERVK
     - polyA
-    - find_TSD
+    - target_site
     - imprecise_bkp
     """
 
@@ -402,6 +402,7 @@ class insertion():
 
         # A) Solo insertion (TD0). Not applicable
         if (self.tdType == "TD0"):
+
             self.srcCoord = "NA"
             self.tdLen = "NA"
             self.tdLenRna = "NA"
@@ -409,11 +410,11 @@ class insertion():
 
         # B) Partnered or orphan transduction (TD1 and TD2)
         elif (self.tdType in ["TD1", "TD2"]):
-            srcElementList = srcElement.split("_")
-            srcChromosome = srcElement[0]
-            transductionInfoList = transductionInfo.split(":")
-            self.srcCoord = srcChromosome + "_" + transductionInfoList[0] + "_" + transductionInfoList[1]
+            
+            transductionInfoList = transductionInfo.split("_")
+            self.srcCoord = transductionInfoList[0] + "_" + transductionInfoList[1] + "_" + transductionInfoList[2]
             self.psdGene = "UNK"
+
 
             status = self.srcElement.split("_")[1]
 
@@ -421,13 +422,15 @@ class insertion():
 
             # A) Putative. Uncharacterized germline or somatic source element
             if (status == "putative"):
+                self.tdLenRna = "UNK"                
                 self.tdLen = "UNK"
-                self.tdLenRna = "UNK"
+                
 
             # B) Characterized germline source element
             else:
-                self.tdLen = transductionInfoList[2]
-                self.tdLenRna = transductionInfoList[3]
+                self.tdLenRna = transductionInfoList[3]                
+                self.tdLen = transductionInfoList[4]
+                
 
         # C) pseudogene insertion (PSD)
         elif (self.tdType == "PSD"):
@@ -997,7 +1000,8 @@ class insertion():
 
             # c) Contradictory/inconsistent
             else:
-                orientation = "inconsistent"
+                #orientation = "inconsistent"
+                orientation = "UNK"
 
         ## B) 5' informative contig
         elif (informative5primeContigObj != "UNK"):
@@ -1022,7 +1026,7 @@ class insertion():
             consDir3prime = informative3primeContigObj.informativeDict["info"].strand
 
             # a) + strand
-            if (targDir3Prime == consDir3prime):
+            if (targDir3prime == consDir3prime):
                 orientation = "+"
 
             # b) - strand
@@ -1071,8 +1075,8 @@ class insertion():
             3) percLength. Percentage of TE consensus sequence inserted, 'na' if not available.
         """
 
-        ## A) 5' informative contig
-        if (informative5primeContigObj != "UNK"):
+        ## A) Not TD2, not ERVK and 5' informative contig
+        if (self.tdType != "TD2") and (self.TEClass != "ERVK") and (informative5primeContigObj != "UNK"):
 
             strand = informative5primeContigObj.informativeDict["info"].strand
 
@@ -1104,7 +1108,7 @@ class insertion():
                 else:
                     structure = "DEL"
 
-        ## B) No 5' informative contig
+        ## B) TD2 or ERVK or No 5' informative contig 
         else:
             structure = "UNK"
             length = "UNK"
@@ -1445,21 +1449,33 @@ class contig():
         # Iterate over all the contig blat alignments
         for alignment in self.alignList:
 
-            # 1. Check if alignment within the target region
-            insertionRegion = alignment.in_target_region(insertionCoord, windowSize)
+            # 1. Check if contig completely aligns on the consensus TE sequence
+            inConsensusTE = alignment.in_consensus_TE()
 
-            # Within target region
-            if (insertionRegion == 1):
+            # A) Contig not completely aligning on the consensus TE
+            if (inConsensusTE == 0):
 
-                # 2. Check if it is a partial alignment
-                partial = alignment.partial_alignment(maxAlignPerc)
+                # 2. Check if alignment within the target region
+                insertionRegion = alignment.in_target_region(insertionCoord, windowSize)
 
-                # Partial
-                if (partial == 1):
-                    supportingAlignList.append(alignment)
+                # Within target region
+                if (insertionRegion == 1):
 
-                    # Informative candidate contig -> partially alignining on the target region and do not aligning completely on the TE sequence
-                    candidate = 1
+                    # 3. Check if it is a partial alignment
+                    partial = alignment.partial_alignment(maxAlignPerc)
+
+                    # Partial
+                    if (partial == 1):
+                        supportingAlignList.append(alignment)
+
+                        # Informative candidate contig -> partially alignining on the target region and do not aligning completely on the TE sequence
+                        candidate = 1
+
+            # B) Not informative contig as it completely aligns on the consensus TE
+            else:
+                candidate = 0
+                supportingAlignList = []
+                break
 
         return (candidate, supportingAlignList)
 
@@ -1917,6 +1933,25 @@ class blat_alignment():
         self.qBeg = updatedBeg
         self.qEnd = updatedEnd
 
+    def in_consensus_TE(self):
+        """
+            Check if blat alignment is completely on the mobile element consensus sequence. No gap is allowed
+        """
+        alignLength = self.qEnd - self.qBeg
+        alignPerc = float(alignLength) / float(self.qSize) * 100      
+
+        MEIlist = ["L1", "Alu", "SVA", "ERVK"]
+
+        # A) More than 99% Contig aligning on the mobile element consensus sequence. No gap allowed       
+        if (self.tName in MEIlist) and (alignPerc > 99) and (self.blockCount == 1):
+            inConsensusTE = 1
+
+        # B) Contig do not aligning on the consensus seq.
+        else:
+            inConsensusTE = 0            
+
+        return inConsensusTE
+        
     def in_target_region(self, coords, windowSize):
         """
             Check if blat alignment within a region of interest:
@@ -1940,7 +1975,7 @@ class blat_alignment():
         chrom = coordsList[0]
         beg = int(coordsList[1]) - windowSize
         end = int(coordsList[2]) + windowSize
-
+                
         # A) Within target region
         if (chrom == self.tName) and (self.tBeg >= beg) and (self.tEnd <= end):
             insertionRegion = 1
@@ -1976,7 +2011,8 @@ class blat_alignment():
         alignLength = self.qEnd - self.qBeg
         alignPerc = float(alignLength) / float(self.qSize) * 100
 
-        # A) Partial alignment
+        # A) One block partial alignment 
+        #if (alignPerc < maxAlignPerc) and (self.blockCount == 1):
         if (alignPerc < maxAlignPerc):
             partial = 1
 
@@ -2166,4 +2202,4 @@ if __name__ == "__main__":
     ## Finish ##
     print
     print "***** Finished! *****"
-    print
+    printREGION

@@ -17,6 +17,52 @@
 ******************************************************************************
 authors
 
+##### TEIBA
+
+## TEIBA is aimed to characterize at base pair resolution a set of mobile element insertions provided as input throught local assembly and breakpoint analysis.
+# It currently handles four types of insertion events:
+
+# - TD0: solo L1, Alu, SVA and ERVK insertions
+# - TD1: L1 partnered transductions
+# - TD2: L1 orphan transductions
+# - PSD: processed pseudogene insertions
+
+##### DESCRIPTION OF THE FIELDS IN THE INSERTIONS INPUT FILE FORMAT:
+
+### Generic fields (TD0, TD1, TD2 and PSD)
+# 1.  chrom_plus_cluster
+# 2.  beg_plus_cluster
+# 3.  end_plus_cluster
+# 4.  nbReads_plus_cluster
+# 5.  class_plus_cluster, "NA" for PSD
+# 6.  readList_plus_cluster
+# 7.  chrom_minus_cluster
+# 8.  beg_minus_cluster
+# 9.  end_minus_cluster
+# 10. nbReads_minus_cluster
+# 11. class_minus_cluster, "NA" for PSD
+# 12. readList_minus_cluster
+# 13. insertion_type (TD0, TD1, TD2 or PSD)
+
+### L1 transductions specific fields (TD1 and TD2). "NA" for TD0 and PSD
+# 14. chrom_source_element
+# 15. beg_source_element
+# 16. end_source_element
+# 17. orientation_source_element
+# 18. transduction_beg
+# 19. transduction_end
+# 20. transduction_rna_length
+# 21. transduction_length
+
+### Processed pseudogene specific fields (PSD). "NA" for TD0, TD1 and TD2
+# 22. psd_gene
+# 23. chrom_exonA_cluster
+# 24. beg_exonA_cluster
+# 25. end_exonA_cluster
+# 26. chrom_exonB_cluster
+# 27. beg_exonB_cluster
+# 28. end_exonB_cluster
+
 
 # Function 1. Print basic usage information
 ############################################
@@ -202,7 +248,7 @@ function extractRegion {
 ############################
 
 # TEIBA version
-version=0.4.0
+version=0.4.8
 
 # Enable extended pattern matching
 shopt -s extglob
@@ -304,6 +350,7 @@ srcRegDir=$outDir/SrcRegions
 # 5. Scripts/references
 ########################
 # scripts
+EMPTYVCF=$pyDir/makeEmptyVCF.py
 CLUSTERS2FASTA=$pyDir/clusters2fasta.py
 ALIGN_CONTIGS=$bashDir/alignContigs2reference.sh
 ADD_INFO=$awkDir/addInfo2insertionList.awk
@@ -354,15 +401,42 @@ start=$(date +%s)
 # Create log directory
 if [[ ! -d $logsDir ]]; then mkdir $logsDir; fi
 
-# 0) For each orphan transduction (TD2) event, extract source region +/- $windowSize to use as target in BLAT alignment.
+
+# 1) Check the number of insertions in the input file,
+#######################################################
+# stop execution producing an empty VCF if 0 insertions:
+##########################################################
+
+nbLines=`cat $insertions | wc -l`
+nbInsertions=$(( nbLines - 1 )) # Substract one in order not to count the header.
+
+printHeader "$sampleId donor has $nbInsertions candidate retrotransposition events"
+
+if [[ $nbInsertions == 0 ]]
+then
+
+    log "Donor with 0 retrotransposition events. Generate empty VCF and stop execution\n" "INFO"
+
+    # Print empty VCF only with header
+    run "python $EMPTYVCF $sampleId -o $outDir 1> $logsDir/1_emptyVCF.out 2> $logsDir/1_emptyVCF.err" "$ECHO"
+
+    ## End
+    end=$(date +%s)
+    printHeader "TEIBA for $sampleId completed in $(echo "($end-$start)/60" | bc -l | xargs printf "%.2f\n") min "
+
+    exit 0
+
+fi
+
+# 2) For each orphan transduction (TD2) event, extract source region +/- $windowSize to use as target in BLAT alignment.
 ########################################################################################################################
 # Each fasta will be named according to this convention:
 ########################################################
 # - ${srcRegDir}/${family}:${type}:${chr}_${beg}_${end}.src.fa
 # where:
 #    - MEI: unique identifier
-#    - family: MEI family (L1, ALU, SVA...)
-#    - type: td0 (solo-insertion), td1 (partnered-transduccion) and td2 (orphan-transduction)
+#    - family: MEI family (L1, ALU, SVA, ERVK) and "NA" for pseudogenes
+#    - type: TD0 (solo-insertion), TD1 (partnered-transduccion), TD2 (orphan-transduction) and PSD (processed-pseudogenes)
 #    - chr: insertion chromosome
 #    - beg: insertion beginning
 #    - end: insertion end
@@ -411,6 +485,10 @@ endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
 
+##################
+# II) CORE STEPS #
+##################
+
 # 1) Produces for each Mobile Element Insertion (MEI) two fasta (one for read pairs supporting + cluster and another one for read pairs
 ##########################################################################################################################################
 # supporting - cluster) These fasta files will be used to assemble the 5' and 3' MEI insertion breakpoint sequences
@@ -419,8 +497,8 @@ printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs
 ########################################################
 # - ${fastaDir}/${family}:${type}:${chr}_${beg}_${end}:${orientation}.fa
 # where:
-#    - family: MEI family (L1, ALU, SVA...)
-#    - type: td0 (solo-insertion), td1 (partnered-transduccion) and td2 (orphan-transduction)
+#    - family: MEI family (L1, ALU, SVA, ERVK) and "NA" for pseudogenes
+#    - type: TD0 (solo-insertion), TD1 (partnered-transduccion), TD2 (orphan-transduction) and PSD (processed-pseudogenes)
 #    - chr: insertion chromosome
 #    - beg: insertion beginning
 #    - end: insertion end
@@ -446,8 +524,8 @@ printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs
 ###########################
 # - ${contigsDir}/${family}:${type}:${chr}_${beg}_${end}:${orientation}.contigs.fa
 # where:
-#    - family: MEI family (L1, ALU, SVA...)
-#    - type: td0 (solo-insertion), td1 (partnered-transduccion) and td2 (orphan-transduction)
+#    - family: MEI family (L1, ALU, SVA, ERVK) and "NA" for pseudogenes
+#    - type: TD0 (solo-insertion), TD1 (partnered-transduccion), TD2 (orphan-transduction) and PSD (processed-pseudogenes)
 #    - chr: insertion chromosome
 #    - beg: insertion beginning
 #    - end: insertion end
@@ -475,12 +553,12 @@ do
     log "3. Rename output files" $step
     run "mv ${contigsDir}/contigs.fa ${contigsDir}/${bkpId}.contigs.fa" "$ECHO"
     log "4. Second Cleaning" $step
-#    run "rm $fastaPath ${contigsDir}/Log ${contigsDir}/Sequences ${contigsDir}/Roadmaps ${contigsDir}/PreGraph ${contigsDir}/stats.txt ${contigsDir}/LastGraph ${contigsDir}/Graph2" "$ECHO"
+    run "rm $fastaPath ${contigsDir}/Log ${contigsDir}/Sequences ${contigsDir}/Roadmaps ${contigsDir}/PreGraph ${contigsDir}/stats.txt ${contigsDir}/LastGraph ${contigsDir}/Graph2" "$ECHO"
 
 done
 
 ## Remove temporary fasta directory
-#rm -r $fastaDir
+rm -r $fastaDir
 
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
@@ -496,8 +574,8 @@ printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs
 ########################
 # - ${blatPath}/${family}:${type}:${chr}_${beg}_${end}:${orientation}.psl
 # where:
-#    - family: MEI family (L1, ALU, SVA...)
-#    - type: td0 (solo-insertion), td1 (partnered-transduccion) and td2 (orphan-transduction)
+#    - family: MEI family (L1, ALU, SVA, ERVK) and "NA" for pseudogenes
+#    - type: TD0 (solo-insertion), TD1 (partnered-transduccion), TD2 (orphan-transduction) and PSD (processed-pseudogenes)
 #    - chr: insertion chromosome
 #    - beg: insertion beginning
 #    - end: insertion end
@@ -554,6 +632,8 @@ do
     log "1. Blat alignment" $step
     run "bash $ALIGN_CONTIGS $bkpContigPath $bkpId $genome $srcTarget 1000 $blatDir 1>> $logsDir/3_blat.out 2>> $logsDir/3_blat.err" "$ECHO"
 done
+
+rm -r $srcRegDir
 
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
@@ -633,8 +713,8 @@ else
 fi
 
 ## Remove temporary contigs and blat directories
-#rm $paths2bkpAnalysis
-#rm -r $contigsDir $blatDir
+rm $paths2bkpAnalysis
+rm -r $contigsDir $blatDir
 
 
 # 5) Annotate MEI
@@ -668,7 +748,7 @@ else
 fi
 
 ## Remove temporary bkp analysis directory
-#rm -r $bkpAnalysisDir
+rm -r $bkpAnalysisDir
 
 
 # 6) Filter MEI
@@ -689,7 +769,7 @@ then
     startTime=$(date +%s)
     printHeader "Performing MEI filtering"
     log "Filtering MEI" $step
-    run "$FILTER $annotVCF $sampleId --min-score $minScore --min-score-ERVK 3 --max-divergence 300 --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err" "$ECHO"
+    run "$FILTER $annotVCF $sampleId --min-score $minScore --max-divergence 300 --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err" "$ECHO"
 
     if [ ! -s $filteredVCF ];
     then
@@ -704,7 +784,7 @@ else
 fi
 
 ## Remove temporary annotation directory
-#rm -r $annotDir
+rm -r $annotDir
 
 #############################
 # 7) MAKE OUTPUT VCF AND END #
@@ -716,7 +796,7 @@ finalVCF=$outDir/$sampleId.vcf
 cp $filteredVCF $finalVCF
 
 ## Remove temporary filter directory
-#rm -r $filterDir
+rm -r $filterDir
 
 ## End
 end=$(date +%s)
