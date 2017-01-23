@@ -167,32 +167,39 @@ for projectCode in cohortObj.VCFdict:
             ## a) L1-solo:
             if (MEIClass == "L1") and (MEIType == "TD0"):
                 eventCountsDict[projectCode]["L1-solo"] += 1
-
+                
             ## b) L1-transduction
             elif (MEIType == "TD1") or (MEIType == "TD2"):
-               eventCountsDict[projectCode]["L1-transduction"] += 1
+                eventCountsDict[projectCode]["L1-transduction"] += 1
 
             ## c) Alu
-            elif (MEIClass == "Alu"):
-               eventCountsDict[projectCode]["Alu"] += 1
-
+            # Note: I added a provisional SCORE filtering
+            # to ask for at least one breakpoint reconstructed 
+            elif (MEIClass == "Alu") and (int(MEIObj.infoDict["SCORE"]) > 2):
+                eventCountsDict[projectCode]["Alu"] += 1
+               
             ## d) SVA
-            elif (MEIClass == "SVA"):
-               eventCountsDict[projectCode]["SVA"] += 1
-
-            ## d) ERVK
-            elif (MEIClass == "ERVK"):
-               eventCountsDict[projectCode]["ERVK"] += 1
-            
+            # Note: I added a provisional SCORE filtering
+            # to ask for at least one breakpoint reconstructed
+            elif (MEIClass == "SVA") and (int(MEIObj.infoDict["SCORE"]) > 2):
+                eventCountsDict[projectCode]["SVA"] += 1
+                 
+            ## e) ERVK
+            # Note: I added a provisional SCORE filtering
+            # to ask for at least one breakpoint reconstructed
+            elif (MEIClass == "ERVK") and (int(MEIObj.infoDict["SCORE"]) > 2):
+                eventCountsDict[projectCode]["ERVK"] += 1
+                
+            ## f) Processed pseudogene            
             elif (MEIClass == "PSD"):
-               eventCountsDict[projectCode]["processed-pseudogene"] += 1
-            
-            else:
-                print "[ERROR] Unexpected MEI Class value"
-
+                eventCountsDict[projectCode]["processed-pseudogene"] += 1
+                            
+            ## g) Unexpected value
+            #else:
+            #    print MEIObj.infoDict["CLASS"], "[ERROR] Unexpected MEI Class value"
+    
 
 print "eventCountsDict: ", eventCountsDict
-
 
 ### 4. Make dataframe with the number of events per type for each tumor type
 # Project codes: columns
