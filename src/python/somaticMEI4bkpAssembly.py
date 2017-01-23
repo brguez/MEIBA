@@ -171,7 +171,14 @@ for line in insertions:
         insertionDict["tdBeg"] = tdBeg 
         insertionDict["tdEnd"] = tdEnd 
         insertionDict["tdRnaLen"] = tdRnaLen 
-        insertionDict["tdLen"] = tdLen 
+        insertionDict["tdLen"] = tdLen
+        insertionDict["psdGene"] = "NA"
+        insertionDict["chromExonA"] = "NA"
+        insertionDict["begExonA"] = "NA"
+        insertionDict["endExonA"] = "NA"
+        insertionDict["chromExonB"] = "NA"
+        insertionDict["begExonB"] = "NA"
+        insertionDict["endExonB"] = "NA"
 
         if tumor_wgs_aliquot_id not in allInsertionsDict:
             allInsertionsDict[tumor_wgs_aliquot_id] = []
@@ -228,8 +235,7 @@ for line in metadata:
                 outFile = open(insertionsPath, "w" )
 
                 # Print header into the output file
-                header = "#chromPlus" + "\t" + "begPlus" + "\t" + "endPlus" + "\t" + "nbReadsPlus" + "\t" + "classPlus" + "\t" + "readListPlus" + "\t" + "chromMinus" + "\t" + "begMinus" + "\t" + "endMinus" + "\t" + "nbReadsMinus" + "\t" + "classMinus" + "\t" + "readListMinus" + "\t" + "insertionType" + "\t" + "chromSource" + "\t" + "begSource" + "\t" + "endSource" + "\t" + "strandSource" + "\t" + "tdBeg" + "\t" + "tdEnd" + "\t" + "tdRnaLen" + "\t" + "tdLen" + "\n"
-
+                header = "#chromPlus" + "\t" + "begPlus" + "\t" + "endPlus" + "\t" + "nbReadsPlus" + "\t" + "classPlus" + "\t" + "readListPlus" + "\t" + "chromMinus" + "\t" + "begMinus" + "\t" + "endMinus" + "\t" + "nbReadsMinus" + "\t" + "classMinus" + "\t" + "readListMinus" + "\t" + "insertionType" + "\t" + "chromSource" + "\t" + "begSource" + "\t" + "endSource" + "\t" + "strandSource" + "\t" + "tdBeg" + "\t" + "tdEnd" + "\t" + "tdRnaLen" + "\t" + "tdLen" + "\t" + "psdGene" + "\t" + "chromExonA" + "\t" + "begExonA" + "\t" + "endExonA" + "\t" + "chromExonB" + "\t" + "begExonB" + "\t" + "endExonB" + "\n"
                 outFile.write(header)
 
                 # Print insertions for those tumor samples with at least one insertion
@@ -237,7 +243,7 @@ for line in metadata:
                 
                     # For each insertion:
                     for insertionDict in allInsertionsDict[tumor_wgs_aliquot_id]:
-                        row = insertionDict["chromPlus"] + "\t" + insertionDict["begPlus"] + "\t" + insertionDict["endPlus"] + "\t" + insertionDict["nbReadsPlus"] + "\t" + insertionDict["classPlus"] + "\t" + insertionDict["readListPlus"] + "\t" + insertionDict["chromMinus"] + "\t" + insertionDict["begMinus"] + "\t" + insertionDict["endMinus"] + "\t" + insertionDict["nbReadsMinus"] + "\t" + insertionDict["classMinus"] + "\t" + insertionDict["readListMinus"] + "\t" + insertionDict["insertionType"] + "\t" + insertionDict["chromSource"] + "\t" + insertionDict["begSource"] + "\t" + insertionDict["endSource"] + "\t" + insertionDict["strandSource"] + "\t" + insertionDict["tdBeg"] + "\t" + insertionDict["tdEnd"] + "\t" + insertionDict["tdRnaLen"] + "\t" + insertionDict["tdLen"] + "\n"
+                        row = insertionDict["chromPlus"] + "\t" + insertionDict["begPlus"] + "\t" + insertionDict["endPlus"] + "\t" + insertionDict["nbReadsPlus"] + "\t" + insertionDict["classPlus"] + "\t" + insertionDict["readListPlus"] + "\t" + insertionDict["chromMinus"] + "\t" + insertionDict["begMinus"] + "\t" + insertionDict["endMinus"] + "\t" + insertionDict["nbReadsMinus"] + "\t" + insertionDict["classMinus"] + "\t" + insertionDict["readListMinus"] + "\t" + insertionDict["insertionType"] + "\t" + insertionDict["chromSource"] + "\t" + insertionDict["begSource"] + "\t" + insertionDict["endSource"] + "\t" + insertionDict["strandSource"] + "\t" + insertionDict["tdBeg"] + "\t" + insertionDict["tdEnd"] + "\t" + insertionDict["tdRnaLen"] + "\t" + insertionDict["tdLen"] + "\t" + insertionDict["psdGene"] + "\t" + insertionDict["chromExonA"] + "\t" + insertionDict["begExonA"] + "\t" + insertionDict["endExonA"] + "\t" + insertionDict["chromExonB"] + "\t" + insertionDict["begExonB"] + "\t" + insertionDict["endExonB"] + "\n"
 
                         # Print insertion information into the output file
                         outFile.write(row)   
