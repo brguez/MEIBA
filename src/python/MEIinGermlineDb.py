@@ -147,12 +147,12 @@ germlineMEIDbObj.read_bed(germlineMEIBed)
 
 ## 3. For each MEI in the input VCF check if already included in the database
 
-VCFlineObjList = VCFObj.lineList
+for VCFlineObj in VCFObj.lineList:
 
-# Empty list of VCFline objects:
-VCFObj.lineList = []
-
-for VCFlineObj in VCFlineObjList:
+    # Skip repeat novelty annotation if pseudogene insertion or L1-mediated deletion. Repeat annotation only applicable to L1, Alu, SVA and ERVK? insertions
+    if (VCFlineObj.infoDict["TYPE"] == "PSD") or (VCFlineObj.infoDict["TYPE"] == "DEL"):
+        print "[WARNING] Skip repeat novelty annotation since " + VCFlineObj.infoDict["TYPE"] + " insertion"
+        continue
 
     info("Checking if " + VCFlineObj.chrom + ":" + str(VCFlineObj.pos) + " MEI is in 1000 genomes germline database..." )
 
@@ -196,8 +196,8 @@ for VCFlineObj in VCFlineObjList:
     # B) There are not MEI in the germline database in the same chromosome as the input MEI
     else:
         # Empty arrays
-	filteredArrBkpA = np.array([ ])
-        filteredArrBkpB = np.array([ ])
+	    filteredArrBkpA = np.array([])
+    filteredArrBkpB = np.array([])
 
     ## Make a single array containing a not redundant list of 1000 genomes MEI coordinates overlapping the first and/or second insertion breakpoints.
     filteredArr = np.array(np.unique(np.concatenate((filteredArrBkpA, filteredArrBkpB), axis=0)), dtype='int')
@@ -215,11 +215,9 @@ for VCFlineObj in VCFlineObjList:
     else:
         print 'not'
 
-    ## Add updated VCFline object to the list in VCF object
-    VCFObj.addLine(VCFlineObj)
+
 
 ## 4. Make output VCF
-
 outFilePath = outDir + '/' + sampleId + ".germlineDbAnnot.vcf"
 
 # 4.1 Write header

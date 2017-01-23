@@ -96,8 +96,12 @@ for line in repeatAnnotFile:
 
 
 ## 3. Add repeat annotation to VCF file
-
 for VCFlineObj in VCFObj.lineList:
+
+    # Skip repeat annotation if pseudogene insertion. Repeat annotation only applicable to L1, Alu, SVA and ERVK? insertions
+    if (VCFlineObj.infoDict["TYPE"] == "PSD") or (VCFlineObj.infoDict["TYPE"] == "DEL"):
+        print "[WARNING] Skip repeat annotation since " + VCFlineObj.infoDict["TYPE"] + " insertion"
+        continue
 
     # A) Target site identified
     if ( VCFlineObj.infoDict["SCORE"] == "5"):

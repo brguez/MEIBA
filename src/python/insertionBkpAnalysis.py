@@ -415,8 +415,7 @@ class insertion():
             self.srcCoord = transductionInfoList[0] + "_" + transductionInfoList[1] + "_" + transductionInfoList[2]
             self.psdGene = "UNK"
 
-
-            status = self.srcElement.split("_")[1]
+            status = self.srcElement.split("_")[3]
 
             print "test_status: ", status
 
@@ -431,7 +430,6 @@ class insertion():
                 self.tdLenRna = transductionInfoList[3]                
                 self.tdLen = transductionInfoList[4]
                 
-
         # C) pseudogene insertion (PSD)
         elif (self.tdType == "PSD"):
             self.tdLen = "UNK"

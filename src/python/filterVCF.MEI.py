@@ -67,16 +67,23 @@ for VCFlineObj in VCFObj.lineList:
     ## 2.1 Apply score filter:
     # score < minScore_threshold -> filter out
 
-    # A) L1, Alu or SVA insertion
-    if (VCFlineObj.infoDict["CLASS"] != "ERVK") and (int(VCFlineObj.infoDict["SCORE"]) < minScore):
+    # A) Pseudogene insertion do not passing the score filter
+    if (VCFlineObj.infoDict["TYPE"] == "PSD") and (int(VCFlineObj.infoDict["SCORE"]) < minScore):
         VCFlineObj.filter = "SCORE"
+       
+    # B) TD0, TD1 or TD2 
+    elif (VCFlineObj.infoDict["TYPE"] == "TD0") or (VCFlineObj.infoDict["TYPE"] == "TD1") or (VCFlineObj.infoDict["TYPE"] == "TD2"):
+    
+        # a) L1, Alu or SVA insertion do not passing the score filter
+        if (VCFlineObj.infoDict["CLASS"] != "ERVK") and (int(VCFlineObj.infoDict["SCORE"]) < minScore):
+            VCFlineObj.filter = "SCORE"
 
-    # B) ERVK insertion
-    elif (VCFlineObj.infoDict["CLASS"] == "ERVK") and (int(VCFlineObj.infoDict["SCORE"]) < minScoreERVK):
-        VCFlineObj.filter = "SCORE"
+        # b) ERVK insertion do not passing the score filter
+        elif (VCFlineObj.infoDict["CLASS"] == "ERVK") and (int(VCFlineObj.infoDict["SCORE"]) < minScoreERVK):
+            VCFlineObj.filter = "SCORE"
 
     ## 2.2 Repeats filter:
-    # Filter out those MEI that overlap a repetitive element
+    # Filter out those MEI (solo insertions and transductions) that overlap a repetitive element
     # Plus at least one of these two conditions:
     # 1. Insertion overlapping a repetitive element of the same class with a millidivergence < maxDiv_threshold. Notes:
     #    - Millidivergence is a measure of the degree betweene a given repetitive element and a consensus reference sequence.
@@ -86,8 +93,8 @@ for VCFlineObj in VCFObj.lineList:
     #     ,in last term, false positive MEI calls
     # 2. Insertion overlapping one of the possible satellite regions in the database (ALR/Alpha, BSR/Beta, HSATII)
 
-    # MEI overlaps a repetitive element
-    if ('REP' in VCFlineObj.infoDict):
+    # MEI is a solo or a transduction and overlaps a repetitive element 
+    if ((VCFlineObj.infoDict["TYPE"] == "TD0") or (VCFlineObj.infoDict["TYPE"] == "TD1") or (VCFlineObj.infoDict["TYPE"] == "TD2")) and ('REP' in VCFlineObj.infoDict):
 
         ## Condition 1 or 2 fulfilled:
         if ((VCFlineObj.infoDict["CLASS"] == VCFlineObj.infoDict["REP"]) and (int(VCFlineObj.infoDict["DIV"]) < maxDiv)) or ((VCFlineObj.infoDict["REP"] == "ALR/Alpha") or (VCFlineObj.infoDict["REP"] == "BSR/Beta") or (VCFlineObj.infoDict["REP"] == "HSATII")):

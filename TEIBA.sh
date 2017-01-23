@@ -666,7 +666,7 @@ insertionListInfo=$bkpAnalysisDir/insertionList_plusInfo.txt
 awk -v OFS='\t' -v fileRef=$insertions -f $ADD_INFO $insertionList > $insertionListInfo
 
 # Remove intermediate files:
-# rm $insertionListInfo
+rm $insertionListInfo
 
 ## 4.3 Prepare input file for insertion breakpoint analysis
 # Output:
@@ -685,7 +685,7 @@ do
 done
 
 # Remove intermediate files:
-#rm $insertionListSupReads
+rm $insertionListSupReads
 
 ## 4.3 Perform breakpoint analysis
 # Output:
