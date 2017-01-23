@@ -160,31 +160,27 @@ for projectCode in cohortObj.VCFdict:
     for VCFObj in cohortObj.VCFdict[projectCode]:
 
         nbInsertions = int(len(VCFObj.lineList))
-        print "nbInsertions: ", nbInsertions
-
+       
         ## a) None:
         if (nbInsertions == 0):
-            print "None"
             categoryCountsDict[projectCode]["None"] += 1
+
         ## b) Low:
         elif (nbInsertions > 0) and (nbInsertions <= 10):
-            print "Low"
             categoryCountsDict[projectCode]["Low"] += 1
 
         ## c) Moderate
         elif (nbInsertions > 10) and (nbInsertions <= 100):
-            print "Moderate"
             categoryCountsDict[projectCode]["Moderate"] += 1
 
         ## d) High
         elif (nbInsertions > 100) and (nbInsertions <= 500):
-            print "High"
             categoryCountsDict[projectCode]["High"] += 1                
 
         ## e) Very-high  
         elif (nbInsertions > 500):
-            print "Very-high"
             categoryCountsDict[projectCode]["Very-high"] += 1
+
         ## d) Error
         else:
             print "ERROR..."
@@ -312,7 +308,7 @@ circle5 = mpatches.Circle((0, 0), 5, color='#ff0000', alpha=0.90)
 l = plt.figlegend((circle1, circle2, circle3, circle4, circle5), ('0', '[1-10]', '(10-100]', '(100-500]', '>500'), loc = 'center', ncol=2, labelspacing=0.75, title="Number of retrotransposition events", fontsize=11, fancybox=True, bbox_to_anchor=(0.75, 0.75))
 
 ## Save figure
-fileName = outDir + "/PCAWG_retrotranspositionRates_barPlot2.pdf"
+fileName = outDir + "/PCAWG_retrotranspositionRates_barPlot.pdf"
 
 plt.savefig(fileName)
 
