@@ -36,7 +36,7 @@ print "..."
 print
 
 
-### 0) Make list with chromosome ids. 
+### 0) Make list with chromosome ids.
 chrIdsList = []
 
 genome = open(genome, 'r')
@@ -50,7 +50,7 @@ for line in genome:
 
         # drop the info
         chrom = header.split(" ")[0]
-        
+
         # Add chromosome to the list
         chrIdsList.append(chrom)
 
@@ -104,76 +104,76 @@ supportingReadsDict = {}
 ## Read insertions file line by line
 for line in insertions:
 
-    ## Filter out the header line
-    if not line.startswith("#"):
-
-        line = line.rstrip('\n')
-        fieldsList = line.split("\t")
-
-        ## Line with the expected number of columns
-        if (int(len(fieldsList)) == 21):
-
-            chrPlus = fieldsList[0]
-            begPlus = fieldsList[1]
-            endPlus = int(fieldsList[2]) + 100 # Done because this coordinate is the beginning of the read. So, I need to sum the readlength. I need to add an input parameter to specify the read length.
-            nbReadsPlus = fieldsList[3]
-            familyPlus = fieldsList[4]
-            readPairListPlus = fieldsList[5].split(",")
-            chrMinus = fieldsList[6]
-            begMinus = fieldsList[7]
-            endMinus = fieldsList[8]
-            nbReadsMinus = fieldsList[9]
-            familyMinus = fieldsList[10]
-            readPairListMinus = fieldsList[11].split(",")
-            insertionType = fieldsList[12]
-
-            ### Do more input sanity checks...
-            ## A) Insertion in a chromosome not included in the provided reference genome
-            if (chrPlus not in chrIdsList) or (chrMinus not in chrIdsList):        
-                print >>sys.stderr, "[ERROR] Filtering out an insertion in a chromosome not included in the provided reference genome: ", line
+    # ignore comment lines (e.g. header)
+    if line.startswith('#'):
+        continue
         
-            ## B) Insertion with inconsistent number of supporting reads. Number does not match with readId list length
-            elif (int(nbReadsPlus) != len(readPairListPlus)) or (int(nbReadsMinus) != len(readPairListMinus)):
-                print >>sys.stderr, "[ERROR] Filtering out an insertion with inconsistent number of supporting reads. Number does not match with read identifier list length: ", line
+    line = line.rstrip('\n')
+    fieldsList = line.split("\t")
 
-            ## C) Insertion with everything ok
-            else:
-                ## Rename "Other" family insertions as SVA
-                # Plus
-                if (familyPlus == "Other"):
-                    familyPlus = "SVA"
+    ## A) Line with expected number of columns
+    if (int(len(fieldsList)) == 28):
+        chrPlus = fieldsList[0]
+        begPlus = fieldsList[1]
+        endPlus = int(fieldsList[2]) + 100 # Done because this coordinate is the beginning of the read. So, I need to sum the readlength. I need to add an input parameter to specify the read length.
+        nbReadsPlus = fieldsList[3]
+        familyPlus = fieldsList[4]
+        readPairListPlus = fieldsList[5].split(",")
+        chrMinus = fieldsList[6]
+        begMinus = fieldsList[7]
+        endMinus = fieldsList[8]
+        nbReadsMinus = fieldsList[9]
+        familyMinus = fieldsList[10]
+        readPairListMinus = fieldsList[11].split(",")
+        insertionType = fieldsList[12]
 
-                # Minus
-                if (familyMinus == "Other"):
-                    familyMinus = "SVA"
+        ### Do more input sanity checks...
+        ## A) Insertion in a chromosome not included in the provided reference genome
+        if (chrPlus not in chrIdsList) or (chrMinus not in chrIdsList):
+            print >>sys.stderr, "[ERROR] Filtering out an insertion in a chromosome not included in the provided reference genome: ", line
 
-                ## Generate an insertion id for + and - clusters (insertion coordinates defined by the end
-                # of + cluster and beg of - cluster)
-                insertionIdPlus = familyPlus + ":" + insertionType + ":" + chrPlus + "_" + str(endPlus) + "_" + begMinus + ":" + "+"
-                insertionIdMinus = familyMinus + ":" + insertionType + ":" + chrMinus + "_" + str(endPlus) + "_" + begMinus + ":" + "-"
+        ## B) Insertion with inconsistent number of supporting reads. Number does not match with readId list length
+        elif (int(nbReadsPlus) != len(readPairListPlus)) or (int(nbReadsMinus) != len(readPairListMinus)):
+            print >>sys.stderr, "[ERROR] Filtering out an insertion with inconsistent number of supporting reads. Number does not match with read identifier list length: ", line
 
-                ## Inizialize dictionary keys for + and - clusters if they do not exist
-                # a) + Cluster
-                if insertionIdPlus not in supportingReadsDict:
-                    supportingReadsDict[insertionIdPlus] = {}
-
-                # b) - Cluster
-                if insertionIdMinus not in supportingReadsDict:
-                    supportingReadsDict[insertionIdMinus] = {}
-
-                ## Add the list with mate 1 and mate 2 sequences as value for + and - clusters:
-                # a) + Cluster
-                for pairId in readPairListPlus:
-                    supportingReadsDict[insertionIdPlus][pairId] = fastaDict[pairId]
-    
-                # b) - Cluster
-                for pairId in readPairListMinus:
-                    supportingReadsDict[insertionIdMinus][pairId] = fastaDict[pairId]
-
-
-        ## Line without the expected number of columns            
+        ## C) Insertion with everything ok
         else:
-            print >>sys.stderr, "[ERROR] Filtering out an insertion with unexpected number of columns: ", line
+            ## Rename "Other" family insertions as SVA
+            # Plus
+            if (familyPlus == "Other"):
+                familyPlus = "SVA"
+
+            # Minus
+            if (familyMinus == "Other"):
+                familyMinus = "SVA"
+
+            ## Generate an insertion id for + and - clusters (insertion coordinates defined by the end
+            # of + cluster and beg of - cluster)
+            insertionIdPlus = familyPlus + ":" + insertionType + ":" + chrPlus + "_" + str(endPlus) + "_" + begMinus + ":" + "+"
+            insertionIdMinus = familyMinus + ":" + insertionType + ":" + chrMinus + "_" + str(endPlus) + "_" + begMinus + ":" + "-"
+
+            ## Inizialize dictionary keys for + and - clusters if they do not exist
+            # a) + Cluster
+            if insertionIdPlus not in supportingReadsDict:
+                supportingReadsDict[insertionIdPlus] = {}
+
+            # b) - Cluster
+            if insertionIdMinus not in supportingReadsDict:
+                supportingReadsDict[insertionIdMinus] = {}
+
+            ## Add the list with mate 1 and mate 2 sequences as value for + and - clusters:
+            # a) + Cluster
+            for pairId in readPairListPlus:
+                supportingReadsDict[insertionIdPlus][pairId] = fastaDict[pairId]
+    
+            # b) - Cluster
+            for pairId in readPairListMinus:
+                supportingReadsDict[insertionIdMinus][pairId] = fastaDict[pairId]
+
+
+    ## Line without the expected number of columns            
+    else:
+        print >>sys.stderr, "[ERROR] Filtering out an insertion with unexpected number of columns: ", line
     
     
 ### 3) Generate a fasta per insertion and cluster containing the

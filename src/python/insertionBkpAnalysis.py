@@ -7,6 +7,7 @@ import time
 import sys
 from itertools import groupby
 import os.path
+import re
 
 #### FUNCTIONS ####
 
@@ -215,8 +216,7 @@ class VCF():
 ##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the transduced region in the format: chrom_beg_end">
 ##INFO=<ID=TDLEN,Number=1,Type=String,Description="Transduced region length">
 ##INFO=<ID=TDLENR,Number=1,Type=String,Description="Transduced region length at RNA level">
-##INFO=<ID=TDLENR,Number=1,Type=String,Description="Transduced region length at RNA level">
-##INFO=<ID=PSDGENE,Number=1,Type=String,Description="Parent gene of the somatically adquired processed pseudogene">
+##INFO=<ID=PSDGENE,Number=1,Type=String,Description="Source gene of the processed pseudogene insertion">
 ##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1KGENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), TRAFIC: TraFic in-house database)">
 ##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the transposable element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
 ##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
@@ -307,7 +307,7 @@ class VCFline():
         """
 
         ## Create list containing the order of info fields
-        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "SRC", "TDC", "TDLEN", "TDLENR", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "MEISEQ", "CONTIGA", "CONTIGB", "RP", "RN" ]
+        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "SRC", "TDC", "TDLEN", "TDLENR", "PSDGENE", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "MEISEQ", "CONTIGA", "CONTIGB", "RP", "RN" ]
 
         ## Build dictionary with info tags as keys
         infoDict = {}
@@ -324,14 +324,20 @@ class VCFline():
         infoDict["TSSEQ"] = insertionObj.targetSiteSeq
         infoDict["POLYA"] = insertionObj.polyA
         infoDict["SRC"] = insertionObj.srcElement
-        infoDict["TDC"] = insertionObj.tdCoord
+        infoDict["TDC"] = insertionObj.srcCoord
         infoDict["TDLEN"] = insertionObj.tdLen
         infoDict["TDLENR"] = insertionObj.tdLenRna
+        infoDict["PSDGENE"] = insertionObj.psdGene
         infoDict["MEISEQ"] = insertionObj.MEISeq
         infoDict["CONTIGA"] = insertionObj.informativeContigBkpA
         infoDict["CONTIGB"] = insertionObj.informativeContigBkpB
         infoDict["RP"] = insertionObj.clusterPlusObj.readPairIds
         infoDict["RN"] = insertionObj.clusterMinusObj.readPairIds
+
+        # handle specifics of pseudogene insertions
+        if (insertionObj.tdType == "PSD"):
+            infoDict["TDC"] = "UNK"
+            infoDict["MEISEQ"] = "UNK"
 
         ## Create info string in the correct order from dictionary
         infoList = []
@@ -366,13 +372,13 @@ class insertion():
     - imprecise_bkp
     """
 
-    def __init__(self, family, tdType, coordinates, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo):
+    def __init__(self, family, tdType, coordinates, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo, pseudogeneInfo):
         """
             Initialize insertion object.
 
             Input:
             1) family. TE family (L1, Alu, SVA or ERVK)
-            2) tdType. Insertion type:  td0 (solo-insertion), td1 (partnered-transduccion) and td2 (orphan-transduction).
+            2) tdType. Insertion type:  td0 (solo-insertion), td1 (partnered-transduccion), td2 (orphan-transduction) or psd (pseudogene insertion).
             3) coordinates. TraFiC insertion range.
             4) contigsPlusPath. Fasta file containing the assembled contigs for the positive cluster.
             5) blatPlusPath. psl file containing the blat aligments for the positive cluster's assembled contigs.
@@ -381,7 +387,8 @@ class insertion():
             8) readPairsPlus. List of + cluster supporting reads.
             9) readPairsMinus. List of - cluster supporting reads.
             10) srcElement.
-            11) transductionInfo
+            11) transductionInfo.
+            12) pseudogeneInfo.
 
             Output:
             - Insertion object variables initialized
@@ -395,14 +402,19 @@ class insertion():
 
         # A) Solo insertion (TD0). Not applicable
         if (self.tdType == "TD0"):
-            self.tdCoord = "NA"
-            self.tdLenRna = "NA"            
+
+            self.srcCoord = "NA"
             self.tdLen = "NA"
-            
+            self.tdLenRna = "NA"
+            self.psdGene = "UNK"
+
         # B) Partnered or orphan transduction (TD1 and TD2)
-        else:
+        elif (self.tdType in ["TD1", "TD2"]):
+            
             transductionInfoList = transductionInfo.split("_")
-            self.tdCoord = transductionInfoList[0] + "_" + transductionInfoList[1] + "_" + transductionInfoList[2]
+            self.srcCoord = transductionInfoList[0] + "_" + transductionInfoList[1] + "_" + transductionInfoList[2]
+            self.psdGene = "UNK"
+
 
             status = self.srcElement.split("_")[1]
 
@@ -419,6 +431,30 @@ class insertion():
                 self.tdLenRna = transductionInfoList[3]                
                 self.tdLen = transductionInfoList[4]
                 
+
+        # C) pseudogene insertion (PSD)
+        elif (self.tdType == "PSD"):
+            self.tdLen = "UNK"
+            self.tdLenRna = "UNK"
+
+            # parse pseudogene info, format:
+            # gene:chrA_begA-endA:chrB_begB-begB
+            regex = r'(?P<gene>\w+):(?P<chrA>\w+)_(?P<begA>\d+)-(?P<endA>\d+):(?P<chrB>\w+)_(?P<begB>\d+)-(?P<endB>\d+)'
+            m = re.search(regex, pseudogeneInfo)
+            psdGene = m.group("gene")
+            chrExonA = m.group("chrA")
+            begExonA = int(m.group("begA"))
+            endExonA = int(m.group("endA"))
+            chrExonB = m.group("chrB")
+            begExonB = int(m.group("begB"))
+            endExonB = int(m.group("endB"))
+
+            self.psdGene = psdGene
+
+            # construct source region from exon coordinates
+            minBeg = min(begExonA, begExonB)
+            maxEnd = max(endExonA, endExonB)
+            self.srcCoord = "%s_%d_%d" % (chrExonA, minBeg, maxEnd)
 
         ## Unkown values by default:
         self.traficId = "UNK"
@@ -487,12 +523,12 @@ class insertion():
         ## Find informative contig for + cluster 
         subHeader("Searching informative contigs for + cluster")
 
-        bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj = self.clusterPlusObj.find_informative_contigs(self.coordinates, self.tdType, self.tdCoord)
+        bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj = self.clusterPlusObj.find_informative_contigs(self.coordinates, self.tdType, self.srcCoord)
 
         ## Find informative contig for - cluster
         subHeader("Searching informative contigs for - cluster")
 
-        bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj = self.clusterMinusObj.find_informative_contigs(self.coordinates, self.tdType, self.tdCoord)
+        bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj = self.clusterMinusObj.find_informative_contigs(self.coordinates, self.tdType, self.srcCoord)
 
         ### Determine insertion breakpoints, TS and TE orientation from informative contigs 
         subHeader("Determining insertion breakpoint, TS and TE orientation from informative contigs")
@@ -677,12 +713,13 @@ class insertion():
                     # TE insertion orientation
                     self.orientation = self.insertion_orientation_polyA(informative5primeContigObj, informative3primeContigObj)
 
-                    # TE insertion structure
-                    self.structure, self.length, self.percLength = self.insertion_structure(informative5primeContigObj)
+                    if (self.tdType != "PSD"):
+                        # TE insertion structure
+                        self.structure, self.length, self.percLength = self.insertion_structure(informative5primeContigObj)
                 else:
                     # TE insertion orientation
                     self.orientation = self.insertion_orientation_ERVK(informative5primeContigObj, informative3primeContigObj)
-                    self.structure = "UNK"
+                    #self.structure = "UNK"
 
                 # Inconsistent orientation:
                 if (self.orientation == "inconsistent"):
@@ -1228,7 +1265,7 @@ class cluster():
             alignmentList = alignmentsDict[contigId]
             self.contigsDict[contigId].alignList = alignmentList
 
-    def find_informative_contigs(self, insertionCoord, tdType, tdCoord):
+    def find_informative_contigs(self, insertionCoord, tdType, srcCoord):
         """
             Identify 5' and 3' informative contig belonging to the cluster. Informative 5' and 3' contigs span 5' and 3' insertion breakpoints, respectively.
 
@@ -1236,7 +1273,7 @@ class cluster():
             1) insertionCoord. Region of interest. Format: ${chrom}_${beg}_${end}.
                                Example: 10_108820680_108820678.
             2) tdType. Type of transduction event ("TD0": solo, "TD1": partnered, "TD2": orphan)
-            3) tdCoord. Transduced region (relevant only for TD2 events)
+            3) srcCoord. Mobilized region (relevant for TD2 and PSD events)
 
             Output:
             1) bestInformative5primeContigObj. Best 5' Informative contig object. 'na' if not found
@@ -1267,7 +1304,7 @@ class cluster():
             contigObj.cluster = self.ID
 
             # Check if it is an informative contig
-            informative = contigObj.is_informative(insertionCoord, tdType, tdCoord)
+            informative = contigObj.is_informative(insertionCoord, tdType, srcCoord)
 
             # A) Informative contig
             if (informative ==  1):
@@ -1443,7 +1480,7 @@ class contig():
         return (candidate, supportingAlignList)
 
 
-    def is_informative(self, insertionCoord, tdType, tdCoord):
+    def is_informative(self, insertionCoord, tdType, srcCoord):
         """
         Check if candidate contig is 5' or 3' informative. Defined as contigs spanning
         5' or 3' insertion breakpoints:
@@ -1455,8 +1492,12 @@ class contig():
         Input:
             1) insertionCoord. Region of interest. Format: ${chrom}_${beg}_${end}.
                                Example: 10_108820680_108820678.
-            2) tdType. Type of transduction event ("TD0": solo, "TD1": partnered, "TD2": orphan)
-            3) tdCoord. Transduced region (relevant only for TD2 events)
+            2) tdType. Type of transduction event
+                       ("TD0": solo,
+                        "TD1": partnered,
+                        "TD2": orphan,
+                        "PSD": pseudogene insertion)
+            3) srcCoord. Mobilized region (relevant for TD2 and PSD events)
 
         Output:
             1) informativeBoolean. Boolean, 1 (informative) and 0 (not informative)
@@ -1495,7 +1536,7 @@ class contig():
             for alignObj in supportingAlignList:
 
                 ## Check if alignment support the contig as informative 5'
-                is5prime, bkpCoord, srcAlignmentObj, MEISeq = self.is_5prime_informative(alignObj, tdType, tdCoord)
+                is5prime, bkpCoord, srcAlignmentObj, MEISeq = self.is_5prime_informative(alignObj, tdType, srcCoord)
 
                 # Contig informative 5-prime, it has TE sequence
                 if (is5prime == 1):
@@ -1702,7 +1743,7 @@ class contig():
 
         return polyASeq
 
-    def is_5prime_informative(self, alignObj, tdType, tdCoord):
+    def is_5prime_informative(self, alignObj, tdType, srcCoord):
         """
         Check if candidate contig is 5' informative. Defined as contigs spanning
         source element (TE or transduced seq.) - insertion target region breakpoint:
@@ -1712,8 +1753,12 @@ class contig():
 
         Input:
         1) alignObj. Blat alignment object.
-        2) tdType. Type of transduction event ("TD0": solo, "TD1": partnered, "TD2": orphan)
-        3) tdCoord. Transduced region (relevant only for TD2 events)
+        2) tdType. Type of transduction event
+                   ("TD0": solo,
+                    "TD1": partnered,
+                    "TD2": orphan,
+                    "PSD": pseudogene insertion)
+        3) srcCoord. mobilized region (relevant for TD2 and PSD events)
 
         Output:
         1) is5prime. Boolean, 1 (5' informative) and 0 (not 5' informative).
@@ -1790,8 +1835,8 @@ class contig():
             #   TD1 (partnered TD)   : consensus MEI sequence
             #   TD2 (orphan TD)      : transduced region downstream of TE
             has_expected_target = (
-              ( (tdType != "TD2") and (alignment.tName in targetMEIs) ) or
-              ( (tdType == "TD2") and (alignment.in_target_region(tdCoord, 1000)) )
+              ( (tdType not in ["TD2", "PSD"]) and (alignment.tName in targetMEIs) ) or
+              ( (tdType in ["TD2", "PSD"]) and (alignment.in_target_region(srcCoord, 1000)) )
             )
 
             # Contig alignment in TE sequence (L1, Alu, SVA or ERVK) or transduced region
@@ -2128,6 +2173,7 @@ if __name__ == "__main__":
         readPairsMinus = line[4]
         srcElement = line[5]
         transductionInfo = line[6]
+        pseudogeneInfo = line[7]
 
         # Perform breakpoint analysis for the TE insertion
         header("Tranposable Element Insertion Breakpoint Analysis (TEIBA) for: " + insertionCoord)
@@ -2136,7 +2182,7 @@ if __name__ == "__main__":
         if os.path.isfile(contigsPlusPath) and os.path.isfile(blatPlusPath) and os.path.isfile(contigsMinusPath) and os.path.isfile(blatMinusPath):
 
             ## Create insertion object and identify breakpoints from assembled contigs
-            insertionObj = insertion(TEClass, tdType, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo)
+            insertionObj = insertion(TEClass, tdType, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo, pseudogeneInfo)
             insertionObj.find_insertionBkp(genomeObj, outDir)
 
             ## Create VCFline object
