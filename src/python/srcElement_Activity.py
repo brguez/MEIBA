@@ -18,6 +18,37 @@ def activityStatus(row):
     return status
 
 
+def activityStatus2(row):
+    """
+    Classify source element according its activity rate in one of these categories:
+
+    Activity ranges:
+        - none: 0
+        - low: (0-3]
+        - moderate: (3-9]
+        - hot: >9
+    """
+
+    # a) None: 0
+    if (row['activityRate'] == 0):
+        status = "none"        
+    
+    # b) Low: (0-3] 
+    elif (row['activityRate'] > 0) and (row['activityRate'] <= 3):
+        status = "low"
+
+    # c) Moderate: (3-9]
+    elif (row['activityRate'] > 3) and (row['activityRate'] <= 9):
+        status = "moderate"
+    
+    # d) Hot: >9
+    else:
+        status = "hot"  
+    
+
+     # Moderate/Hot activity, "moderate/hot"
+    return status
+
 #### MAIN ####
 
 ## Import modules ##
@@ -159,20 +190,25 @@ plt.savefig(fileName)
 # Prepare Data
 ###############
 ## Classify source elements as none/low or moderate/hot activity
+dfActivityRate2 = dfActivityRate # temporal
+
 dfActivityRate['activityStatus'] = dfActivityRate.apply(activityStatus, axis=1)
 
-# print "activityRate-and-status: ", dfActivityRate
+dfActivityRate2['activityStatus'] = dfActivityRate2.apply(activityStatus2, axis=1)
+print "activityRate-and-status: ", dfActivityRate2
 
 ## Write classified elements into an output table:
-
 dfActivityStatus = dfActivityRate["activityStatus"]
 
 # Save output into tsv
 outFilePath = outDir + '/germline_source_element_activityGroup.tsv'
 dfActivityStatus.to_csv(outFilePath, sep='\t') 
 
-## Make statistical test
+outFilePath = outDir + '/sourceIdNew_alleleCount_VAF_activityRate_activityStatus.tsv'
 
+dfActivityRate2.to_csv(outFilePath, sep='\t') 
+
+## Make statistical test
 x = dfActivityRate[(dfActivityRate['activityStatus']=="none/low")]["VAF"].values
 y = dfActivityRate[(dfActivityRate['activityStatus']=="moderate/hot")]["VAF"].values
 
