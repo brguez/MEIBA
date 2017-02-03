@@ -794,7 +794,10 @@ class insertion():
 
     def target_site(self, informative5primeContigObj, informative3primeContigObj):
         """
-            Determine Target Site Duplication (TSD).
+            Determine Target Site Duplication (TSD) (or microdeletion??).
+
+
+            *** Target Site Duplication *** 
 
             + strand)
 
@@ -809,6 +812,22 @@ class insertion():
                        bkp5' --------------------
                              <-------->
                              TSD (7bp)
+
+
+            *** ¿Target Site deletion? ***
+
+            + strand)
+
+            --------------------------- bkp5'
+                                                                bkp3' --------------------
+                                            <------------------>
+                                              deletion (10bp)
+            - strand)
+
+            --------------------------- bkp3'
+                                                                bkp5' --------------------
+                                           <------------------>
+                                              deletion (10bp)
 
             Input:
             1) informative5primeContigObj.
