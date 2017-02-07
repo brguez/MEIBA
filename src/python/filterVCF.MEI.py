@@ -172,8 +172,8 @@ def findDuplicates(MEIList):
     """
     
     ### Make list with the identifier of the duplicated MEI
-    # Identifier in the format
-    # sourceElementId = MEIObj.chrom + ':' + str(MEIObj.pos) + '-' + str(end)    
+    # Identifier in the format:
+    # MEIid = chrom + '_' + pos + '_' + type + '_' + genotype        
     dupList = []
     
     ### Cluster MEI
@@ -184,134 +184,236 @@ def findDuplicates(MEIList):
         
         nbMEI = len(cluster.MEIlist)
 
-        ## A) Select clusters composed by more than 1 MEI
+        ## Select clusters composed by more than 1 MEI
         if (nbMEI > 1):
-                  
-            MEI1 = cluster.MEIlist[0]
-            MEI2 = cluster.MEIlist[1]
+                          
+            typeList = [MEI.infoDict["TYPE"] for MEI in cluster.MEIlist]
+            
+            print "typeList: ", typeList
+
+            ## A) All the MEI in the cluster with the same insertion type (there can be 1 to N insertions; N can be infinite)
+            if len(set(typeList)) == 1:
+                                
+                msg = "Cluster composed by " + str(nbMEI) + " MEI of the same insertion type"  
+                log("FIND-DUP", msg)   
+                
+                scoreList = [MEI.infoDict["SCORE"] for MEI in cluster.MEIlist]
+            
+                print "scoreList: ", scoreList
+
+                
+                #### Select those MEI with the highest score and
+                # include the others in the duplicates list
+                maxScore = 0
+                maxScoreList = []
+
+                for MEI in cluster.MEIlist:
+                    
+                    score = int(MEI.infoDict["SCORE"])
+                    
+                    # a) Insertion with higher score than the maximum
+                    if (score > maxScore):
+                        maxScore = score
+                        
+                        # As the MEI in the maximum score list do not have the maximum score anymore consider them as duplicates 
+                        for maxMEI in maxScoreList:
+                            MEIid = maxMEI .chrom + '_' + str(maxMEI .pos) + '_' + maxMEI .infoDict["TYPE"] + '_' + maxMEI .genotype
+                            dupList.append(MEIid)
+
+                        # Re-initialize the maximum score list
+                        maxScoreList = [ MEI ]
+                        
+                    # b) Insertion with an score equal to the maximum                    
+                    elif (score == maxScore):
+                        maxScoreList.append(MEI)
+
+                    # c) Insertion with an score lower than the maximum                    
+                    else:
+                        MEIid = MEI.chrom + '_' + str(MEI.pos) + '_' + MEI.infoDict["TYPE"] + '_' + MEI.genotype
+                        dupList.append(MEIid)
+            
+                print "maxScoreList: ", maxScoreList
+                print "dupList: ", dupList
+                
+                #### If several possible MEI with the highest score -> select the one with the highest number of supporting reads 
+                if (len(maxScoreList) > 1):
+                    msg = str(len(maxScoreList)) + " MEI with the highest score. Select the one with more supporting reads"  
+                    log("FIND-DUP", msg) 
+                                                     
+                    maxRC = 0
+                    maxRCList = []
+
+                    for MEI in maxScoreList:
+                    
+                        RCP, RCN = MEI.genotype.split(":")                    
+                        RC = int(RCP) + int(RCN)
+
+                        print MEI.chrom + '_' + str(MEI.pos) + '_' + MEI.infoDict["TYPE"] + '_' + MEI.genotype + ' ' + str(RC)
+
+                        # a) Insertion with higher read count (RC) than the maximum
+                        if (RC > maxRC):
+                            maxRC = RC
+                        
+                            # As the MEI in the maximum RC list do not have the maximum RC anymore consider them as duplicates 
+                            for maxMEI in maxRCList:
+                                MEIid = maxMEI .chrom + '_' + str(maxMEI .pos) + '_' + maxMEI .infoDict["TYPE"] + '_' + maxMEI .genotype
+                                dupList.append(MEIid)
+
+                            # Re-initialize the maximum RC list
+                            maxRCList = [ MEI ]
+                        
+                        # b) Insertion with a RC equal to the maximum                    
+                        elif (RC == maxRC):
+                            maxRCList.append(MEI)
+
+                        # c) Insertion with a RC lower than the maximum                    
+                        else:
+                            MEIid = MEI.chrom + '_' + str(MEI.pos) + '_' + MEI.infoDict["TYPE"] + '_' + MEI.genotype
+                            dupList.append(MEIid)
+                
+                    print "maxRCList: ", maxRCList
+                    print "dupList: ", dupList
+
+                    ## If still several possible MEI (really unlikely) raise a warning
+                    if (len(maxRCList) > 1):
+                        msg = "Warning - Several possible representative MEI (highest score and total read count)"
+                        log("FIND-DUP", msg)  
+          
+            ## B) 2 MEI with a different insertion type composing the cluster 
+            elif (nbMEI == 2):
+                
+                MEI1 = cluster.MEIlist[0]
+                MEI2 = cluster.MEIlist[1]
+                pos1 = MEI1.pos
+                pos2 = MEI2.pos
+                type1 = MEI1.infoDict["TYPE"] 
+                type2 = MEI2.infoDict["TYPE"] 
+                genotype1 = MEI1.genotype
+                genotype2 = MEI2.genotype
     
-            pos1 = MEI1.pos
-            pos2 = MEI2.pos
-            type1 = MEI1.infoDict["TYPE"] 
-            type2 = MEI2.infoDict["TYPE"] 
-
-            ## 2 MEI composing the cluster 
-            if (nbMEI == 2):
-
                 msg = "Cluster composed by 2 MEI: " + str(nbMEI) + " " + MEI1.chrom + " " + str(pos1) + " " +  str(pos2) + " " + type1 + " " + type2
-                log("FIND-DUP", msg)                
-                typeList = [type1, type2]
+                log("FIND-DUP", msg)             
 
                 ## a) TD0/TD1. Select td1 (Most common duplication type)
-                if all(i in [ 'TD0', 'TD1' ] for i in typeList):
+                if set([ 'TD0', 'TD1' ]) == set(typeList):
                     
-                    print "***** TD0/TD1"
+                    msg = "TD0/TD1 combination"
+                    log("FIND-DUP", msg)
 
                     ## First MEI is not TD1    
                     if (type1 != 'TD1'):
-                        MEIid = MEI1.chrom + ':' + str(MEI1.pos) + ':' + type1
+                        MEIid = MEI1.chrom + '_' + str(MEI1.pos) + '_' + type1 + '_' + genotype1 
                         
                     ## Second MEI is not TD1
                     else:
-                        MEIid = MEI2.chrom + ':' + str(MEI2.pos) + ':' + type2
+                        MEIid = MEI2.chrom + '_' + str(MEI2.pos) + '_' + type2 + '_' + genotype2
 
                     msg = "MEI flagged as duplicate: " + MEIid
                     log("FIND-DUP", msg)
+
+                    # Add the duplicated MEI to the list
                     dupList.append(MEIid)
                      
                 ## b) TD0/TD2. Select td2
-                elif all(i in [ 'TD0', 'TD2' ] for i in typeList):
-                    
-                    print "******** TD0/TD2"
+                elif set([ 'TD0', 'TD2' ]) == set(typeList):
+
+                    msg = "TD0/TD2 combination"
+                    log("FIND-DUP", msg)
 
                     ## First MEI is not TD2        
                     if (type1 != 'TD2'):
-                        MEIid = MEI1.chrom + ':' + str(MEI1.pos) + ':' + type1
+                        MEIid = MEI1.chrom + '_' + str(MEI1.pos) + '_' + type1 + '_' + genotype1 
                         
                     ## Second MEI is not TD2
                     else:
-                        MEIid = MEI2.chrom + ':' + str(MEI2.pos) + ':' + type2
+                        MEIid = MEI2.chrom + '_' + str(MEI2.pos) + '_' + type2 + '_' + genotype2
 
                     msg = "MEI flagged as duplicate: " + MEIid
                     log("FIND-DUP", msg)
+
+                    # Add the duplicated MEI to the list
                     dupList.append(MEIid)
 
                 ## c) TD1/TD2. Select td1  
-                elif all(i in [ 'TD1', 'TD2' ] for i in typeList):
+                elif set([ 'TD1', 'TD2' ]) == set(typeList):
 
-                    print "******** TD1/TD2"
-            
+                    msg = "TD1/TD2 combination"
+                    log("FIND-DUP", msg)
+
                     ## First MEI is not TD1   
                     if (type1 != 'TD1'):
-                        MEIid = MEI1.chrom + ':' + str(MEI1.pos) + ':' + type1
+                        MEIid = MEI1.chrom + '_' + str(MEI1.pos) + '_' + type1 + '_' + genotype1 
                         
                     ## Second MEI is not TD1
                     else:
-                        MEIid = MEI2.chrom + ':' + str(MEI2.pos) + ':' + type2
+                        MEIid = MEI2.chrom + '_' + str(MEI2.pos) + '_' + type2 + '_' + genotype2
 
                     msg = "MEI flagged as duplicate: " + MEIid
                     log("FIND-DUP", msg)
+
+                    # Add the duplicated MEI to the list
                     dupList.append(MEIid)
                 
-                ## d) Unexpected combination
+                ## d) 2 elements with unexpected combination of types
                 else:
-                    msg = "Warning - unexpected combination of types"
+                    msg = "Warning - 2 elements with unexpected combination of types"
                     log("FIND-DUP", msg)                    
                 
                 print "dupList: ", dupList
 
-            ## 3 MEI composing the cluster
-            elif (nbMEI == 3):
+            
+            ## C) 3 MEI with a different insertion type composing the cluster (TD0/TD1/TD2)
+            elif set([ 'TD0', 'TD1', 'TD2' ]) == set(typeList):
 
+                msg = "TD0/TD1/TD2 combination"
+                log("FIND-DUP", msg)
+
+                MEI1 = cluster.MEIlist[0]
+                MEI2 = cluster.MEIlist[1]
                 MEI3 = cluster.MEIlist[2]
+                pos1 = MEI1.pos
+                pos2 = MEI2.pos
                 pos3 = MEI3.pos
+                type1 = MEI1.infoDict["TYPE"] 
+                type2 = MEI2.infoDict["TYPE"] 
                 type3 = MEI3.infoDict["TYPE"] 
-
+                genotype1 = MEI1.genotype
+                genotype2 = MEI2.genotype
+                genotype3 = MEI3.genotype       
+    
                 msg = "Cluster composed by 3 MEI: " + str(nbMEI) + " " + MEI1.chrom + " " + str(pos1) + " " +  str(pos2) + " " +  str(pos3)  + " " + type1 + " " + type2 + " " + type3
                 log("FIND-DUP", msg) 
                 
-                typeList = [type1, type2, type3]
-                
-                ## a) TD0/TD1/TD2. Select td1
-                if all(i in [ 'TD0', 'TD1', 'TD2' ] for i in typeList):
+                ## a) First MEI is TD1   
+                if (type1 == 'TD1'):
+                    MEIid2 = MEI2.chrom + '_' + str(MEI2.pos) + '_' + type2 + '_' + genotype2
+                    MEIid3 = MEI3.chrom + '_' + str(MEI3.pos) + '_' + type3 + '_' + genotype3
+                    MEIidList = [MEIid2, MEIid3]
+
+                ## b) Second MEI is TD1
+                elif (type2 == 'TD1'):                   
+                    MEIid1 = MEI1.chrom + '_' + str(MEI1.pos) + '_' + type1 + '_' + genotype1
+                    MEIid3 = MEI3.chrom + '_' + str(MEI3.pos) + '_' + type3 + '_' + genotype3
+                    MEIidList = [MEIid1, MEIid3]
                     
-                    print "******** TD0/TD1/TD2"
-                
-                    ## First MEI is TD1   
-                    if (type1 == 'TD1'):
-                        MEIid2 = MEI2.chrom + ':' + str(MEI2.pos) + ':' + type2
-                        MEIid3 = MEI3.chrom + ':' + str(MEI3.pos) + ':' + type3
-                        MEIidList = [MEIid2, MEIid3]
-
-                    ## Second MEI is TD1
-                    elif (type2 == 'TD1'):                   
-                        MEIid1 = MEI1.chrom + ':' + str(MEI1.pos) + ':' + type1
-                        MEIid3 = MEI3.chrom + ':' + str(MEI3.pos) + ':' + type3
-                        MEIidList = [MEIid1, MEIid3]
-                    
-                    ## Third MEI is TD1
-                    else:
-                        MEIid1 = MEI1.chrom + ':' + str(MEI1.pos) + ':' + type1
-                        MEIid2 = MEI2.chrom + ':' + str(MEI2.pos) + ':' + type2
-                        MEIidList = [MEIid1, MEIid2]
-
-                    msg = "2 MEI flagged as duplicate: " + str(MEIidList)
-                    log("FIND-DUP", msg)
-
-                    ## Add the two duplicated MEI to the list of duplicates
-                    dupList = dupList + MEIidList
-
-                ## b) Unexpected combination
+                ## c) Third MEI is TD1
                 else:
-                    msg = "Warning - unexpected combination of types"
-                    log("FIND-DUP", msg) 
+                    MEIid1 = MEI1.chrom + '_' + str(MEI1.pos) + '_' + type1 + '_' + genotype1 
+                    MEIid2 = MEI2.chrom + '_' + str(MEI2.pos) + '_' + type2 + '_' + genotype2
+                    MEIidList = [MEIid1, MEIid2]
 
-            ## 3 MEI composing the cluster
+                msg = "2 MEI flagged as duplicate: " + str(MEIidList)
+                log("FIND-DUP", msg)
+
+                ## Add the two duplicated MEI to the list of duplicates
+                dupList = dupList + MEIidList
+            
+            ## D) more than 2 elements with unexpected combination of types
             else:
-                msg = "Warning - more than 3 MEI composing the cluster"
+                msg = "Warning - more than 2 elements with unexpected combination of types"
                 log("FIND-DUP", msg) 
-                        
-        ## B) Cluster composed by a single MEI
+                                
+        ## Cluster composed by a single MEI
         else:
               msg = "Cluster composed by a single MEI: " + str(nbMEI)
               log("FIND-DUP", msg)   
@@ -376,7 +478,8 @@ def duplFilter(MEIObj, dupList):
     """    
     Filter out insertions included in the duplicate insertions list
     """
-    MEIid = MEIObj.chrom + ':' + str(MEIObj.pos) + ':' + MEIObj.infoDict["TYPE"]    
+    MEIid = MEIObj.chrom + '_' + str(MEIObj.pos) + '_' + MEIObj.infoDict["TYPE"] + '_' + MEIObj.genotype 
+    print "test: ", MEIid
     filterStatus = "DUP" if MEIid in dupList else '.'
 
     return filterStatus   
@@ -389,6 +492,7 @@ import time
 import sys
 import os.path
 import formats
+from operator import attrgetter
 
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
