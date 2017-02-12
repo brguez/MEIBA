@@ -6,21 +6,33 @@
 class MEIcluster():
     """
     """
-    def __init__(self, MEIObj):
+    def __init__(self, MEIObj, overhang):
         """
+        Initialize MEI cluster:
+
+                       cluster_range
+            <------------------------------------>
+            beg [bkpA - CIPOS - overhang]        end [(bkpB or bkpA) - CIPOS - overhang] 
         """
 
         self.chrom = MEIObj.chrom
-        self.beg = MEIObj.pos - int(MEIObj.infoDict["CIPOS"])  # Extend cluster beg-end interval with the CIPOS
-        self.end = MEIObj.pos + int(MEIObj.infoDict["CIPOS"]) 
+        self.beg, self.end = insertionRange(MEIObj, overhang)        
         self.MEIlist = [ MEIObj ]
 
-    def addMEI(self, MEIObj):
+    def addMEI(self, MEIObj, overhang):
         """
+        Add MEI to the cluster and extend cluster end coordinates till the new MEI
+        
+                      cluster_old_range                 
+            <------------------------------------>--------------->
+            oldBeg                            oldEnd          newEnd 
+
+            <---------------------------------------------------->
+                              cluster_new_range
         """
-        self.chrom = MEIObj.chrom
-        self.beg = MEIObj.pos - int(MEIObj.infoDict["CIPOS"])  # Extend cluster beg-end interval with the CIPOS        
-        self.end = MEIObj.pos + int(MEIObj.infoDict["CIPOS"]) 
+
+        beg, end = insertionRange(MEIObj, overhang)         
+        self.end = end # Extend cluster end
         self.MEIlist.append(MEIObj)
 
 #### FUNCTIONS ####
@@ -45,35 +57,93 @@ def log(label, string):
     print "[" + label + "]", string
 
 
+def insertionRange(MEIObj, overhang):
+    """
+    Define MEI range as follows:
+                
+                      range
+       <------------------------------------>
+       beg [bkpA - CIPOS - overhang]        end [(bkpB or bkpA) - CIPOS - overhang]  
+    """
+    bkpA = MEIObj.pos
+    bkpB = int(MEIObj.infoDict["BKPB"]) if "BKPB" in MEIObj.infoDict else MEIObj.pos 
+    CIPOS = int(MEIObj.infoDict["CIPOS"])
+    begRange = bkpA - CIPOS - overhang
+    endRange = bkpB + CIPOS + overhang
+
+    return (begRange, endRange)
+
+def overlap(begA, endA, begB, endB):
+
+    """
+    Check if both ranges overlap. 2 criteria for defining overlap: 
+
+    ## A) Begin of the range A within the range B         
+    #       *beg* <---------range_A---------->                         
+    # <---------range_B----------> 
+                
+    #    *beg* <-------range_A----->
+    # <-------------range_B------------------>
+
+    ## B) Begin of the range B within the range A     
+    # <---------range_A----------> 
+    #               *beg* <---------range_B---------->
+            
+    # <-------------range_A----------------->
+    #    *beg* <-------range_B------>
+    """    
+       
+    # a) Begin of the range A within the range B   
+    if ((begA >= begB) and (begA <= endB)):
+        overlap = True
+        
+    # b) Begin of the range B within the range A            
+    elif ((begB >= begA) and (begB <= endA)):
+        overlap = True
+
+    # c) Ranges do not overlapping
+    else:
+        overlap = False
+
+    return overlap
+
 def organizeMEI(MEIList):
         """
-        Organize MEI into a nested dictionary containing for each chromosome a list of MEI objects. Structure: 
+        Organize MEI into a nested dictionary containing for each insertion class and chromosome 
+        a dictionary of germline MEI objects organized by coordinates. Structure: 
         
-        key1(chrId) -> value(MEIObj)
+        key1(MEIclass) -> value(dict2) -> key2(chrId) -> value(MEIObjList)
 
-        MEIObj in the list sorted in increasing coordinates ordering
+        MEIObjList sorted in increasing coordinates ordering
         """
 
         MEIDict = {}
  
-        ### Build dictionary
+        ### Build dictionary
         # Per MEI object 
         for MEIObj in MEIList:
 
-            # a) First MEI in a given chromosome
-            if MEIObj.chrom not in MEIDict:
-                
-                MEIDict[MEIObj.chrom] = [ MEIObj ]
-     
-            # b) There are already MEI in the chromosome
-            else:
-                MEIDict[MEIObj.chrom].append(MEIObj)
+            # a) First MEI of a given class    
+            if MEIObj.infoDict["CLASS"] not in MEIDict:
+            
+                MEIDict[MEIObj.infoDict["CLASS"]] = {}
+                MEIDict[MEIObj.infoDict["CLASS"]][MEIObj.chrom] = [MEIObj]
+            
+            # b) First MEI of a given class in the chromosome
+            elif MEIObj.chrom not in MEIDict[MEIObj.infoDict["CLASS"]]:
+                MEIDict[MEIObj.infoDict["CLASS"]][MEIObj.chrom] = [MEIObj]
 
-        # Sort MEI in increasing coordinates ordering
-        for chrom in MEIDict:
-    
-            MEIlist = MEIDict[chrom]
-            MEIlistSorted = sorted(MEIlist, key=lambda MEIObj: MEIObj.pos)
+            # c) There are already MEI of this class in the chromosome
+            else:
+                MEIDict[MEIObj.infoDict["CLASS"]][MEIObj.chrom].append(MEIObj)
+                
+        # Sort MEI list in increasing coordinates ordering
+        for MEIclass in MEIDict:
+            for chrom in MEIDict[MEIclass]:
+
+                MEIlist = MEIDict[MEIclass][chrom]
+                MEIlistSorted = sorted(MEIlist, key=lambda MEIObj: MEIObj.pos)
+                MEIDict[MEIclass][chrom] = MEIlistSorted
             
         return MEIDict
 
@@ -87,54 +157,56 @@ def clusterMEI(MEIList):
     
     # 2. Cluster MEI objects
     #  chr1 --------*---------------*-------------*------------
-    #     beg    cluster1        cluster2      cluster3      end
+    #           cluster1        cluster2      cluster3     
     #         (MEI1,MEI2,MEI3)   (MEI4)       (MEI5,MEI6)       
     clusterList = []
 
-    # For each chromosome:
-    for chrom in MEIDict:
-
-        MEIlist = MEIDict[chrom]
-
-        # Per MEI object:        
-        for MEIObj in MEIlist:
-            print "MEI-info: ", chrom, MEIObj.pos, MEIObj.infoDict["TYPE"], MEIObj.infoDict["CLASS"], MEIObj.infoDict["SCORE"], MEIObj.infoDict["CIPOS"]   
+    # Iterate over the dictionary picking a MEI list in each iteration:
+    for MEIclass in MEIDict:
+        for chrom in MEIDict[MEIclass]:
         
-            # A) No cluster in the list -> Create first clustert
-            if not clusterList:
+            MEIlist = MEIDict[MEIclass][chrom]
 
-                clusterObj = MEIcluster(MEIObj)
-                clusterList.append(clusterObj)
+            # Per MEI object:        
+            for MEIObj in MEIlist:
+                bkpB = int(MEIObj.infoDict["BKPB"]) if "BKPB" in MEIObj.infoDict else "UNK"
+                print "MEI-info: ", chrom, MEIObj.pos, bkpB, MEIObj.infoDict["TYPE"], MEIObj.infoDict["CLASS"], MEIObj.infoDict["SCORE"], MEIObj.infoDict["CIPOS"]   
         
-            # B) There is already at least one cluster in the list -> Check if current MEI within the latest cluster
-            else:
-                lastClusterObj = clusterList[-1]     
-                totalCIPOS = int(MEIObj.infoDict["CIPOS"]) + 5 # Allow a minimum of 5 nucleotides of difference (CIPOS=0, X=overhang)
-                                                                                                      
-                ### Define interval to search for overlap:
-                ##         <-----------------------------interval------------------------------->
-                # <clusterBeg-totalCIPOS)                                            <clusterEnd+totalCIPOS>
-                #         beg                                                                  end
-                chrom = lastClusterObj.chrom
-                beg = lastClusterObj.beg - totalCIPOS
-                end = lastClusterObj.end + totalCIPOS
+                # A) No cluster in the list -> Create first cluster
+                if not clusterList:
 
-                print "cluster_range: ", lastClusterObj.chrom, lastClusterObj.beg, lastClusterObj.end, beg, end
-
-                ## A) Current MEI within previous cluster interval -> add MEI to the cluster                                
-                if (chrom == MEIObj.chrom) and (beg <= MEIObj.pos) and (MEIObj.pos <= end):
-                    msg = "MEI within cluster"
-                    log("DUPLICATES", msg) 
-                    lastClusterObj.addMEI(MEIObj)   
-                 
-                ## B) Current MEI outside previous cluster interval -> create new cluster and add it into the list
-                else:
-                    msg = "MEI outside the cluster"
-                    log("DUPLICATES", msg) 
-                    clusterObj = MEIcluster(MEIObj)
+                    clusterObj = MEIcluster(MEIObj, 5) # Allow up to 5 nucleotides of margin
                     clusterList.append(clusterObj)
-         
-            print "**************"
+        
+                # B) There is already at least one cluster in the list -> Check if current MEI within the latest cluster
+                else:
+                    ## Define cluster range for searching for overlap
+                    lastClusterObj = clusterList[-1]     
+                    begClusterRange = lastClusterObj.beg
+                    endClusterRange = lastClusterObj.end
+
+                    ## Define insertion range for searching for overlap:    
+                    begMEIrange, endMEIrange = insertionRange(MEIObj, 5)     
+              
+                    #### Check if both ranges overlap.
+                    overlapping = overlap(begMEIrange, endMEIrange, begClusterRange, endClusterRange) 
+
+                    print "cluster_range,MEI_range: ",  begClusterRange, endClusterRange, begMEIrange, endMEIrange
+    
+                    ## A) Overlapping ranges, so current MEI within previous cluster interval -> add MEI to the cluster                                
+                    if overlapping:
+                        msg = "MEI within cluster"
+                        log("DUPLICATES", msg) 
+                        lastClusterObj.addMEI(MEIObj, 5) # Allow up to 5 nucleotides of margin 
+                     
+                    ## B) Current MEI outside previous cluster interval -> create new cluster and add it into the list
+                    else:
+                        msg = "MEI outside the cluster"
+                        log("DUPLICATES", msg) 
+                        clusterObj = MEIcluster(MEIObj, 5) # Allow up to 5 nucleotides of margin
+                        clusterList.append(clusterObj)
+             
+                print "**************"
 
     return clusterList     
 
@@ -361,7 +433,6 @@ def findDuplicates(MEIList):
                 
                 print "dupList: ", dupList
 
-            
             ## C) 3 MEI with a different insertion type composing the cluster (TD0/TD1/TD2)
             elif set([ 'TD0', 'TD1', 'TD2' ]) == set(typeList):
 
@@ -435,7 +506,7 @@ def scoreFilter(score, minScore):
 
     # b) Insertion passing the filter
     else:
-        filterStatus = "."
+        filterStatus = "PASS"
 
     return filterStatus
 
@@ -469,20 +540,59 @@ def repeatsFilter(RTclass, repeat, divergence, maxDiv):
     # C) Insertion do not fulfilling any of these conditions
     else:
         
-        filterStatus = "."    
+        filterStatus = "PASS"    
          
     return filterStatus
 
 
-def duplFilter(MEIObj, dupList):
+def dupFilter(MEIObj, dupList):
     """    
     Filter out insertions included in the duplicate insertions list
     """
     MEIid = MEIObj.chrom + '_' + str(MEIObj.pos) + '_' + MEIObj.infoDict["TYPE"] + '_' + MEIObj.genotype 
     print "test: ", MEIid
-    filterStatus = "DUP" if MEIid in dupList else '.'
+    filterStatus = "DUP" if MEIid in dupList else 'PASS'
 
     return filterStatus   
+
+
+def germlineFilter(somaticMEIObj, germlineMEIDict):
+    """    
+
+    """
+
+    filterStatus = 'PASS'
+
+    ## There are MEI in the germline VCF of the same class as the somatic MEI
+    if somaticMEIObj.infoDict["CLASS"] in germlineMEIDict.keys():
+
+        ## There are MEI in the germline VCF in the same chromosome as the somatic MEI
+        if somaticMEIObj.chrom in germlineMEIDict[somaticMEIObj.infoDict["CLASS"]].keys():
+            
+            ## Define somatic insertion range for searching for overlap:    
+            begSomaticRange, endSomaticRange = insertionRange(somaticMEIObj, 10)     
+            
+            print "begSomaticRange,endSomaticRange: ", begSomaticRange, endSomaticRange
+            print "----------"
+            ## For each germline MEI 
+            for germlineMEIObj in germlineMEIDict[somaticMEIObj.infoDict["CLASS"]][somaticMEIObj.chrom]:
+     
+                ## Define germline insertion range for searching for overlap:    
+                begGermlineRange, endGermlineRange = insertionRange(germlineMEIObj, 10)     
+                
+                print "begGermlineRange,endGermlineRange: ", begGermlineRange, endGermlineRange
+    
+                ## Check if the somatic and germline ranges overlap
+                isGermlineMEI = overlap(begSomaticRange, endSomaticRange, begGermlineRange, endGermlineRange) 
+
+                # There is overlap, then germline MEI miscalled as somatic
+                if isGermlineMEI == True:
+                    print "overlap_germline!! ", begSomaticRange, endSomaticRange, begGermlineRange, endGermlineRange
+                    filterStatus = 'GERMLINE'
+                    break
+    
+    return filterStatus
+
 
 #### MAIN ####
 
@@ -492,22 +602,37 @@ import time
 import sys
 import os.path
 import formats
+import os.path
 from operator import attrgetter
 
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('VCF', help='...')
 parser.add_argument('donorId', help='...')
-parser.add_argument('--min-score', default=5, dest='minScore', type=int, help='Minimum insertion score for L1, Alu and SVA. Default: 5, both breakpoints expected to be assembled (5-prime and 3-prime).' )
-parser.add_argument('--min-score-ERVK', default=3, dest='minScoreERVK', type=int, help='Minimum insertion score for ERVK. Note that mechanism of retrotransposition different, no polyA, so an ERVK insertion can not have an score > 3. Default: 3.' )
+parser.add_argument('filters', help='List of filters to be applied out of 4 possible filtering criteria: SCORE, REP, DUP and GERMLINE.')
+parser.add_argument('--score-L1-TD0', default=2, dest='scoreL1_TD0', type=int, help='Minimum assembly score for solo L1 insertions. Default 2.' )
+parser.add_argument('--score-L1-TD1', default=2, dest='scoreL1_TD1', type=int, help='Minimum assembly score for L1 partnered transductions. Default 2.' )
+parser.add_argument('--score-L1-TD2', default=2, dest='scoreL1_TD2', type=int, help='Minimum assembly score for L1 orphan transductions. Default 2.' )
+parser.add_argument('--score-Alu', default=2, dest='scoreAlu', type=int, help='Minimum assembly score for Alu insertions. Default 2.' )
+parser.add_argument('--score-SVA', default=2, dest='scoreSVA', type=int, help='Minimum assembly score for SVA insertions. Default 2.' )
+parser.add_argument('--score-ERVK', default=2, dest='scoreERVK', type=int, help='Minimum assembly score for ERVK insertions. Default 2.' )
+parser.add_argument('--score-PSD', default=2, dest='scorePSD', type=int, help='Minimum assembly score for processed-pseudogene (PSD) insertions. Default 2.' )
+parser.add_argument('--germline-VCF', default=False, dest='germlineVCF', help=' VCF with germline MEI calls for the same donor. If provided, input insertions are considered to be somatic. Necesary for GERMLINE filtering.' )
 parser.add_argument('--max-divergence', default=300, dest='maxDiv', type=int, help='Maximum millidivergence. Default: 300.' )
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
 inputVCF = args.VCF
 donorId = args.donorId
-minScore = args.minScore
-minScoreERVK = args.minScoreERVK
+filters = args.filters
+scoreL1_TD0 = args.scoreL1_TD0
+scoreL1_TD1 = args.scoreL1_TD1
+scoreL1_TD2 = args.scoreL1_TD2
+scoreAlu = args.scoreAlu
+scoreSVA = args.scoreSVA
+scoreERVK = args.scoreERVK
+scorePSD = args.scorePSD
+germlineVCF = args.germlineVCF
 maxDiv = args.maxDiv
 outDir = args.outDir
 
@@ -518,31 +643,55 @@ print
 print "***** ", scriptName, " configuration *****"
 print "vcf: ", inputVCF
 print "donorId: ", donorId
-print "minScore: ", minScore
-print "minScoreERVK: ", minScoreERVK
+print "filters: ", filters
+print "score-L1-TD0: ", scoreL1_TD0
+print "score-L1-TD1: ", scoreL1_TD1
+print "score-L1-TD2: ", scoreL1_TD2
+print "score-Alu: ", scoreAlu
+print "score-SVA: ", scoreSVA
+print "score-ERVK: ", scoreERVK
+print "score-PSD: ", scorePSD
+print "germlineVCF: ", germlineVCF
 print "maxDiv: ", maxDiv
 print "outDir: ", outDir
 print
 print "***** Executing ", scriptName, ".... *****"
 print
 
+
 ## Start ## 
 
 outFilePath = outDir + '/' + donorId + ".filtered.vcf"
 
-#### 1. Create VCF object and read input VCF
+#### 0. Create database of germline MEI events 
+filterList = filters.split(',')
+
+# Germline filtering flag provided
+if 'GERMLINE' in filterList:
+
+    ## Abort if needed germline VCF not provided or file does not exits
+    if (germlineVCF == False) or (os.path.isfile(germlineVCF) == False):
+        msg = "Abort if needed germline VCF not provided or file does not exits" 
+        log("ERROR", msg)
+        sys.exit(1)
+    ## Organize germline MEI into a dictionary
+    else:
+        germlineVCFObj = formats.VCF()
+        germlineVCFObj.read_VCF(germlineVCF)        
+        germlineMEIDict = organizeMEI(germlineVCFObj.lineList)
+        
+
+#### 1. Create somatic VCF object and read input VCF
 VCFObj = formats.VCF()
 VCFObj.read_VCF(inputVCF)
 
-
-#### 2. Find duplicated insertions
+#### 2. Find somatic duplicated insertions
 dupList = findDuplicates(VCFObj.lineList)
 
 print "number_duplicates: ", len(dupList), dupList
 
-
-#### 3. Filter MEI
-# Iterate over each MEI in the VCF
+#### 3. Filter somatic MEI
+# Iterate over each somatic MEI in the VCF
 for VCFlineObj in VCFObj.lineList:
 
     failedFiltersList = []
@@ -551,68 +700,141 @@ for VCFlineObj in VCFObj.lineList:
 
     msg ="Filter " + insertionType + ":" + RTclass + ":" + VCFlineObj.chrom + "_" + str(VCFlineObj.pos)
     subHeader(msg) 
-
-    ### 3.1 Apply score filter:
-    score = int(VCFlineObj.infoDict["SCORE"])
-
-    msg = "Apply score filter"
-    log("SCORE", msg)
-
-    # a) ERVK insertion -> apply specific score filtering threshold 
-    if (RTclass == "ERVK"):
         
-        filterStatus = scoreFilter(score, minScoreERVK)
 
-    # b) L1 (TD0, TD1 or TD2), Alu(TD0), SVA(TD0) or pseudogene insertion (PSD)
-    else:
+    ### 3.1  Score filter:
+    if "SCORE" in filterList:
         
-        filterStatus = scoreFilter(score, minScore)
- 
-    if (filterStatus != '.'):
-        failedFiltersList.append(filterStatus) 
+        score = int(VCFlineObj.infoDict["SCORE"])
 
-    msg = "Filtering status: " + str(failedFiltersList)
-    log("SCORE", msg)    
+        msg = "Apply score filter"
+        log("SCORE", msg)
+
+        ### Select the appropiate score threshold according to the insertion type
+
+        # a) solo L1 insertion
+        if (RTclass == "L1") and (insertionType == "TD0"):
+        
+            msg = "solo L1 insertion" 
+            log("SCORE", msg)
+            filterStatus = scoreFilter(score, scoreL1_TD0)
+
+        # b) L1 partnered transductions
+        elif (RTclass == "L1") and (insertionType == "TD1"):
+        
+            msg = "L1 partnered transductions" 
+            log("SCORE", msg)
+            filterStatus = scoreFilter(score, scoreL1_TD1)    
+     
+        # c) L1 orphan transductions
+        elif (RTclass == "L1") and (insertionType == "TD2"):
+        
+            msg = "L1 orphan transductions" 
+            log("SCORE", msg)
+            filterStatus = scoreFilter(score, scoreL1_TD2)    
+
+        # d) Alu insertion
+        elif (RTclass == "Alu"):
+        
+            msg = "Alu insertion" 
+            log("SCORE", msg)
+            filterStatus = scoreFilter(score, scoreAlu)    
+
+        # e) SVA insertion
+        elif (RTclass == "SVA"):
+            
+            msg = "SVA insertion" 
+            log("SCORE", msg)
+            filterStatus = scoreFilter(score, scoreSVA)
+
+        # d) ERVK insertion
+        elif (RTclass == "ERVK"):
+        
+            msg = "ERVK insertion" 
+            log("SCORE", msg)           
+            filterStatus = scoreFilter(score, scoreERVK)
+
+        # e) Processed-pseudogene insertion
+        elif (insertionType == "PSD"):
+
+            msg = "Processed-pseudogene insertion" 
+            log("SCORE", msg)           
+            filterStatus = scoreFilter(score, scorePSD)
     
+        # f) Unexpected insertion category 
+        else:
+            msg = "Unexpected insertion category" 
+            log("SCORE", msg)   
+
+        # Insertion does not pass the filter
+        if (filterStatus != 'PASS'):
+            failedFiltersList.append(filterStatus) 
+
+        msg = "Filtering status: " + str(failedFiltersList)
+        log("SCORE", msg)    
+    
+
     ### 3.2 Repeats filter:
-    msg = "Apply repeats filter"
-    log("REPEATS", msg)
-
-    repeat = VCFlineObj.infoDict["REP"] if 'REP' in VCFlineObj.infoDict else '-'
-    divergence = VCFlineObj.infoDict["DIV"] if 'DIV' in VCFlineObj.infoDict else '-'    
-    
-    # a) MEI is a solo or a transduction
-    if ((insertionType == "TD0") or (insertionType == "TD1") or (insertionType == "TD2")):
-    
-        msg = "MEI is a solo or a transduction -> Apply filter"
+    if "REP" in filterList:
+        
+        msg = "Apply repeats filter"
         log("REPEATS", msg)
-        filterStatus = repeatsFilter(RTclass, repeat, divergence, maxDiv)
-    
-    else:
-        filterStatus = '.'
-        msg = "MEI is a pseudogene -> Do not apply filter"
-        log("REPEATS", msg)
-    
-    if (filterStatus != '.'):
-        failedFiltersList.append(filterStatus) 
 
-    msg = "Filtering status: " + str(failedFiltersList)
-    log("REPEATS", msg)  
+        repeat = VCFlineObj.infoDict["REP"] if 'REP' in VCFlineObj.infoDict else '-'
+        divergence = VCFlineObj.infoDict["DIV"] if 'DIV' in VCFlineObj.infoDict else '-'    
+    
+        # a) MEI is a solo or a transduction
+        if ((insertionType == "TD0") or (insertionType == "TD1") or (insertionType == "TD2")):
+    
+            msg = "MEI is a solo or a transduction -> Apply filter"
+            log("REPEATS", msg)
+            filterStatus = repeatsFilter(RTclass, repeat, divergence, maxDiv)
+    
+        else:
+            filterStatus = 'PASS'
+            msg = "MEI is a pseudogene -> Do not apply filter"
+            log("REPEATS", msg)
+    
+        # Insertion does not pass the filter
+        if (filterStatus != 'PASS'):
+            failedFiltersList.append(filterStatus) 
+
+        msg = "Filtering status: " + str(failedFiltersList)
+        log("REPEATS", msg)  
 
 
     ### 3.3 Duplicated insertions filter
-    msg = "Apply duplicated insertions filter"
-    log("DUPL", msg)
+    if "DUP" in filterList:
     
-    filterStatus = duplFilter(VCFlineObj, dupList)
+        msg = "Apply duplicated insertions filter"
+        log("DUP", msg)
+    
+        filterStatus = dupFilter(VCFlineObj, dupList)
 
-    if (filterStatus != '.'):
-        failedFiltersList.append(filterStatus) 
+        # Insertion does not pass the filter
+        if (filterStatus != 'PASS'):
+            failedFiltersList.append(filterStatus) 
 
-    msg = "Filtering status: " + str(failedFiltersList)
-    log("DUPL", msg) 
+        msg = "Filtering status: " + str(failedFiltersList)
+        log("DUP", msg) 
 
-    ### 3.4 Set filter VCF field:
+
+    ### 3.4 Germline insertions miscalled as somatic filter
+    if "GERMLINE" in filterList:
+
+        msg = "Apply germline insertions miscalled as somatic filter"
+        log("GERMLINE", msg)
+
+        filterStatus = germlineFilter(VCFlineObj, germlineMEIDict)
+
+        # Insertion does not pass the filter
+        if (filterStatus != 'PASS'):
+            failedFiltersList.append(filterStatus)
+
+        msg = "Filtering status: " + str(failedFiltersList)
+        log("DUP", msg) 
+
+    ###  Set filter VCF field:
     if (len(failedFiltersList) == 0):
         msg = "Insertion pass all the filters"
         log("STATUS", msg)  
