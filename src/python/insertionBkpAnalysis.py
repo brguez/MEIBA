@@ -233,6 +233,7 @@ class VCF():
 ##FILTER=<ID=SCORE,Description="Insertion with an score < threshold">
 ##FILTER=<ID=REP,Description="Insertion overlapping a satellite region or a repetitive element of the same class">
 ##FILTER=<ID=DUP,Description="Duplicated MEI call">
+##FILTER=<ID=GERMLINE,Description="Germline MEI miscalled as somatic">
 ##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting reads">
 ##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Unphased genotypes">
