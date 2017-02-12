@@ -149,17 +149,17 @@ germlineMEIDbObj.read_bed(germlineMEIBed)
 
 for VCFlineObj in VCFObj.lineList:
 
-    # Skip repeat novelty annotation if pseudogene insertion or L1-mediated deletion. Repeat annotation only applicable to L1, Alu, SVA and ERVK? insertions
+    # Skip repeat novelty annotation if pseudogene insertion or L1-mediated deletion. Repeat annotation only applicable to L1, Alu, SVA and ERVK insertions
     if (VCFlineObj.infoDict["TYPE"] == "PSD") or (VCFlineObj.infoDict["TYPE"] == "DEL"):
         print "[WARNING] Skip repeat novelty annotation since " + VCFlineObj.infoDict["TYPE"] + " insertion"
         continue
 
-    info("Checking if " + VCFlineObj.chrom + ":" + str(VCFlineObj.pos) + " MEI is in 1000 genomes germline database..." )
+    info("Checking if " + VCFlineObj.chrom + ":" + str(VCFlineObj.pos) + " MEI is in 1000 genomes germline database...\n" )
 
     # A) There are MEI in the germline database in the same chromosome as the input MEI
     if VCFlineObj.chrom in germlineMEIDbObj.germlineMEIDict[VCFlineObj.infoDict["CLASS"]].keys():
         
-	## Make numpy array with the chromosomal positions for the germline MEI on the same chromosome in the 1000 genomes database
+	    ## Make numpy array with the chromosomal positions for the germline MEI on the same chromosome in the 1000 genomes database
         MEIDbPosArr = np.array(sorted(germlineMEIDbObj.germlineMEIDict[VCFlineObj.infoDict["CLASS"]][VCFlineObj.chrom].keys(), key=int), dtype='int')
 
         ## Identify those MEI in the germline database overlapping the first insertion breakpoint
@@ -175,6 +175,7 @@ for VCFlineObj in VCFObj.lineList:
 
             # a) Consistent TSD
             if (VCFlineObj.infoDict["TSLEN"] != "inconsistent"):
+
                 # Determine second breakpoint coordinates and bkpB beg and end range to search for overlap with 1000 genomes MEI database
                 bkpB = VCFlineObj.pos + abs(int(VCFlineObj.infoDict["TSLEN"]))
                 begBkpB = bkpB - int(VCFlineObj.infoDict["CIPOS"]) - 10
@@ -197,7 +198,7 @@ for VCFlineObj in VCFObj.lineList:
     else:
         # Empty arrays
 	    filteredArrBkpA = np.array([])
-    filteredArrBkpB = np.array([])
+            filteredArrBkpB = np.array([])
 
     ## Make a single array containing a not redundant list of 1000 genomes MEI coordinates overlapping the first and/or second insertion breakpoints.
     filteredArr = np.array(np.unique(np.concatenate((filteredArrBkpA, filteredArrBkpB), axis=0)), dtype='int')
