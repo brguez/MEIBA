@@ -718,6 +718,7 @@ run "python $CLUSTERS2FASTA $insertions $fasta $genome --outDir $fastaDir 1> $lo
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
+
 # 2) Assemble the 5' and 3' MEI breakpoints with velvet. An independent assembly is performed for each insertion breakpoint
 ######################################################################################################################################
 # It will produce a fasta containing the assembled contigs for each cluster insertion
@@ -887,6 +888,7 @@ do
 
     printf ${insertionId}"\t"${contigPlusPath}","${contigMinusPath}"\t"${blatPlusPath}","${blatMinusPath}"\t"${readPairsPlus}"\t"${readPairsMinus}"\t"${sourceElementInfo}"\t"${transductionInfo}"\t"${pseudogeneInfo}"\n" >> $paths2bkpAnalysis
 done
+
 
 # Remove intermediate files:
 if [[ "$cleanup" == "TRUE" ]]; then rm $insertionListInfo ; fi
