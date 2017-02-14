@@ -88,7 +88,7 @@ class VCF():
 
         return lineListSorted
 
-    def print_header(self, outFilePath, donorId):
+    def print_header(self, outFilePath):
         """
             ...
 
@@ -105,8 +105,7 @@ class VCF():
         context = {
          "date": date,
          "source": "TraFiCv2.0",
-         "reference": "hs37d5",
-         "donorId": donorId,
+         "reference": "hs37d5"
          }
 
         ## Header template
@@ -236,10 +235,11 @@ class VCF():
 ##FILTER=<ID=GERMLINE,Description="Germline MEI miscalled as somatic">
 ##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting reads">
 ##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
+##FORMAT=<ID=SL,Number=1,Type=Integer,Description="List of samples where the variant was found (relevant for multi-tumor donors)">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Unphased genotypes">
 ##FORMAT=<ID=NV,Number=1,Type=Integer,Description="Number of reads supporting the variant in this sample">
 ##FORMAT=<ID=NR,Number=1,Type=Integer,Description="Number of reads covering variant location in this sample">
-#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  {donorId}
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  
 """
         ## Replace variables into the template and print header into the output file
         with  open(outFilePath,'w') as outFile:
@@ -297,8 +297,8 @@ class VCFline():
         self.qual = "."
         self.filter = "."
         self.info = self.make_info(insertionObj)
-        self.format = "RCP:RCN"
-        self.genoType = str(insertionObj.clusterPlusObj.nbPairs) + ":" + str(insertionObj.clusterMinusObj.nbPairs)
+        self.format = "RCP:RCN:SL"
+        self.genoType = str(insertionObj.clusterPlusObj.nbPairs) + ":" + str(insertionObj.clusterMinusObj.nbPairs) + ":" + insertionObj.sampleId
 
     def make_info(self, insertionObj):
         """
@@ -374,7 +374,7 @@ class insertion():
     - imprecise_bkp
     """
 
-    def __init__(self, family, tdType, coordinates, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo, pseudogeneInfo):
+    def __init__(self, family, tdType, coordinates, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo, pseudogeneInfo, sampleId):
         """
             Initialize insertion object.
 
@@ -391,7 +391,8 @@ class insertion():
             10) srcElement.
             11) transductionInfo.
             12) pseudogeneInfo.
-
+            13) sampleId
+            
             Output:
             - Insertion object variables initialized
         """
@@ -401,6 +402,7 @@ class insertion():
         self.clusterPlusObj = self.create_cluster("+", contigsPlusPath, blatPlusPath, readPairsPlus)
         self.clusterMinusObj = self.create_cluster("-", contigsMinusPath, blatMinusPath, readPairsMinus)
         self.srcElement = srcElement
+        self.sampleId = sampleId
 
         # A) Solo insertion (TD0). Not applicable
         if (self.tdType == "TD0"):
@@ -2128,7 +2130,7 @@ def parse_args():
     """Define and parse command line parameters."""
     parser = argparse.ArgumentParser(description="Per MEI called by TraFiC: 1) Identifies informative contigs spanning 5' and/or 3' insertion ends if possible, 2) Use informative contigs for characterizing MEI in detail (exact breakpoints, length, strand...) and 3) Produce a VCF with the MAI plus all these information")
     parser.add_argument('inputPaths', help='Text file containing, per MEI, the needed files')
-    parser.add_argument('donorId', help='Donor identifier. The output vcf will be named accordingly')
+    parser.add_argument('sampleId', help='Sample identifier. The output vcf will be named accordingly')
     parser.add_argument('genome', help='Reference genome in fasta format')
     parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
@@ -2141,7 +2143,7 @@ if __name__ == "__main__":
     ## Get user's input ##
     args = parse_args()
     inputPaths = args.inputPaths
-    donorId = args.donorId
+    sampleId = args.sampleId
     genome = args.genome
     outDir = args.outDir
 
@@ -2151,7 +2153,7 @@ if __name__ == "__main__":
     print
     print "***** ", scriptName, " configuration *****"
     print "paths2bkpAnalysis: ", inputPaths
-    print "donorId: ", donorId
+    print "sampleId: ", sampleId
     print "genome: ", genome
     print "outDir: ", outDir
     print
@@ -2161,7 +2163,7 @@ if __name__ == "__main__":
 
     ## Start ## 
 
-    outFilePath = outDir + '/' + donorId + '.vcf'
+    outFilePath = outDir + '/' + sampleId + '.vcf'
 
     ## 0. Create reference genome fasta object
 
@@ -2172,7 +2174,7 @@ if __name__ == "__main__":
 
     header("Creating VCF object and printing VCF header into the output file")
     VCFObj = VCF()
-    VCFObj.print_header(outFilePath, donorId)
+    VCFObj.print_header(outFilePath)
 
     ## 2. Per each insertion perform breakpoint analysis
 
@@ -2201,7 +2203,7 @@ if __name__ == "__main__":
         if os.path.isfile(contigsPlusPath) and os.path.isfile(blatPlusPath) and os.path.isfile(contigsMinusPath) and os.path.isfile(blatMinusPath):
 
             ## Create insertion object and identify breakpoints from assembled contigs
-            insertionObj = insertion(TEClass, tdType, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo, pseudogeneInfo)
+            insertionObj = insertion(TEClass, tdType, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo, pseudogeneInfo, sampleId)
             insertionObj.find_insertionBkp(genomeObj, outDir)
 
             ## Create VCFline object
