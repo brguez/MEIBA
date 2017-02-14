@@ -107,12 +107,10 @@ for line in ancestry:
     
         normalAliquotId = fieldsList[0]
         ancestry = fieldsList[6]
-
         ancestryDict[normalAliquotId] = ancestry
 
 
-### 4) 
-
+### 4) Read TraFiC blacklist of excluded samples
 traficBlackList = open(traficBlackListPath, 'r')
 blackList = []
 
