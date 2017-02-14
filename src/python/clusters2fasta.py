@@ -151,24 +151,27 @@ for line in insertions:
             # of + cluster and beg of - cluster)
             insertionIdPlus = familyPlus + ":" + insertionType + ":" + chrPlus + "_" + str(endPlus) + "_" + begMinus + ":" + "+"
             insertionIdMinus = familyMinus + ":" + insertionType + ":" + chrMinus + "_" + str(endPlus) + "_" + begMinus + ":" + "-"
+            
+            ## a) Duplicated insertion. Already processed insertion with identical begin and end coordinates for + and - clusters. 
+            if (insertionIdPlus in supportingReadsDict) and (insertionIdMinus in supportingReadsDict):
 
-            ## Inizialize dictionary keys for + and - clusters if they do not exist
-            # a) + Cluster
-            if insertionIdPlus not in supportingReadsDict:
+                print >>sys.stderr, "[WARNING] Filtering out a duplicated insertion: ", line
+        
+            ## b) Not duplicated insertion
+            else:
+
+                ## Initialize dictionary keys for + and - clusters: 
                 supportingReadsDict[insertionIdPlus] = {}
-
-            # b) - Cluster
-            if insertionIdMinus not in supportingReadsDict:
                 supportingReadsDict[insertionIdMinus] = {}
 
-            ## Add the list with mate 1 and mate 2 sequences as value for + and - clusters:
-            # a) + Cluster
-            for pairId in readPairListPlus:
-                supportingReadsDict[insertionIdPlus][pairId] = fastaDict[pairId]
+                ## Add the list with mate 1 and mate 2 sequences as value for + and - clusters:
+                # a) + Cluster
+                for pairId in readPairListPlus:
+                    supportingReadsDict[insertionIdPlus][pairId] = fastaDict[pairId]
     
-            # b) - Cluster
-            for pairId in readPairListMinus:
-                supportingReadsDict[insertionIdMinus][pairId] = fastaDict[pairId]
+                # b) - Cluster
+                for pairId in readPairListMinus:
+                    supportingReadsDict[insertionIdMinus][pairId] = fastaDict[pairId]
 
 
     ## Line without the expected number of columns            
