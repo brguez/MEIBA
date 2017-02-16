@@ -272,7 +272,6 @@ def findDuplicates(MEIList):
                 scoreList = [MEI.infoDict["SCORE"] for MEI in cluster.MEIlist]
             
                 print "scoreList: ", scoreList
-
                 
                 #### Select those MEI with the highest score and
                 # include the others in the duplicates list
