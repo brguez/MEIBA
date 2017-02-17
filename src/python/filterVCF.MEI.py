@@ -579,33 +579,46 @@ def germlineFilter(somaticMEIObj, germlineMEIDict):
 
     filterStatus = 'PASS'
 
-    ## There are MEI in the germline VCF of the same class as the somatic MEI
-    if somaticMEIObj.infoDict["CLASS"] in germlineMEIDict.keys():
-
-        ## There are MEI in the germline VCF in the same chromosome as the somatic MEI
-        if somaticMEIObj.chrom in germlineMEIDict[somaticMEIObj.infoDict["CLASS"]].keys():
-            
-            ## Define somatic insertion range for searching for overlap:    
-            begSomaticRange, endSomaticRange = insertionRange(somaticMEIObj, 10)     
-            
-            print "begSomaticRange,endSomaticRange: ", begSomaticRange, endSomaticRange
-            print "----------"
-            ## For each germline MEI 
-            for germlineMEIObj in germlineMEIDict[somaticMEIObj.infoDict["CLASS"]][somaticMEIObj.chrom]:
-     
-                ## Define germline insertion range for searching for overlap:    
-                begGermlineRange, endGermlineRange = insertionRange(germlineMEIObj, 10)     
-                
-                print "begGermlineRange,endGermlineRange: ", begGermlineRange, endGermlineRange
+    ## A) somatic MEI is in germline database
+    if "GERMDB" in somaticMEIObj.infoDict:
+        filterStatus = 'GERMLINE'
     
-                ## Check if the somatic and germline ranges overlap
-                isGermlineMEI = overlap(begSomaticRange, endSomaticRange, begGermlineRange, endGermlineRange) 
+    ## B) somatic MEI is not in germline database. Check if MEI in matched normal VCF if available 
+    elif (germlineMEIDict != False):
+        
+        ### Matched normal VCF available. Check if somatic MEI is included
+        ## There are MEI in the germline VCF of the same class as the somatic MEI
+        if somaticMEIObj.infoDict["CLASS"] in germlineMEIDict.keys():
 
-                # There is overlap, then germline MEI miscalled as somatic
-                if isGermlineMEI == True:
-                    print "overlap_germline!! ", begSomaticRange, endSomaticRange, begGermlineRange, endGermlineRange
-                    filterStatus = 'GERMLINE'
-                    break
+            ## There are MEI in the germline VCF in the same chromosome as the somatic MEI
+            if somaticMEIObj.chrom in germlineMEIDict[somaticMEIObj.infoDict["CLASS"]].keys():
+            
+                ## Define somatic insertion range for searching for overlap:    
+                begSomaticRange, endSomaticRange = insertionRange(somaticMEIObj, 10)     
+            
+                msg = "begSomaticRange,endSomaticRange: " + " " + str(begSomaticRange) + " " + str(endSomaticRange)
+                log("GERMLINE", msg)  
+                msg = "----------------------------"
+                log("GERMLINE", msg)  
+
+                ## For each germline MEI 
+                for germlineMEIObj in germlineMEIDict[somaticMEIObj.infoDict["CLASS"]][somaticMEIObj.chrom]:
+     
+                    ## Define germline insertion range for searching for overlap:    
+                    begGermlineRange, endGermlineRange = insertionRange(germlineMEIObj, 10)     
+                    
+                    msg = "begGermlineRange,endGermlineRange: " + " " + str(begGermlineRange) + " " + str(endGermlineRange)
+    
+                    ## Check if the somatic and germline ranges overlap
+                    isGermlineMEI = overlap(begSomaticRange, endSomaticRange, begGermlineRange, endGermlineRange) 
+
+                    # MEI in matched normal VCF
+                    if isGermlineMEI == True:
+                        msg = "overlap: " + " " + str(begSomaticRange) + " " + str(endSomaticRange) + " " + str(begGermlineRange) + " " + str(endGermlineRange)
+                        log("GERMLINE", msg)  
+
+                        filterStatus = 'GERMLINE'
+                        break
     
     return filterStatus
 
@@ -685,12 +698,13 @@ filterList = filters.split(',')
 # Germline filtering flag provided
 if 'GERMLINE' in filterList:
 
-    ## Abort if needed germline VCF not provided or file does not exits
-    if (germlineVCF == False) or (os.path.isfile(germlineVCF) == False):
-        msg = "Abort if needed germline VCF not provided or file does not exits" 
-        log("ERROR", msg)
-        sys.exit(1)
-    ## Organize germline MEI into a dictionary
+    ## A) Normal matched VCF not provided or file does not exits
+    if (germlineVCF == False):
+        msg = "Matched normal VCF not provided" 
+        log("WARNING", msg)
+        germlineMEIDict = False
+
+    ## B) Normal VCF provided -> Organize germline MEI into a dictionary
     else:
         germlineVCFObj = formats.VCF()
         germlineVCFObj.read_VCF(germlineVCF)        
@@ -838,7 +852,7 @@ for VCFlineObj in VCFObj.lineList:
     ### 3.4 Germline insertions miscalled as somatic filter
     if "GERMLINE" in filterList:
 
-        msg = "Apply germline insertions miscalled as somatic filter"
+        msg = "Apply germline filter"
         log("GERMLINE", msg)
 
         filterStatus = germlineFilter(VCFlineObj, germlineMEIDict)
