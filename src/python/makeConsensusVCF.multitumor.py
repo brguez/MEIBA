@@ -394,11 +394,13 @@ with open(VCFs) as VCFs:
     ### Process a VCF in each iteration 
     for VCF in VCFs:
         VCF = VCF.rstrip('\n')        
-      
+        
+
         ## 1. Generate VCF object
         VCFObj = formats.VCF()
         VCFObj.read_VCF(VCF)  
-        
+        VCFheader = VCFObj.header
+
         ## Exclude duplicated insertions
         for MEIObj in VCFObj.lineList:
         
@@ -416,6 +418,7 @@ MEIDict = organizeMEI(allMEIlist)
 ##########################################################################
 
 outVCFObj = formats.VCF()              
+outVCFObj.header = VCFheader
 
 ## For each possible MEI class
 for MEIclass in MEIDict:
