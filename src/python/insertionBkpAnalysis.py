@@ -235,7 +235,7 @@ class VCF():
 ##FILTER=<ID=GERMLINE,Description="Germline MEI miscalled as somatic">
 ##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting reads">
 ##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
-##FORMAT=<ID=SL,Number=1,Type=Integer,Description="List of samples where the variant was found (relevant for multi-tumor donors)">
+##FORMAT=<ID=SL,Number=1,Type=Integer,Description="List of samples where the variant was found (specially relevant for multi-tumor donors)">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Unphased genotypes">
 ##FORMAT=<ID=NV,Number=1,Type=Integer,Description="Number of reads supporting the variant in this sample">
 ##FORMAT=<ID=NR,Number=1,Type=Integer,Description="Number of reads covering variant location in this sample">
@@ -388,10 +388,10 @@ class insertion():
             7) blatMinusPath. psl file containing the blat aligments for the negative cluster's assembled contigs.
             8) readPairsPlus. List of + cluster supporting reads.
             9) readPairsMinus. List of - cluster supporting reads.
-            10) srcElement.
-            11) transductionInfo.
-            12) pseudogeneInfo.
-            13) sampleId
+            10) srcElement. Source element information in the format: chromSource"_"begSource"_"endSource"_"orientationSource. Note: add cytobandId here!!
+            11) transductionInfo. Transduction information in the format: chromSource"_"transductBeg"_"transductEnd"_"transductRnaLen"_"transductLen.
+            12) pseudogeneInfo. Pseudogene information in the format: psdGene":"chrExonA"_"begExonA"-"endExonA":"chrExonB"_"begExonB"-"endExonB
+            13) sampleId. Sample identifier to be incorporated in the SL field of the output VCF. In PCAWG we use the normal_wgs_aliquot_id or tumor_wgs_aliquot_id.
             
             Output:
             - Insertion object variables initialized
@@ -2069,7 +2069,6 @@ class blat_alignment():
         return partial
 
 
-
 class fasta():
     """
     .... class.
@@ -2130,7 +2129,8 @@ def parse_args():
     """Define and parse command line parameters."""
     parser = argparse.ArgumentParser(description="Per MEI called by TraFiC: 1) Identifies informative contigs spanning 5' and/or 3' insertion ends if possible, 2) Use informative contigs for characterizing MEI in detail (exact breakpoints, length, strand...) and 3) Produce a VCF with the MAI plus all these information")
     parser.add_argument('inputPaths', help='Text file containing, per MEI, the needed files')
-    parser.add_argument('sampleId', help='Sample identifier. The output vcf will be named accordingly')
+    parser.add_argument('sampleId', help='Sample identifier to be incorporated in the SL field of the output VCF. In PCAWG we use the normal_wgs_aliquot_id or tumor_wgs_aliquot_id.')
+    parser.add_argument('fileName', help='Output VCF name. In PCAWG we use the submitted_donor_id.')
     parser.add_argument('genome', help='Reference genome in fasta format')
     parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
@@ -2144,6 +2144,7 @@ if __name__ == "__main__":
     args = parse_args()
     inputPaths = args.inputPaths
     sampleId = args.sampleId
+    fileName = args.fileName
     genome = args.genome
     outDir = args.outDir
 
@@ -2154,6 +2155,7 @@ if __name__ == "__main__":
     print "***** ", scriptName, " configuration *****"
     print "paths2bkpAnalysis: ", inputPaths
     print "sampleId: ", sampleId
+    print "fileName: ", fileName
     print "genome: ", genome
     print "outDir: ", outDir
     print
@@ -2163,7 +2165,7 @@ if __name__ == "__main__":
 
     ## Start ## 
 
-    outFilePath = outDir + '/' + sampleId + '.vcf'
+    outFilePath = outDir + '/' + fileName + '.vcf'
 
     ## 0. Create reference genome fasta object
 

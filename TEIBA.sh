@@ -75,7 +75,7 @@ cat <<help
 Execute TEIBA on one dataset (sample).
 
 *** USAGE
-    $0 -i <insertions> -f <insertions_fasta> -g <genome> -d <driver_db> --sample-id <sample_identifier> [OPTIONS]
+    $0 -i <insertions> -f <insertions_fasta> -g <genome> -d <driver_db> --sample-id <sample_identifier> --file-name <output_fileName>[OPTIONS]
 
 *** MANDATORY
     -i|--insertions     <TSV>              TraFiC mobile element insertion (MEI) candidate calls for a given sample.
@@ -83,7 +83,8 @@ Execute TEIBA on one dataset (sample).
     -g|--genome         <FASTA>            Reference Genome in fasta format (RG). Make sure the same RG version is used than for running TraFiC.
                                            Also, make sure the same chromosome naming conventions are used.
     -d|--repeats-db     <BED>              Database of repetitive sequences according to RepeatMasker in BED format.
-    --sample-id	        <STRING>           Sample identifier. Output file will be named accordingly.
+    --sample-id	        <STRING>           Sample identifier to be incorporated in the SL field of the output VCF. In PCAWG we use the normal_wgs_aliquot_id or tumor_wgs_aliquot_id.
+    --file-name	        <STRING>           Output VCF name. In PCAWG we use the submitted_donor_id.
 
 *** [OPTIONS] can be:
 * General:
@@ -109,11 +110,12 @@ Execute TEIBA on one dataset (sample).
 help
 }
 
+
 # Function 2. Parse user's input
 ################################
 function getoptions {
 
-ARGS=`getopt -o "i:f:g:d:o:h" -l "insertions:,fasta:,genome:,repeats-db:,sample-id:,output-dir:,no-cleanup,help,filters:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,germline-VCF:" \
+ARGS=`getopt -o "i:f:g:d:o:h" -l "insertions:,fasta:,genome:,repeats-db:,sample-id:,file-name:,output-dir:,no-cleanup,help,filters:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,germline-VCF:" \
       -n "$0" -- "$@"`
 
 #Bad arguments
@@ -166,6 +168,12 @@ do
             fi
             shift 2;;
 
+        --file-name)
+            if [ -n "$2" ];
+            then
+                fileName=$2
+            fi
+            shift 2;;
 
         ## OPTIONS
         # General:
@@ -322,7 +330,7 @@ function extractRegion {
 ############################
 
 # TEIBA version
-version=v0.5.2
+version=0.5.3
 
 # Enable extended pattern matching
 shopt -s extglob
@@ -371,6 +379,7 @@ if [[ ! -s $fasta ]]; then log "MEI supporting reads fasta file does not exist o
 if [[ ! -s $genome ]]; then log "The reference genome fasta file does not not exist or is empty. Mandatory argument -g|--genome" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -s $repeatsDb ]]; then log "The RepeatMasker repeats database does not exist or is empty. Mandatory argument -d|--repeats-db" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ $sampleId == "" ]]; then log "Sample id does not provided. Mandatory argument --sample-id" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ $fileName == "" ]]; then log "Output file name does not provided. Mandatory argument --file-name" "ERROR" >&2; usageDoc; exit -1; fi
 
 
 #### Optional arguments
@@ -566,7 +575,8 @@ printf "  %-34s %s\n" "insertions:" "$insertions"
 printf "  %-34s %s\n" "fasta:" "$fasta"
 printf "  %-34s %s\n" "genome:" "$genome"
 printf "  %-34s %s\n" "repeatsDb:" "$repeatsDb"
-printf "  %-34s %s\n\n" "sample-id:" "$sampleId"
+printf "  %-34s %s\n" "sample-id:" "$sampleId"
+printf "  %-34s %s\n\n" "file-name:" "$fileName"
 
 printf "  %-34s %s\n" "***** OPTIONAL ARGUMENTS *****"
 printf "  %-34s %s\n" "*** General ***"
@@ -590,7 +600,7 @@ printf "  %-34s %s\n\n" "germline-VCF:" "$germlineVCF"
 ##########
 ## START #
 ##########
-header="Executing TEIBA $version for $sampleId"
+header="Executing TEIBA $version for $sampleId sample"
 echo $header
 eval "for i in {1..${#header}};do printf \"-\";done"
 printf "\n\n"
@@ -612,7 +622,7 @@ if [[ ! -d $logsDir ]]; then mkdir $logsDir; fi
 nbLines=`cat $insertions | wc -l`
 nbInsertions=$(( nbLines - 1 )) # Substract one in order not to count the header.
 
-printHeader "$sampleId donor has $nbInsertions candidate retrotransposition events"
+printHeader "$sampleId sample has $nbInsertions candidate retrotransposition events"
 
 if [[ $nbInsertions == 0 ]]
 then
@@ -620,7 +630,7 @@ then
     log "Donor with 0 retrotransposition events. Generate empty VCF and stop execution\n" "INFO"
 
     # Print empty VCF only with header
-    run "python $EMPTYVCF $sampleId -o $outDir 1> $logsDir/1_emptyVCF.out 2> $logsDir/1_emptyVCF.err" "$ECHO"
+    run "python $EMPTYVCF $fileName -o $outDir 1> $logsDir/1_emptyVCF.out 2> $logsDir/1_emptyVCF.err" "$ECHO"
 
     ## End
     end=$(date +%s)
@@ -895,8 +905,8 @@ if [[ "$cleanup" == "TRUE" ]]; then rm $insertionListInfo ; fi
 
 ## 4.3 Perform breakpoint analysis
 # Output:
-# - $bkpAnalysisDir/$sampleId.vcf
-rawVCF=$bkpAnalysisDir/$sampleId.vcf
+# - $bkpAnalysisDir/$fileName.vcf
+rawVCF=$bkpAnalysisDir/$fileName.vcf
 
 if [ ! -s $rawVCF ];
 then
@@ -904,7 +914,7 @@ then
     startTime=$(date +%s)
     printHeader "Performing MEI breakpoint analysis"
     log "Identifying insertion breakpoints, TSD, MEI length, orientation and structure" $step
-    run "python $BKP_ANALYSIS $paths2bkpAnalysis $sampleId $genome --outDir $bkpAnalysisDir 1>> $logsDir/4_bkpAnalysis.out 2>> $logsDir/4_bkpAnalysis.err" "$ECHO"
+    run "python $BKP_ANALYSIS $paths2bkpAnalysis $sampleId $fileName $genome --outDir $bkpAnalysisDir 1>> $logsDir/4_bkpAnalysis.out 2>> $logsDir/4_bkpAnalysis.err" "$ECHO"
 
     if [ ! -s $rawVCF ];
     then
@@ -926,8 +936,8 @@ if [[ "$cleanup" == "TRUE" ]]; then rm -r $contigsDir $blatDir ; fi
 # 5) Annotate MEI
 ###################
 ## Output:
-# -  $annotDir/$sampleId.annotated.vcf
-annotVCF=$annotDir/$sampleId.annotated.vcf
+# -  $annotDir/$fileName.annotated.vcf
+annotVCF=$annotDir/$fileName.annotated.vcf
 
 ## Make MEI annotation directory:
 if [[ ! -d $annotDir ]]; then mkdir $annotDir; fi
@@ -939,7 +949,7 @@ then
     startTime=$(date +%s)
     printHeader "Performing MEI breakpoint annotation"
     log "Annotating MEI" $step
-    run "bash $ANNOTATOR $rawVCF $repeatsDb $driverDb $germlineMEIdb $sampleId $annotDir 1>> $logsDir/5_annotation.out 2>> $logsDir/5_annotation.err" "$ECHO"
+    run "bash $ANNOTATOR $rawVCF $repeatsDb $driverDb $germlineMEIdb $fileName $annotDir 1>> $logsDir/5_annotation.out 2>> $logsDir/5_annotation.err" "$ECHO"
 
     if [ ! -s $annotVCF ];
     then
@@ -960,8 +970,8 @@ if [[ "$cleanup" == "TRUE" ]]; then rm -r $bkpAnalysisDir ; fi
 # 6) Filter MEI
 #################
 ## Output:
-# -  $filterDir/$sampleId.filtered.vcf
-filteredVCF=$filterDir/$sampleId.filtered.vcf
+# -  $filterDir/$fileName.filtered.vcf
+filteredVCF=$filterDir/$fileName.filtered.vcf
 
 ## Make MEI filtering directory:
 if [[ ! -d $filterDir ]]; then mkdir $filterDir; fi
@@ -978,9 +988,9 @@ then
 
     if [[ "$germlineVCF" == "NOT_PROVIDED" ]]
     then
-        command="$FILTER $annotVCF $sampleId $filterList --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err"
+        command="$FILTER $annotVCF $fileName $filterList --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err"
     else
-        command="$FILTER $annotVCF $sampleId $filterList --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --germline-VCF $germlineVCF --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err"           
+        command="$FILTER $annotVCF $fileName $filterList --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --germline-VCF $germlineVCF --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err"           
     fi
 
     run "$command" "$ECHO"
@@ -1006,7 +1016,7 @@ if [[ "$cleanup" == "TRUE" ]]; then rm -r $annotDir ; fi
 #############################
 
 ## Produce output VCF
-finalVCF=$outDir/$sampleId.vcf
+finalVCF=$outDir/$fileName.vcf
 
 cp $filteredVCF $finalVCF
 
@@ -1016,7 +1026,7 @@ if [[ "$cleanup" == "TRUE" ]]; then rm -r $filterDir ; fi
 
 ## End
 end=$(date +%s)
-printHeader "TEIBA for $sampleId completed in $(echo "($end-$start)/60" | bc -l | xargs printf "%.2f\n") min "
+printHeader "TEIBA for $sampleId sample completed in $(echo "($end-$start)/60" | bc -l | xargs printf "%.2f\n") min "
 
 # disable extglob
 shopt -u extglob
