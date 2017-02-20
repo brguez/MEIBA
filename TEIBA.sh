@@ -330,7 +330,7 @@ function extractRegion {
 ############################
 
 # TEIBA version
-version=0.5.3
+version=0.5.5
 
 # Enable extended pattern matching
 shopt -s extglob
