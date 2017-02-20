@@ -1032,7 +1032,7 @@ class insertion():
             consDir5prime = informative5primeContigObj.informativeDict["info"].strand
 
             # a) + strand
-            if (targDir5Prime == consDir5prime):
+            if (targDir5prime == consDir5prime):
                 orientation = "+"
 
             # b) - strand
