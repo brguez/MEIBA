@@ -38,6 +38,39 @@ def log(label, string):
     """
     print "[" + label + "]", string
 
+def test_overlap(begA, endA, begB, endB):
+
+    """
+    Check if both ranges overlap. 2 criteria for defining overlap: 
+
+    ## A) Begin of the range A within the range B         
+    #       *beg* <---------range_A---------->                         
+    # <---------range_B----------> 
+                
+    #    *beg* <-------range_A----->
+    # <-------------range_B------------------>
+
+    ## B) Begin of the range B within the range A     
+    # <---------range_A----------> 
+    #               *beg* <---------range_B---------->
+            
+    # <-------------range_A----------------->
+    #    *beg* <-------range_B------>
+    """    
+       
+    # a) Begin of the range A within the range B   
+    if ((begA >= begB) and (begA <= endB)):
+        overlap = True
+        
+    # b) Begin of the range B within the range A            
+    elif ((begB >= begA) and (begB <= endA)):
+        overlap = True
+
+    # c) Ranges do not overlapping
+    else:
+        overlap = False
+
+    return overlap
 
 #### CLASSES ####
 
@@ -208,8 +241,8 @@ class VCF():
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
 ##INFO=<ID=STRUCT,Number=1,Type=String,Description="Transposable element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
 ##INFO=<ID=LEN,Number=1,Type=Integer,Description="Transposable element length">
-##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site duplication length">
-##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication sequence">
+##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site duplication (+_value) or deletion (-_value) length">
+##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication or deletion sequence">
 ##INFO=<ID=POLYA,Number=1,Type=String,Description="Poly-A sequence">
 ##INFO=<ID=SRC,Number=1,Type=String,Description="Coordinates of the source element that mediated the transduction in the format: chrom_beg_end_strand">
 ##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the transduced region in the format: chrom_beg_end">
@@ -798,7 +831,7 @@ class insertion():
 
     def target_site(self, informative5primeContigObj, informative3primeContigObj):
         """
-            Determine Target Site Duplication (TSD) (or microdeletion??).
+            Determine Target Site Duplication or Deletion sequence and length (TSD).
 
 
             *** Target Site Duplication *** 
@@ -817,8 +850,7 @@ class insertion():
                              <-------->
                              TSD (7bp)
 
-
-            *** ¿Target Site deletion? ***
+            *** Target Site Deletion ***
 
             + strand)
 
@@ -838,38 +870,62 @@ class insertion():
             2) informative3primeContigObj.
 
             Output:
-            1) targetSiteSize. Target site duplication length. 'inconsistent' if expected TSD size different to TSD sequence length.
-            2) targetSiteSeq. Target site duplication sequence or 'na' if no TSD. 'inconsistent' if expected TSD size different to TSD sequence length.
+            1) targetSiteSize. Target site duplication or deletion length. 'inconsistent' if expected TSD size different to TSD sequence length.
+            2) targetSiteSeq. Target site duplication or deletion sequence. 'NA' if no TSD. 'inconsistent' if expected TSD size different to TSD sequence length.
         """
 
         bkpPos5prime = informative5primeContigObj.informativeDict["bkp"][1]
         bkpPos3prime = informative3primeContigObj.informativeDict["bkp"][1]
         alignObj5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"]
+        alignObj3prime = informative3primeContigObj.informativeDict["targetRegionAlignObj"]        
+        
+        ### Determine if target site duplication or deletion based on if the aligment of the 5' and 3' contigs on the integration region overlap or not.   
+        overlap = test_overlap(alignObj5prime.tBeg, alignObj5prime.tEnd, alignObj3prime.tBeg, alignObj3prime.tEnd)
+        
+        ## A) Target Site Duplication
+        # ----------contig----------bkp
+        #             bkp-------contig-----------
+        if (overlap):
+        
+            ## Compute length
+            targetSiteSize = abs(bkpPos5prime - bkpPos3prime)
+    
+            ## Extract TSD sequence from 5' informative contig
+            # a) Begin of the contig sequence aligned in the TE insertion genomic region
+            #   -------------**TSD**######TE#####
+            #   --------------------
+            # qBeg               *qEnd*
+            if (alignObj5prime.alignType == "beg"):
+                beg = alignObj5prime.qEnd - abs(targetSiteSize)
+                end = alignObj5prime.qEnd
+                targetSiteSeq = informative5primeContigObj.seq[beg:end]
 
-        ## Compute TSD length
-        targetSiteSize = abs(bkpPos5prime - bkpPos3prime)
+            # b) End of the contig sequence aligned in the TE insertion genomic region
+            #   ######TE#####AAAAAAA**TSD**-------------
+            #                       --------------------
+            #                    *qBeg*               qEnd
+            else:
+                beg = alignObj5prime.qBeg    # (no substract 1 since psl coordinates are 0-based as python strings)
+                end = alignObj5prime.qBeg + abs(targetSiteSize)
+                targetSiteSeq = informative5primeContigObj.seq[beg:end]
 
-        ## Extract TSD sequence
-        # A) Begin of the contig sequence aligned in the TE insertion genomic region
-        #   -------------**TSD**######TE#####
-        #   --------------------
-        # qBeg               *qEnd*
-        if (alignObj5prime.alignType == "beg"):
-            beg = alignObj5prime.qEnd - targetSiteSize
-            end = alignObj5prime.qEnd
-            targetSiteSeq = informative5primeContigObj.seq[beg:end]
+            ## Inconsistent TSD if sequence has not the expected length 
+            if (abs(targetSiteSize) != len(targetSiteSeq)):
+                targetSiteSize = "inconsistent"
+                targetSiteSeq = "inconsistent"
 
-        # B) End of the contig sequence aligned in the TE insertion genomic region
-        #   ######TE#####AAAAAAA**TSD**-------------
-        #                       --------------------
-        #                    *qBeg*               qEnd
+        ## B) Target Site Deletion 
+        # ----------contig----------bkp
+        #                                       bkp-------contig-----------
         else:
-            beg = alignObj5prime.qBeg    # (no substract 1 since psl coordinates are 0-based as python strings)
-            end = alignObj5prime.qBeg + targetSiteSize
-            targetSiteSeq = informative5primeContigObj.seq[beg:end]
 
-        ## Inconsistent TSD if sequence has not the expected length or longer than 100 bp
-        if (targetSiteSize != len(targetSiteSeq)) or (targetSiteSize > 100):
+            ## Compute length. 
+            targetSiteSize = abs(bkpPos5prime - bkpPos3prime) * -1 # Convert into negative length as it is a deletion
+            targetSiteSeq = "NA"
+            print "DELETION: ", alignObj5prime.tBeg, alignObj5prime.tEnd, alignObj3prime.tBeg, alignObj3prime.tEnd, targetSiteSize
+        
+        ## Inconsistent TSD if longer than 50 bp (current studies did not find TSD lengths longer than 30bp..)
+        if (abs(targetSiteSize) >= 50):
             targetSiteSize = "inconsistent"
             targetSiteSeq = "inconsistent"
 
