@@ -333,7 +333,7 @@ def findDuplicates(MEIList):
 
                     for MEI in maxScoreList:
                     
-                        RCP, RCN = MEI.genotype.split(":")                    
+                        RCP, RCN, sampleId = MEI.genotype.split(":")                   
                         RC = int(RCP) + int(RCN)
 
                         print MEI.chrom + '_' + str(MEI.pos) + '_' + MEI.infoDict["TYPE"] + '_' + MEI.genotype + ' ' + str(RC)
