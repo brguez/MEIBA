@@ -881,15 +881,15 @@ class insertion():
         
         ### Determine if target site duplication or deletion based on if the aligment of the 5' and 3' contigs on the integration region overlap or not.   
         overlap = test_overlap(alignObj5prime.tBeg, alignObj5prime.tEnd, alignObj3prime.tBeg, alignObj3prime.tEnd)
-        
+
         ## A) Target Site Duplication
         # ----------contig----------bkp
         #             bkp-------contig-----------
         if (overlap):
-        
+
             ## Compute length
             targetSiteSize = abs(bkpPos5prime - bkpPos3prime)
-    
+
             ## Extract TSD sequence from 5' informative contig
             # a) Begin of the contig sequence aligned in the TE insertion genomic region
             #   -------------**TSD**######TE#####
@@ -909,8 +909,8 @@ class insertion():
                 end = alignObj5prime.qBeg + abs(targetSiteSize)
                 targetSiteSeq = informative5primeContigObj.seq[beg:end]
 
-            ## Inconsistent TSD if sequence has not the expected length 
-            if (abs(targetSiteSize) != len(targetSiteSeq)):
+            ## Inconsistent TSD if sequence has not the expected length or if it is longer than 50bp 
+            if (abs(targetSiteSize) != len(targetSiteSeq)) or (abs(targetSiteSize) > 50):
                 targetSiteSize = "inconsistent"
                 targetSiteSeq = "inconsistent"
 
@@ -922,12 +922,11 @@ class insertion():
             ## Compute length. 
             targetSiteSize = abs(bkpPos5prime - bkpPos3prime) * -1 # Convert into negative length as it is a deletion
             targetSiteSeq = "NA"
-            print "DELETION: ", alignObj5prime.tBeg, alignObj5prime.tEnd, alignObj3prime.tBeg, alignObj3prime.tEnd, targetSiteSize
-        
-        ## Inconsistent TSD if longer than 50 bp (current studies did not find TSD lengths longer than 30bp..)
-        if (abs(targetSiteSize) >= 50):
-            targetSiteSize = "inconsistent"
-            targetSiteSeq = "inconsistent"
+
+            ## Inconsistent TSD if longer than 50 bp (current studies did not find TSD lengths longer than 30bp..)
+            if (abs(targetSiteSize) >= 50):
+                targetSiteSize = "inconsistent"
+                targetSiteSeq = "inconsistent"
 
         return (targetSiteSize, targetSiteSeq)
 
