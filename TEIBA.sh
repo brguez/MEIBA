@@ -89,6 +89,7 @@ Execute TEIBA on one dataset (sample).
 *** [OPTIONS] can be:
 * General:
     -o|--output-dir     <PATH>             Output directory. Default current working directory.
+    --tmp-dir		<PATH>		   Temporary directory. Default /tmp.	
     --no-cleanup	                   Keep intermediate files.
     -h|--help			           Display usage information
 
@@ -115,7 +116,7 @@ help
 ################################
 function getoptions {
 
-ARGS=`getopt -o "i:f:g:d:o:h" -l "insertions:,fasta:,genome:,repeats-db:,sample-id:,file-name:,output-dir:,no-cleanup,help,filters:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,germline-VCF:" \
+ARGS=`getopt -o "i:f:g:d:o:h" -l "insertions:,fasta:,genome:,repeats-db:,sample-id:,file-name:,output-dir:,tmp-dir:,no-cleanup,help,filters:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,germline-VCF:" \
       -n "$0" -- "$@"`
 
 #Bad arguments
@@ -183,6 +184,13 @@ do
                 outDir=$2
             fi
             shift 2;;
+
+        --tmp-dir)
+      	  if [ -n $2 ];
+      	  then
+              TMPDIR=$2
+      	  fi
+      	  shift 2;;
 
         --no-cleanup)
             cleanup="FALSE";
@@ -399,6 +407,19 @@ else
 	fi	
 fi
 
+# Temporary directory
+if [[ "$TMPDIR" == "" ]]; 
+then 
+	TMPDIR='/tmp'; 
+else	
+	if [[ ! -e "$TMPDIR" ]]; 
+	then
+		log "Your temporary directory does not exist. Option --tmp-dir\n" "ERROR" >&2;
+		usagedoc; 
+		exit -1; 
+	fi
+fi
+
 ## Clean up
 if [[ "$cleanup" != "FALSE" ]]; 
 then 
@@ -542,6 +563,10 @@ annotDir=$outDir/Annot
 filterDir=$outDir/Filter
 srcRegDir=$outDir/SrcRegions
 
+# The temporary directory will be exported as an environmental variable since it will 
+# be used by every TEIBA's scripts 
+export TMPDIR=$TMPDIR
+
 # 5. Scripts/references
 ########################
 # scripts
@@ -581,7 +606,9 @@ printf "  %-34s %s\n\n" "file-name:" "$fileName"
 printf "  %-34s %s\n" "***** OPTIONAL ARGUMENTS *****"
 printf "  %-34s %s\n" "*** General ***"
 printf "  %-34s %s\n" "output-dir:" "$outDir"
+printf "  %-34s %s\n" "tmp-dir:" "$TMPDIR"
 printf "  %-34s %s\n\n" "cleanup:" "$cleanup"
+
 
 printf "  %-34s %s\n" "*** Filters ***"
 printf "  %-34s %s\n" "filters:" "$filterList"
