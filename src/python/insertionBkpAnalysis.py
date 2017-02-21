@@ -924,7 +924,7 @@ class insertion():
             targetSiteSeq = "NA"
 
             ## Inconsistent TSD if longer than 50 bp (current studies did not find TSD lengths longer than 30bp..)
-            if (abs(targetSiteSize) >= 50):
+            if (abs(targetSiteSize) > 50):
                 targetSiteSize = "inconsistent"
                 targetSiteSeq = "inconsistent"
 
