@@ -333,6 +333,26 @@ function extractRegion {
     samtools faidx $ref $targetInterval > $outPath
 }
 
+# Function 8. If cleanup is enabled, make sure the pipeline removes intermediate files even if it fails
+########################################################################################################
+function cleanupFunc {
+
+    ## Cleanup enabled
+    if [[ "$cleanup" == "TRUE" ]]; then 
+        log "Finish execution. Performing cleanup before exit" "FINISH"
+
+        if [[ -d $fastaDir ]]; then rm -r $fastaDir; fi
+        if [[ -d $srcRegDir ]]; then rm -r $srcRegDir; fi
+        if [[ -d $contigsDir ]]; then rm -r $contigsDir; fi
+        if [[ -d $blatDir  ]]; then rm -r $blatDir; fi
+        if [[ -d $bkpAnalysisDir  ]]; then rm -r $bkpAnalysisDir; fi
+        if [[ -d $annotDir  ]]; then rm -r $annotDir; fi
+        if [[ -d $filterDir  ]]; then rm -r $filterDir; fi
+    else
+        log "Finish execution. Don't remove intermediate files as cleanup not enabled" "FINISH"
+    fi    
+}
+
 
 # SETTING UP THE ENVIRONMENT
 ############################
@@ -566,6 +586,9 @@ srcRegDir=$outDir/SrcRegions
 # The temporary directory will be exported as an environmental variable since it will 
 # be used by every TEIBA's scripts 
 export TMPDIR=$TMPDIR
+
+## make sure the pipeline removes intermediate files even if it fails
+trap cleanupFunc EXIT
 
 # 5. Scripts/references
 ########################
@@ -1049,7 +1072,6 @@ cp $filteredVCF $finalVCF
 
 ## Remove temporary filter directory
 if [[ "$cleanup" == "TRUE" ]]; then rm -r $filterDir ; fi
-
 
 ## End
 end=$(date +%s)
