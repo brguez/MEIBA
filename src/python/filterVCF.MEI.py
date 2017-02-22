@@ -698,13 +698,19 @@ filterList = filters.split(',')
 # Germline filtering flag provided
 if 'GERMLINE' in filterList:
 
-    ## A) Normal matched VCF not provided or file does not exits
+    ## A) Normal matched VCF not provided or file does not exist
     if (germlineVCF == False):
         msg = "Matched normal VCF not provided" 
         log("WARNING", msg)
         germlineMEIDict = False
 
-    ## B) Normal VCF provided -> Organize germline MEI into a dictionary
+    ## B) Normal VCF provided but does not exist
+    elif not (os.path.isfile(germlineVCF)):
+        msg = "Matched normal VCF does not exist" 
+        log("WARNING", msg)
+        germlineMEIDict = False
+            
+    ## C) Normal VCF provided -> Organize germline MEI into a dictionary
     else:
         germlineVCFObj = formats.VCF()
         germlineVCFObj.read_VCF(germlineVCF)        
