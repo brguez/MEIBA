@@ -571,8 +571,9 @@ class insertion():
         ## Set default variables
         self.traficId = self.TEClass + ":" + self.coordinates
 
-        ## A) Insertion without any contig spanning one of the insertion breakpoints
-        if (bestInformative5primeContigPlusObj == "UNK") and (bestInformative3primeContigPlusObj == "UNK") and (bestInformative5primeContigMinusObj == "UNK") and (bestInformative3primeContigMinusObj == "UNK"):
+        ## A) ERKV insertion without any contig spanning one of insertion breakpoints 
+        # Note that ERVK insertions do not have polyA tail. So both 5' and 3' breakpoints are identified as 5'
+        if (self.TEClass == "ERVK") and (bestInformative5primeContigPlusObj == "UNK") and (bestInformative5primeContigMinusObj == "UNK"):
 
             info("no-informative-contigs:")
 
@@ -580,7 +581,16 @@ class insertion():
             self.score = '2'
             self.bkpA = self.imprecise_bkp(self.coordinates)
 
-        ## B) Insertion with at least one contig spanning one of the insertion breakpoints
+        ## B) No ERVK insertion (L1, SVA, Alu or PSD) without any contig spanning one of insertion breakpoint
+        elif (self.TEClass != "ERVK") and (bestInformative5primeContigPlusObj == "UNK") and (bestInformative3primeContigPlusObj == "UNK") and (bestInformative5primeContigMinusObj == "UNK") and (bestInformative3primeContigMinusObj == "UNK"):
+
+            info("no-informative-contigs:")
+
+            # No informative contigs, imprecise breakpoint
+            self.score = '2'
+            self.bkpA = self.imprecise_bkp(self.coordinates)
+
+        ## C) Insertion with at least one contig spanning one of the insertion breakpoints
         else:
 
             info("informative-contig:")
@@ -769,9 +779,11 @@ class insertion():
             bkpCoord5prime  = bkp5prime[1]
             bkpCoord3prime  = bkp3prime[1]
 
+            print "hola: ", bkpCoord5prime, bkpCoord3prime
             # a) 5' bkp characterized
             if (bkpCoord3prime == "UNK"):
 
+                print "tiooo: ", informative5primeContigObj
                 self.informativeContigIdBkpA = informative5primeContigObj.ID
                 self.bkpA = bkp5prime
                 self.informativeContigBkpA = informative5primeContigObj.seq
