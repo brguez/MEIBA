@@ -722,9 +722,11 @@ VCFObj = formats.VCF()
 VCFObj.read_VCF(inputVCF)
 
 #### 2. Find somatic duplicated insertions
-dupList = findDuplicates(VCFObj.lineList)
+# Duplicated filtering flag provided
+if "DUP" in filterList:
+    dupList = findDuplicates(VCFObj.lineList)
 
-print "number_duplicates: ", len(dupList), dupList
+    print "number_duplicates: ", len(dupList), dupList
 
 #### 3. Filter somatic MEI
 # Iterate over each somatic MEI in the VCF
