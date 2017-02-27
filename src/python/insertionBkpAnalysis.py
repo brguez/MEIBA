@@ -233,24 +233,24 @@ class VCF():
 ##contig=<ID=X,assembly=GRCh37,length=155270560,species=human>
 ##contig=<ID=Y,assembly=GRCh37,length=59373566,species=human>
 ##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant. (All sequence is on the plus strand and in the forward direction).">
-##INFO=<ID=CLASS,Number=1,Type=String,Description="Transposable element class (L1, ALU, SVA or ERVK)">
+##INFO=<ID=CLASS,Number=1,Type=String,Description="Mobile element class (L1, ALU, SVA or ERVK)">
 ##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction), PSD: processed-pseudogene">
 ##INFO=<ID=SCORE,Number=1,Type=String,Description="Insertion score (5: 5' and 3' breakpoints (bkp) assembled, 4: 3'bkp assembled, 3: 5'bkp assembled, 2: no bkp assembled, 1: inconsistent (contradictory orientation, bkp or TSD))">
 ##INFO=<ID=BKPB,Number=1,Type=String,Description="MEI right-most breakpoint position (bkp B). Left-most breakpoint position (bkp A) represented in the POS field">
 ##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoints">
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
-##INFO=<ID=STRUCT,Number=1,Type=String,Description="Transposable element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
-##INFO=<ID=LEN,Number=1,Type=Integer,Description="Transposable element length">
+##INFO=<ID=STRUCT,Number=1,Type=String,Description=" element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
+##INFO=<ID=LEN,Number=1,Type=Integer,Description="Mobile element length">
 ##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site duplication (+_value) or deletion (-_value) length">
-##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication or deletion sequence">
+##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication sequence">
 ##INFO=<ID=POLYA,Number=1,Type=String,Description="Poly-A sequence">
 ##INFO=<ID=SRC,Number=1,Type=String,Description="Coordinates of the source element that mediated the transduction in the format: chrom_beg_end_strand">
-##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the transduced region in the format: chrom_beg_end">
+##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the integrated transduced or pseudogene sequence in the format: chrom_beg_end">
 ##INFO=<ID=TDLEN,Number=1,Type=String,Description="Transduced region length">
 ##INFO=<ID=TDLENR,Number=1,Type=String,Description="Transduced region length at RNA level">
-##INFO=<ID=PSDGENE,Number=1,Type=String,Description="Source gene of the processed pseudogene insertion">
+##INFO=<ID=SRCGENE,Number=1,Type=String,Description="Source gene of the processed pseudogene insertion">
 ##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1KGENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), TRAFIC: TraFic in-house database)">
-##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the transposable element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
+##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the mobile element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
 ##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
 ##INFO=<ID=ROLE,Number=1,Type=String,Description="Role in cancer (oncogene, TSG: tumor suppressor gene, oncogene/TSG: both roles)">
 ##INFO=<ID=COSMIC,Number=0,Type=Flag,Description="Reported as cancer driver in COSMIC cancer gene census database">
@@ -266,6 +266,7 @@ class VCF():
 ##FILTER=<ID=REP,Description="Insertion overlapping a satellite region or a repetitive element of the same class">
 ##FILTER=<ID=DUP,Description="Duplicated MEI call">
 ##FILTER=<ID=GERMLINE,Description="Germline MEI miscalled as somatic">
+##FILTER=<ID=TD,Description="L1 transduction incorrectly identified as a processed pseudogene insertion">
 ##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting reads">
 ##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
 ##FORMAT=<ID=SL,Number=1,Type=Integer,Description="List of samples where the variant was found (specially relevant for multi-tumor donors)">
@@ -342,7 +343,7 @@ class VCFline():
         """
 
         ## Create list containing the order of info fields
-        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "SRC", "TDC", "TDLEN", "TDLENR", "PSDGENE", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "MEISEQ", "CONTIGA", "CONTIGB", "RP", "RN" ]
+         infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "MANUAL", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "SRC", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "MEISEQ", "CONTIGA", "CONTIGB", "RP", "RN" ]
 
         ## Build dictionary with info tags as keys
         infoDict = {}
@@ -362,7 +363,7 @@ class VCFline():
         infoDict["TDC"] = insertionObj.srcCoord
         infoDict["TDLEN"] = insertionObj.tdLen
         infoDict["TDLENR"] = insertionObj.tdLenRna
-        infoDict["PSDGENE"] = insertionObj.psdGene
+        infoDict["SRCGENE"] = insertionObj.srcgene
         infoDict["MEISEQ"] = insertionObj.MEISeq
         infoDict["CONTIGA"] = insertionObj.informativeContigBkpA
         infoDict["CONTIGB"] = insertionObj.informativeContigBkpB
@@ -371,7 +372,6 @@ class VCFline():
 
         # handle specifics of pseudogene insertions
         if (insertionObj.tdType == "PSD"):
-            infoDict["TDC"] = "UNK"
             infoDict["MEISEQ"] = "UNK"
 
         ## Create info string in the correct order from dictionary
@@ -423,7 +423,7 @@ class insertion():
             9) readPairsMinus. List of - cluster supporting reads.
             10) srcElement. Source element information in the format: chromSource"_"begSource"_"endSource"_"orientationSource. Note: add cytobandId here!!
             11) transductionInfo. Transduction information in the format: chromSource"_"transductBeg"_"transductEnd"_"transductRnaLen"_"transductLen.
-            12) pseudogeneInfo. Pseudogene information in the format: psdGene":"chrExonA"_"begExonA"-"endExonA":"chrExonB"_"begExonB"-"endExonB
+            12) pseudogeneInfo. Pseudogene information in the format: srcgene":"chrExonA"_"begExonA"-"endExonA":"chrExonB"_"begExonB"-"endExonB
             13) sampleId. Sample identifier to be incorporated in the SL field of the output VCF. In PCAWG we use the normal_wgs_aliquot_id or tumor_wgs_aliquot_id.
             
             Output:
@@ -443,14 +443,14 @@ class insertion():
             self.srcCoord = "NA"
             self.tdLen = "NA"
             self.tdLenRna = "NA"
-            self.psdGene = "UNK"
+            self.srcgene = "UNK"
 
         # B) Partnered or orphan transduction (TD1 and TD2)
         elif (self.tdType in ["TD1", "TD2"]):
             
             transductionInfoList = transductionInfo.split("_")
             self.srcCoord = transductionInfoList[0] + "_" + transductionInfoList[1] + "_" + transductionInfoList[2]
-            self.psdGene = "UNK"
+            self.srcgene = "UNK"
 
             status = self.srcElement.split("_")[3]
 
@@ -475,8 +475,9 @@ class insertion():
             # parse pseudogene info, format:
             # gene:chrA_begA-endA:chrB_begB-begB
             regex = r'(?P<gene>\w+):(?P<chrA>\w+)_(?P<begA>\d+)-(?P<endA>\d+):(?P<chrB>\w+)_(?P<begB>\d+)-(?P<endB>\d+)'
+
             m = re.search(regex, pseudogeneInfo)
-            psdGene = m.group("gene")
+            srcgene = m.group("gene")
             chrExonA = m.group("chrA")
             begExonA = int(m.group("begA"))
             endExonA = int(m.group("endA"))
@@ -484,7 +485,7 @@ class insertion():
             begExonB = int(m.group("begB"))
             endExonB = int(m.group("endB"))
 
-            self.psdGene = psdGene
+            self.srcgene = srcgene
 
             # construct source region from exon coordinates
             minBeg = min(begExonA, begExonB)

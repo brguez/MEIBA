@@ -218,10 +218,9 @@ class VCFline():
         """
 
         ## Create list containing the order of info fields 
-        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "SRC", "TDC", "TDLEN", "TDLENR", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "MEISEQ", "CONTIGA", "CONTIGB", "RP", "RN" ]
+        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "MANUAL", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "SRC", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "MEISEQ", "CONTIGA", "CONTIGB", "RP", "RN" ]
 
-    
-        flagList = ["COSMIC", "CPG" ]
+        flagList = ["COSMIC", "CPG" , "MANUAL"]
 
         ## Create info string in the correct order from dictionary
         infoList = []
@@ -235,7 +234,7 @@ class VCFline():
                 # A) Flag
                 if (info in flagList):
 
-                # Flag with positive value
+                    # Flag with positive value
                     if (self.infoDict[info] == "1"):
                         infoField = info
                         infoList.append(infoField)
