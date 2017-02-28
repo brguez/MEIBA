@@ -150,8 +150,7 @@ for line in metadata:
         tumor_wgs_aliquot_ids = fieldsList[11]
         
         # Discard excluded donors        
-        if (wgs_exclusion_trafic != "tiooo"):     # provisional   
-        #if (wgs_exclusion_trafic != "Excluded"):
+        if (wgs_exclusion_trafic != "Excluded"):
 
             # For each tumor sample from a given donor (>1 for multitumor donors)
             tumor_wgs_aliquot_ids_list = tumor_wgs_aliquot_ids.split(",")
