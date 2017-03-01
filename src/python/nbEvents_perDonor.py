@@ -25,10 +25,6 @@ import os.path
 import formats
 import time
 from operator import itemgetter, attrgetter, methodcaller
-import pandas as pd
-import numpy as np
-from matplotlib import pyplot as plt
-import matplotlib.patches as mpatches
 
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
@@ -56,8 +52,8 @@ outPath = outDir + '/nbMEI_perDonors_PCAWG.tsv'
 outFile = open(outPath, 'w')
 
 ## Write file header in the output file
-row = "tumorId" + "\t" + "donorId" + "\t" + "projectCode" + "\t" + "histology" + "\t" + "nbTotal" + "\t" + "nbL1" + "\t" + "nbAlu" + "\t" + "nbSVA" + "\t" + "nbERVK" + "\n"      
-outFile.write(row)
+#row = "tumorId" + "\t" + "donorId" + "\t" + "projectCode" + "\t" + "histology" + "\t" + "nbTotal" + "\t" + "nbL1" + "\t" + "nbAlu" + "\t" + "nbSVA" + "\t" + "nbERVK" + "\n"      
+#outFile.write(row)
 
 inputFile = open(inputPath, 'r')
 
