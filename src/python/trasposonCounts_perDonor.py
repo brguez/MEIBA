@@ -47,7 +47,7 @@ print "***** Executing ", scriptName, ".... *****"
 print
 
 
-outPath = outDir + '/nbMEI_perDonors_PCAWG.tsv'
+outPath = outDir + '/transposonCounts_perDonor.tsv'
 
 outFile = open(outPath, 'w')
 
@@ -118,9 +118,9 @@ for line in inputFile:
                 elif (MEIClass == "ERVK"):
                     nbERVK += 1      
 
-    ## Write MEI counts into the output file
-    row = tumorId + "\t" + donorId + "\t" + projectCode + "\t" + histology + "\t" + str(nbTotal) + "\t" + str(nbL1) + "\t" + str(nbAlu) + "\t" + str(nbSVA) + "\t" + str(nbERVK) + "\n"      
-    outFile.write(row)
+        ## Write MEI counts into the output file
+        row = tumorId + "\t" + donorId + "\t" + projectCode + "\t" + histology + "\t" + str(nbTotal) + "\t" + str(nbL1) + "\t" + str(nbAlu) + "\t" + str(nbSVA) + "\t" + str(nbERVK) + "\n"      
+        outFile.write(row)
 
 ## End ##
 print
