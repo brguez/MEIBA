@@ -110,9 +110,11 @@ def overlap(begA, endA, begB, endB):
 def organizeMEI(MEIList):
         """
         Organize MEI into a nested dictionary containing for each insertion class and chromosome 
-        a dictionary of germline MEI objects organized by coordinates. Structure: 
+        a dictionary of MEI objects organized by coordinates. Structure: 
         
-        key1(MEIclass) -> value(dict2) -> key2(chrId) -> value(MEIObjList)
+        key1(event_type) -> value(dict2) -> key2(chrId) -> value(MEIObjList)
+
+        event_type can be L1, Alu, SVA, ERVK or PSD
 
         MEIObjList sorted in increasing coordinates ordering
         """
@@ -122,27 +124,31 @@ def organizeMEI(MEIList):
         # Per MEI object 
         for MEIObj in MEIList:
 
+            eventType = MEIObj.infoDict["CLASS"] if "CLASS" in MEIObj.infoDict else MEIObj.infoDict["TYPE"]
+        
+            print "tiooo: ", eventType            
+    
             # a) First MEI of a given class    
-            if MEIObj.infoDict["CLASS"] not in MEIDict:
+            if eventType not in MEIDict:
             
-                MEIDict[MEIObj.infoDict["CLASS"]] = {}
-                MEIDict[MEIObj.infoDict["CLASS"]][MEIObj.chrom] = [MEIObj]
+                MEIDict[eventType] = {}
+                MEIDict[eventType][MEIObj.chrom] = [MEIObj]
             
             # b) First MEI of a given class in the chromosome
-            elif MEIObj.chrom not in MEIDict[MEIObj.infoDict["CLASS"]]:
-                MEIDict[MEIObj.infoDict["CLASS"]][MEIObj.chrom] = [MEIObj]
+            elif MEIObj.chrom not in MEIDict[eventType]:
+                MEIDict[eventType][MEIObj.chrom] = [MEIObj]
 
             # c) There are already MEI of this class in the chromosome
             else:
-                MEIDict[MEIObj.infoDict["CLASS"]][MEIObj.chrom].append(MEIObj)
+                MEIDict[eventType][MEIObj.chrom].append(MEIObj)
                 
         # Sort MEI list in increasing coordinates ordering
-        for MEIclass in MEIDict:
-            for chrom in MEIDict[MEIclass]:
+        for eventType in MEIDict:
+            for chrom in MEIDict[eventType]:
 
-                MEIlist = MEIDict[MEIclass][chrom]
+                MEIlist = MEIDict[eventType][chrom]
                 MEIlistSorted = sorted(MEIlist, key=lambda MEIObj: MEIObj.pos)
-                MEIDict[MEIclass][chrom] = MEIlistSorted
+                MEIDict[eventType][chrom] = MEIlistSorted
             
         return MEIDict
 
@@ -164,17 +170,17 @@ def clusterMEI(MEIList):
     clusterList = []
 
     # Iterate over the dictionary picking a MEI list in each iteration:
-    for MEIclass in MEIDict:
-        for chrom in MEIDict[MEIclass]:
+    for eventType in MEIDict:
+        for chrom in MEIDict[eventType]:
         
-            MEIlist = MEIDict[MEIclass][chrom]
+            MEIlist = MEIDict[eventType][chrom]
 
             # Per MEI object:        
             for MEIObj in MEIlist:
 
                 bkpB = int(MEIObj.infoDict["BKPB"]) if "BKPB" in MEIObj.infoDict else "UNK"
         
-                msg = "MEI: " + chrom + " " + str(MEIObj.pos) + " " + str(bkpB) + " " + MEIObj.infoDict["TYPE"] + " " + MEIObj.infoDict["CLASS"] + " " + MEIObj.infoDict["SCORE"] + " " + MEIObj.infoDict["CIPOS"] 
+                msg = "MEI: " + chrom + " " + str(MEIObj.pos) + " " + str(bkpB) + " " + MEIObj.infoDict["TYPE"] + " " + MEIObj.infoDict["SCORE"] + " " + MEIObj.infoDict["CIPOS"] 
                 log("CLUSTER", msg)    
         
                 # A) No cluster in the list -> Create first cluster
@@ -421,15 +427,15 @@ outVCFObj = formats.VCF()
 outVCFObj.header = VCFheader
 
 ## For each possible MEI class
-for MEIclass in MEIDict:
+for eventType in MEIDict:
 
     ## For each possible chromosome
-    for chrom in MEIDict[MEIclass]:
+    for chrom in MEIDict[eventType]:
 
         ## 1) Select list of MEI of a given class in a given chromosome 
         msg = "1) Select list of MEI of a given class in a given chromosome "
         header(msg)
-        MEIlist = MEIDict[MEIclass][chrom]
+        MEIlist = MEIDict[eventType][chrom]
 
         ## 2) Cluster MEI
         msg = "2) Cluster MEI"
@@ -463,7 +469,10 @@ for MEIclass in MEIDict:
             msg="3.4) Add the representative MEI to the output VCF"            
             subHeader(msg)
             outVCFObj.addLine(reprMEIObj)
-                    
+              
+#### Sort VCF:
+outVCFObj.lineList = outVCFObj.sort()
+
 #### Make output VCF
 outFilePath = outDir + '/' + donorId + ".vcf"
 
