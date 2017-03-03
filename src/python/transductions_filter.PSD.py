@@ -170,7 +170,7 @@ print
 
 ## Start ## 
 
-outFilePath = outDir + '/' + donorId + ".somatic.PSD.filteredTD.vcf"
+outFilePath = outDir + '/' + donorId + ".somatic.filteredTD.vcf"
 
 #### 1. Create database of source elements
 tdRegionsDict = makeSourceRegions(sourceElements)

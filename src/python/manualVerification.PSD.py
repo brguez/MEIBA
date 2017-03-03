@@ -167,7 +167,7 @@ print
 
 ## Start ## 
 
-outFilePath = outDir + '/' + donorId + ".somatic.PSD.manual.vcf"
+outFilePath = outDir + '/' + donorId + ".somatic.manual.vcf"
 
 #### 1. Create database of manually curated PSD insertions 
 # Make a nested dictionary with:
