@@ -552,12 +552,6 @@ fi
 if [[ "$germlineVCF" == "" ]]
 then
     germlineVCF="NOT_PROVIDED";
-
-elif [ ! -s "$germlineVCF" ]
-then 
-    log "Your text file containing germline MEI calls for filtering purposes does not exist. Option --germline-VCF\n" "ERROR" >&2; 
-    usageDoc; 
-    exit -1; 
 fi
 
 

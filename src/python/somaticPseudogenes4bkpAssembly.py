@@ -171,7 +171,7 @@ for line in metadata:
                         raise
         
                 ## Create text file with processed pseudogenes:
-                pseudogenesPath = outDonorDir + "/" + tumor_wgs_aliquot_id + ".somatic.pseudogenes.tsv"
+                pseudogenesPath = outDonorDir + "/" + tumor_wgs_aliquot_id + ".somatic.PSD.tsv"
                 outFile = open(pseudogenesPath, "w" )
 
                 # Print header into the output file
