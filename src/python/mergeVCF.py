@@ -36,7 +36,7 @@ import formats
 import time
 
 ## Get user's input ##
-parser = argparse.ArgumentParser(description="Merge multiple multi-sample VCF files in a single one")
+parser = argparse.ArgumentParser(description="Merge multiple one-sample VCF files in a single one")
 parser.add_argument('VCFPaths', help='text file with the path to the VCF files will be merged')
 parser.add_argument('sampleId', help='Identifier to name output file.')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
@@ -70,10 +70,10 @@ completeVCFObj = formats.VCF()
 ## Read one VCF per iteration and add the variants to the merged VCF
 for VCFfile in paths:
 
-    VCFfile = VCFfile.rstrip('\n')
+    VCFfile = VCFfile.rstrip('\n\r')
     VCFObj = formats.VCF()
 
-    donorIdList = VCFObj.read_VCF_multiSample(VCFfile)
+    VCFObj.read_VCF(VCFfile)
 
     # Add variant objects
     for lineObj in VCFObj.lineList:
@@ -95,7 +95,7 @@ outFilePath = outDir + '/' + sampleId + ".vcf"
 completeVCFObj.write_header(outFilePath)
 
 # 2. Write variants
-completeVCFObj.write_variants_multiSample(donorIdList, outFilePath)
+completeVCFObj.write_variants(outFilePath)
 
 
 header("Finished")
