@@ -277,9 +277,7 @@ for MEIObj in VCFObj.lineList:
                         alleleCountsDict[sourceElementId]["alleleCount"] += 2
                         alleleCountsDict[sourceElementId]["donorIdList"].append(donorId)
 
-                    # Note c) possibility would be missing allele (./.)
-                    #print "Insertion in reference genome", sourceElementId, donorId, projectCode, alleleCountsDict[sourceElementId]
-
+           
         # b) Project code not available for current donors (affects to few donors) 
         # I don't know why this happens...  check later     
         else:
