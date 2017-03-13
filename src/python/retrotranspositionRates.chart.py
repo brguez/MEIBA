@@ -41,9 +41,11 @@ class cohort():
             line = line.rstrip('\n')
             line = line.split("\t")
 
-            projectCode = line[0]
-            sampleId = line[1]
+            donorId = line[0]
+            projectCode = line[1].split("-")[0]
             VCFfile = line[2]
+
+            print "tiooo: ", donorId, projectCode, VCFfile
 
             # Create VCF object
             VCFObj = formats.VCF()
@@ -55,12 +57,6 @@ class cohort():
 
                 # Read VCF and add information to VCF object
                 VCFObj.read_VCF(VCFfile)
-
-                # Add projectCode and sampleId information to the genotype field in each MEI object
-                for MEIObject in VCFObj.lineList:
-
-                    MEIObject.format = MEIObject.format + ':SAMPLEID'
-                    MEIObject.genotype = MEIObject.genotype + ':' + sampleId
 
                 # Initialize the donor list for a given project if needed 
                 if projectCode not in self.VCFdict:
@@ -76,18 +72,16 @@ class cohort():
 
 ####### FUNCTIONS #######
 def autolabel(rects, ax, valuesList):
-    # Get y-axis height to calculate label position from.
-    (y_bottom, y_top) = ax.get_ylim()
-    y_height = y_top - y_bottom
+    # Get x-axis height to calculate label position from.
+    (x_left, x_right) = ax.get_xlim()    
+    x_length = x_right - x_left
 
     index = 0
     for rect in rects:
         value = valuesList[index]
-
-        ax.text(rect.get_x() + rect.get_width()/2., 1.01*y_height,
+        ax.text(1.03*x_length, rect.get_y(), 
                 '%d' % int(value),
-                ha='center', va='bottom', rotation=90)    
-
+                ha='center', va='bottom', fontsize=8)    
 
         index += 1
 
@@ -107,7 +101,7 @@ import matplotlib.patches as mpatches
 
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
-parser.add_argument('inputPath', help='Tabular text file containing one row per sample with the following consecutive fields: projectCode sampleId vcf_path')
+parser.add_argument('inputPath', help='Tabular text file containing one row per donor with the following consecutive fields: projectCode donorId vcf_path')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.')
 
 args = parser.parse_args()
@@ -125,6 +119,7 @@ print
 print "***** Executing ", scriptName, ".... *****"
 print
 
+
 ## Start ##
 
 ### 1. Initialize cohort object
@@ -133,15 +128,11 @@ cohortObj = cohort()
 ### 2. Read VCF files, create VCF objects and organize them
 cohortObj.read_VCFs(inputPath)
 
-print "test: ", cohortObj.VCFdict
-
 ### 3. Make a dictionary containing per tumor type the number of samples with the following retrotransposition activity categories:
 # None: 0 insertions
 # Low: 1-10 insertions
 # Moderate: 10-100 insertions
-# High: 100-500 insertions
-# Very-high: > 500 insertions
-
+# High: > 100 insertions
 
 categoryCountsDict = {}
 
@@ -153,33 +144,27 @@ for projectCode in cohortObj.VCFdict:
     categoryCountsDict[projectCode]["Low"] = 0
     categoryCountsDict[projectCode]["Moderate"] = 0
     categoryCountsDict[projectCode]["High"] = 0
-    categoryCountsDict[projectCode]["Very-high"] = 0
-
 
     ## Count total number of donors per tumor type and number of donor per category
     for VCFObj in cohortObj.VCFdict[projectCode]:
 
         nbInsertions = int(len(VCFObj.lineList))
        
-        ## a) None:
+        ## a) None (0 insertions):
         if (nbInsertions == 0):
             categoryCountsDict[projectCode]["None"] += 1
 
-        ## b) Low:
+        ## b) Low ([1-10] insertions):
         elif (nbInsertions > 0) and (nbInsertions <= 10):
             categoryCountsDict[projectCode]["Low"] += 1
 
-        ## c) Moderate
+        ## c) Moderate ((10-100] insertions):
         elif (nbInsertions > 10) and (nbInsertions <= 100):
             categoryCountsDict[projectCode]["Moderate"] += 1
 
-        ## d) High
-        elif (nbInsertions > 100) and (nbInsertions <= 500):
+        ## d) High (>100 insertions):
+        elif (nbInsertions > 100):
             categoryCountsDict[projectCode]["High"] += 1                
-
-        ## e) Very-high  
-        elif (nbInsertions > 500):
-            categoryCountsDict[projectCode]["Very-high"] += 1
 
         ## d) Error
         else:
@@ -195,6 +180,31 @@ for projectCode in cohortObj.VCFdict:
 
 categoryCountsDataframe =  pd.DataFrame(categoryCountsDict)
 
+print "categoryCountsDataframe: ", categoryCountsDataframe
+
+## Filter out those tumor types with 0 donors with high retrotransposition activity. 
+tumorTypesBoolSerie =  categoryCountsDataframe.loc['High'] >= 1
+
+categoryCountsFinalDataframe = categoryCountsDataframe[tumorTypesBoolSerie.index[tumorTypesBoolSerie]]
+
+print "categoryCountsFinalDataframe: ", categoryCountsFinalDataframe
+
+### Group those elements contributing less than 1% in the category 'Other'
+tumorTypesBoolSerie =  categoryCountsDataframe.loc['High'] < 1
+
+categoryCountsOtherDataframe = categoryCountsDataframe[tumorTypesBoolSerie.index[tumorTypesBoolSerie]]
+
+print "categoryCountsOtherDataframe: ", categoryCountsOtherDataframe
+
+categoryCountsSerieOther = categoryCountsOtherDataframe.sum(axis=1)
+
+print "categoryCountsSerieOther: ", categoryCountsSerieOther
+
+### Make final dataframe and add the other category as an additional row
+colName = "Other" 
+
+categoryCountsFinalDataframe[colName] = categoryCountsSerieOther
+print "final-counts: ", categoryCountsFinalDataframe
 
 ### 5. Make dataframe with the percentage of samples per category for each tumor type
 # Project codes: columns
@@ -203,10 +213,10 @@ categoryCountsDataframe =  pd.DataFrame(categoryCountsDict)
 # 0_insertions      X1%          Y1%          Z1%     
 # 1-10_insertions   X2%          Y2%          Z2%
 
-donorsPerTumorTypeSerie = categoryCountsDataframe.sum(axis=0)
+donorsPerTumorTypeSerie = categoryCountsFinalDataframe.sum(axis=0)
 
-categories = categoryCountsDataframe.index
-projecCodes = categoryCountsDataframe.columns
+categories = categoryCountsFinalDataframe.index
+projecCodes = categoryCountsFinalDataframe.columns
 
 categoryPercDataframe = pd.DataFrame(index=categories, columns=projecCodes)
 
@@ -216,7 +226,7 @@ for category in categories:
     # Iterate over column index labels (project codes)
     for projectCode in projecCodes:
     
-        categoryCountProjectCode = categoryCountsDataframe.loc[category, projectCode]
+        categoryCountProjectCode = categoryCountsFinalDataframe.loc[category, projectCode]
         nbDonorsInTumortype = donorsPerTumorTypeSerie.loc[projectCode]
 
         # Compute the percentage
@@ -227,57 +237,60 @@ for category in categories:
 
 # Order dataframe columns (tumor types) first according to "High" and then to "None" category
 transposedDf = categoryPercDataframe.transpose()
-sortedDf = transposedDf.sort_values(['High', 'None'], ascending=[False, True])
+sortedDf = transposedDf.sort_values(['High', 'Moderate'], ascending=[True, True])
 categoryPercSortedDataframe = sortedDf.transpose()
 
+print "categoryPercSortedDataframe: ", categoryPercSortedDataframe
 
 ### 6. Make list per category containing the percentage of samples belonging to a given category in each tumor type
 # list 0 insertions [%ProjectCode1, %ProjectCode2, ... ]
 # list 1-10 insertions [%ProjectCode1, %ProjectCode2, ... ]
 # ...
 
-percHighList, percLowList, percModerateList, percNoneList, percVeryHigh = categoryPercSortedDataframe.values.tolist()
+percHighList, percLowList, percModerateList, percNoneList = categoryPercSortedDataframe.values.tolist()
+
+print "percHighList,percLowList,percModerateList,percNoneList: ", percHighList, percLowList, percModerateList, percNoneList
 
 ### 7. Make ordered list containing the number of donors per tumor type
-
 tumorTypeList = categoryPercSortedDataframe.columns.values.tolist()
 
 print "tumorTypeList: ", tumorTypeList
+
 donorCountsSortedSeries = donorsPerTumorTypeSerie.reindex(tumorTypeList)
 
+print "donorCountsSortedSeries: ", donorCountsSortedSeries
 
 ###  8. Make bar plot
-xpos = np.arange(2, len(percHighList) + 2)    # the x locations for the groups
+ypos = np.arange(1, len(percHighList) + 1)    # the y locations for the groups
 
-width = 0.75      # the width of the bars: can also be len(x) sequence
-fig = plt.figure(figsize=(14,8))
-fig.suptitle('Number of samples', fontsize=12)
-plt.ylabel('% Samples', fontsize=12)
+height = 0.75      # the width of the bars: can also be len(x) sequence
+fig = plt.figure(figsize=(7,5))
 ax = fig.add_subplot(111)
+ax.yaxis.set_label_position("right")
+plt.ylabel('Number of samples', fontsize=10, labelpad=35)
+plt.xlabel('% Samples', fontsize=10)
 
-p1 = ax.bar(xpos, percVeryHigh, color='#ff0000', alpha=1, edgecolor='#000000', width=width, align='center')
+p1 = ax.barh(ypos, percHighList, color='#ff0000', alpha=0.90, edgecolor='#000000', height=height, align='center')
 
-p2 = ax.bar(xpos, percHighList, color='#f15a22', alpha=0.80, edgecolor='#000000', width=width, align='center',
-             bottom=[i for i in percVeryHigh])
+p2 = ax.barh(ypos, percModerateList, color='#fdb913', alpha=0.90, edgecolor='#000000', height=height, align='center',
+             left=[i for i in percHighList])
 
-p3 = ax.bar(xpos, percModerateList, color='#fdb913', alpha=0.90, edgecolor='#000000', width=width, align='center',
-             bottom=[i+j for i,j in zip(percVeryHigh, percHighList)])
+p3 = ax.barh(ypos, percLowList, color='#fff68f', alpha=0.90, edgecolor='#000000', height=height, align='center',
+             left=[i+j for i,j in zip(percHighList, percModerateList)])
 
-p4 = ax.bar(xpos, percLowList, color='#fff68f', alpha=0.90, edgecolor='#000000', width=width, align='center',
-             bottom=[i+j+x for i,j,x in zip(percVeryHigh, percHighList, percModerateList)])
+p4 = ax.barh(ypos, percNoneList, color='#DCDCDC', alpha=0.90, edgecolor='#000000', height=height, align='center',
+             left=[i+j+x for i,j,x in zip(percHighList, percModerateList, percLowList)])
 
-p5 = ax.bar(xpos, percNoneList, color='#DCDCDC', alpha=0.80, edgecolor='#000000', width=width, align='center',
-             bottom=[i+j+x+z for i,j,x,z in zip(percVeryHigh, percHighList, percModerateList, percLowList)])
 
 # Add a horizontal grid to the plot, but make it very light in color
 # so we can use it for reading data values but not be distracting
-ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey',
-               alpha=0.5)
+ax.xaxis.grid(True, linestyle='-', which='major', color='lightgrey',
+               alpha=1)
 ax.set_axisbelow(True)
 
 ## Customize axis
-plot_xmargin = 2
-plot_ymargin = 20
+plot_xmargin = 20
+plot_ymargin = 0
 
 x0, x1, y0, y1 = plt.axis()
 plt.axis((x0,
@@ -286,9 +299,9 @@ plt.axis((x0,
           y1 - plot_ymargin))
 
 ## Customize ticks
-plt.yticks(np.arange(0, 100.001, 10))
-tumorTypesList = categoryPercSortedDataframe.columns.values.tolist()
-plt.xticks(xpos, tumorTypesList)
+plt.xticks(np.arange(0, 100.001, 10), fontsize=8)
+tumorTypeList = categoryPercSortedDataframe.columns.values.tolist()
+plt.yticks(ypos, tumorTypeList, fontsize=8)
 
 # Rotate them
 locs, labels = plt.xticks()
@@ -296,16 +309,16 @@ plt.setp(labels, rotation=90)
 
 ## Add the number of samples per tumor type on the top of each bar
 donorCountsList = donorCountsSortedSeries.values.tolist()
-autolabel(p5, ax, donorCountsList) ## autolabel function
+autolabel(p4, ax, donorCountsList) ## autolabel function
+
 
 ## Make legend
 circle1 = mpatches.Circle((0, 0), 5, color='#DCDCDC', alpha=0.90)
 circle2 = mpatches.Circle((0, 0), 5, color='#fff68f', alpha=0.90)
 circle3 = mpatches.Circle((0, 0), 5, color='#fdb913', alpha=0.90)
-circle4 = mpatches.Circle((0, 0), 5, color='#f15a22', alpha=0.90)
-circle5 = mpatches.Circle((0, 0), 5, color='#ff0000', alpha=0.90)
+circle4 = mpatches.Circle((0, 0), 5, color='#ff0000', alpha=0.90)
 
-l = plt.figlegend((circle1, circle2, circle3, circle4, circle5), ('0', '[1-10]', '(10-100]', '(100-500]', '>500'), loc = 'center', ncol=2, labelspacing=0.75, title="Number of retrotransposition events", fontsize=11, fancybox=True, bbox_to_anchor=(0.75, 0.75))
+l = plt.figlegend((circle1, circle2, circle3, circle4), ('0', '[1-10]', '(10-100]', '>100'), loc='upper center', ncol=4, labelspacing=0.75, title="Number of retrotransposition events", fontsize=10, fancybox=True)
 
 ## Save figure
 fileName = outDir + "/PCAWG_retrotranspositionRates_barPlot.pdf"
