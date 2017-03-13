@@ -194,8 +194,11 @@ dfActivityRate2 = dfActivityRate # temporal
 
 dfActivityRate['activityStatus'] = dfActivityRate.apply(activityStatus, axis=1)
 
+
 dfActivityRate2['activityStatus'] = dfActivityRate2.apply(activityStatus2, axis=1)
 print "activityRate-and-status: ", dfActivityRate2
+
+print "dfActivityRate: ", dfActivityRate
 
 ## Write classified elements into an output table:
 dfActivityStatus = dfActivityRate["activityStatus"]
