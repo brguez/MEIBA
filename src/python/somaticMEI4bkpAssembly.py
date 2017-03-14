@@ -176,8 +176,8 @@ for line in insertions:
                 for sourceTuple in sourceMetadataDict[chromSource]:
 
                     ## Define transduction source element coordinates range
-                    begA = int(begSource) - 500
-                    endA = int(endSource) + 500
+                    begA = int(begSource) - 1000
+                    endA = int(endSource) + 1000
 
                     ## Define germline source element range
                     coords = sourceTuple[1].split(":")[1]
@@ -249,8 +249,8 @@ for line in insertions:
                 for sourceTuple in sourceMetadataDict[chromSource]:
 
                     ## Define transduction source element coordinates range
-                    begA = int(begSource) - 500
-                    endA = int(endSource) + 500
+                    begA = int(begSource) - 1000
+                    endA = int(endSource) + 1000
 
                     ## Define germline source element range
                     coords = sourceTuple[1].split(":")[1]
