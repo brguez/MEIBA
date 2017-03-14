@@ -37,15 +37,15 @@
 # 12. readList_minus
 # 13. insertion_type
 ## transduction-specific fields:
-# 14. chrom_source_element, "NA" for TD0 
-# 15. beg_source_element, "NA" for TD0
-# 16. end_source_element, "NA" for TD0
-# 17. orientation_source_element, "NA" for TD0
-# 18. transduction_beg, "NA" for TD0 and TD1
-# 19. transduction_end, "NA" for TD0
-# 20. transduction_rna_length, "NA" for TD0
-# 21. transduction_length, "NA" for TD0
-## pseudogene-specific fields ("NA" for TD* events)
+# 14. chrom_source_element, "NA" for TD0 and PSD
+# 15. beg_source_element, "NA" for TD0 and PSD
+# 16. end_source_element, "NA" for TD0 and PSD
+# 17. orientation_source_element, "NA" for TD0 and PSD
+# 18. transduction_beg, "NA" for TD0, TD1 and PSD
+# 19. transduction_end, "NA" for TD0 and PSD
+# 20. transduction_rna_length, "NA" for TD0 and PSD
+# 21. transduction_length, "NA" for TD0 and PSD
+## pseudogene-specific fields ("NA" for TD0, TD1 and TD2 events)
 # 22. psd_gene
 # 23. chr_exon_a
 # 24. beg_exon_a
@@ -112,28 +112,31 @@ BEGIN{
         # B) Partnered or orphan transduction
         else if (tdType == "TD1" || tdType == "TD2")
         {
-            chromSource = $14
-            begSource = $15
-            endSource = $16
-            orientationSource = $17
-            transductBeg = $18
-            transductEnd = $19
-            transductRnaLen = $20
-            transductLen = $21
-            sourceElementInfo = chromSource"_"begSource"_"endSource"_"orientationSource
+            	
+            cytobandId = $14
+            sourceType = $15
+            chromSource = $16
+            begSource = $17
+            endSource = $18
+            orientationSource = $19
+            transductBeg = $20
+            transductEnd = $21
+            transductRnaLen = $22
+            transductLen = $23
+            sourceElementInfo = cytobandId"_"sourceType"_"chromSource"_"begSource"_"endSource"_"orientationSource
             transductionInfo = chromSource"_"transductBeg"_"transductEnd"_"transductRnaLen"_"transductLen
             pseudogeneInfo = "NA"
         }
         # C) pseudogene insertion
         else if (tdType == "PSD")
         {
-            psdGene = $22
-            chrExonA = $23
-            begExonA = $24
-            endExonA = $25
-            chrExonB = $26
-            begExonB = $27
-            endExonB = $28
+            psdGene = $24
+            chrExonA = $25
+            begExonA = $26
+            endExonA = $27
+            chrExonB = $28
+            begExonB = $29
+            endExonB = $30
 
             sourceElementInfo = "NA"
             transductionInfo = "NA"

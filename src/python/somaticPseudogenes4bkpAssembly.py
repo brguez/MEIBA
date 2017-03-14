@@ -69,6 +69,8 @@ for line in insertions:
         insertionType = "PSD"
         
         # L1 transductions specific fields
+        cytobandId = "NA"
+        sourceType = "NA"
         chromSource = "NA" 
         begSource = "NA"
         endSource = "NA"
@@ -105,6 +107,8 @@ for line in insertions:
         pseudogeneDict["classMinus"] = classMinus 
         pseudogeneDict["readListMinus"] = readListMinus 
         pseudogeneDict["insertionType"] = insertionType 
+        pseudogeneDict["cytobandId"] = cytobandId
+        pseudogeneDict["sourceType"] = sourceType        
         pseudogeneDict["chromSource"] = chromSource  
         pseudogeneDict["begSource"] = begSource 
         pseudogeneDict["endSource"] = endSource 
@@ -175,8 +179,7 @@ for line in metadata:
                 outFile = open(pseudogenesPath, "w" )
 
                 # Print header into the output file
-                header = "#chromPlus" + "\t" + "begPlus" + "\t" + "endPlus" + "\t" + "nbReadsPlus" + "\t" + "classPlus" + "\t" + "readListPlus" + "\t" + "chromMinus" + "\t" + "begMinus" + "\t" + "endMinus" + "\t" + "nbReadsMinus" + "\t" + "classMinus" + "\t" + "readListMinus" + "\t" + "insertionType" + "\t" + "chromSource" + "\t" + "begSource" + "\t" + "endSource" + "\t" + "strandSource" + "\t" + "tdBeg" + "\t" + "tdEnd" + "\t" + "tdRnaLen" + "\t" + "tdLen" + "\t" + "psdGene" + "\t" + "chromExonA" + "\t" + "begExonA" + "\t" + "endExonA" + "\t" + "chromExonB" + "\t" + "begExonB" + "\t" + "endExonB" + "\n"
-
+                header = "#chromPlus" + "\t" + "begPlus" + "\t" + "endPlus" + "\t" + "nbReadsPlus" + "\t" + "classPlus" + "\t" + "readListPlus" + "\t" + "chromMinus" + "\t" + "begMinus" + "\t" + "endMinus" + "\t" + "nbReadsMinus" + "\t" + "classMinus" + "\t" + "readListMinus" + "\t" + "insertionType" + "\t" + "cytobandId" + "\t" + "sourceType" + "\t" + "chromSource" + "\t" + "begSource" + "\t" + "endSource" + "\t" + "strandSource" + "\t" + "tdBeg" + "\t" + "tdEnd" + "\t" + "tdRnaLen" + "\t" + "tdLen" + "\t" + "psdGene" + "\t" + "chromExonA" + "\t" + "begExonA" + "\t" + "endExonA" + "\t" + "chromExonB" + "\t" + "begExonB" + "\t" + "endExonB" + "\n"
                 outFile.write(header)
 
                 # Print insertions for those tumor samples with at least one pseudogene insertions
@@ -184,7 +187,7 @@ for line in metadata:
                 
                     # For each processed pseudogene:
                     for pseudogeneDict in allPseudogenesDict[tumor_wgs_aliquot_id]:
-                        row = pseudogeneDict["chromPlus"] + "\t" + pseudogeneDict["begPlus"] + "\t" + pseudogeneDict["endPlus"] + "\t" + pseudogeneDict["nbReadsPlus"] + "\t" + pseudogeneDict["classPlus"] + "\t" + pseudogeneDict["readListPlus"] + "\t" + pseudogeneDict["chromMinus"] + "\t" + pseudogeneDict["begMinus"] + "\t" + pseudogeneDict["endMinus"] + "\t" + pseudogeneDict["nbReadsMinus"] + "\t" + pseudogeneDict["classMinus"] + "\t" + pseudogeneDict["readListMinus"] + "\t" + pseudogeneDict["insertionType"] + "\t" + pseudogeneDict["chromSource"] + "\t" + pseudogeneDict["begSource"] + "\t" + pseudogeneDict["endSource"] + "\t" + pseudogeneDict["strandSource"] + "\t" + pseudogeneDict["tdBeg"] + "\t" + pseudogeneDict["tdEnd"] + "\t" + pseudogeneDict["tdRnaLen"] + "\t" + pseudogeneDict["tdLen"] + "\t" + pseudogeneDict["psdGene"] + "\t" + pseudogeneDict["chromExonA"] + "\t" + pseudogeneDict["begExonA"] + "\t" + pseudogeneDict["endExonA"] + "\t" + pseudogeneDict["chromExonB"] + "\t" + pseudogeneDict["begExonB"] + "\t" + pseudogeneDict["endExonB"] + "\n"
+                        row = pseudogeneDict["chromPlus"] + "\t" + pseudogeneDict["begPlus"] + "\t" + pseudogeneDict["endPlus"] + "\t" + pseudogeneDict["nbReadsPlus"] + "\t" + pseudogeneDict["classPlus"] + "\t" + pseudogeneDict["readListPlus"] + "\t" + pseudogeneDict["chromMinus"] + "\t" + pseudogeneDict["begMinus"] + "\t" + pseudogeneDict["endMinus"] + "\t" + pseudogeneDict["nbReadsMinus"] + "\t" + pseudogeneDict["classMinus"] + "\t" + pseudogeneDict["readListMinus"] + "\t" + pseudogeneDict["insertionType"] + "\t" + pseudogeneDict["cytobandId"] + "\t" + pseudogeneDict["sourceType"] + "\t" +  pseudogeneDict["chromSource"] + "\t" + pseudogeneDict["begSource"] + "\t" + pseudogeneDict["endSource"] + "\t" + pseudogeneDict["strandSource"] + "\t" + pseudogeneDict["tdBeg"] + "\t" + pseudogeneDict["tdEnd"] + "\t" + pseudogeneDict["tdRnaLen"] + "\t" + pseudogeneDict["tdLen"] + "\t" + pseudogeneDict["psdGene"] + "\t" + pseudogeneDict["chromExonA"] + "\t" + pseudogeneDict["begExonA"] + "\t" + pseudogeneDict["endExonA"] + "\t" + pseudogeneDict["chromExonB"] + "\t" + pseudogeneDict["begExonB"] + "\t" + pseudogeneDict["endExonB"] + "\n"
 
                         # Print pseudogene information into the output file
                         outFile.write(row)   

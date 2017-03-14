@@ -234,18 +234,20 @@ class VCF():
 ##contig=<ID=Y,assembly=GRCh37,length=59373566,species=human>
 ##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant. (All sequence is on the plus strand and in the forward direction).">
 ##INFO=<ID=CLASS,Number=1,Type=String,Description="Mobile element class (L1, ALU, SVA or ERVK)">
-##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction), PSD: processed-pseudogene">
+##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction, PSD: processed-pseudogene)>
 ##INFO=<ID=SCORE,Number=1,Type=String,Description="Insertion score (5: 5' and 3' breakpoints (bkp) assembled, 4: 3'bkp assembled, 3: 5'bkp assembled, 2: no bkp assembled, 1: inconsistent (contradictory orientation, bkp or TSD))">
 ##INFO=<ID=MANUAL,Number=0,Type=Flag,Description="MEI manually verified and curated through BAM inspection (Only used for PSD)">
 ##INFO=<ID=BKPB,Number=1,Type=String,Description="MEI right-most breakpoint position (bkp B). Left-most breakpoint position (bkp A) represented in the POS field">
 ##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoints">
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
-##INFO=<ID=STRUCT,Number=1,Type=String,Description=" element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
+##INFO=<ID=STRUCT,Number=1,Type=String,Description="Mobile element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
 ##INFO=<ID=LEN,Number=1,Type=Integer,Description="Mobile element length">
 ##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site duplication (+_value) or deletion (-_value) length">
 ##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication sequence">
 ##INFO=<ID=POLYA,Number=1,Type=String,Description="Poly-A sequence">
-##INFO=<ID=SRC,Number=1,Type=String,Description="Coordinates of the source element that mediated the transduction in the format: chrom_beg_end_strand">
+##INFO=<ID=SRCID,Number=1,Type=String,Description="Source element cytoband identifier. Only for gemline source elements">
+##INFO=<ID=SRCTYPE,Number=1,Type=String,Description="Source element type (GERMLINE or SOMATIC)">
+##INFO=<ID=SRC,Number=1,Type=String,Description="Coordinates of the source element that mediated the transduction in the format: chrom_beg_end">
 ##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the integrated transduced or pseudogene sequence in the format: chrom_beg_end">
 ##INFO=<ID=TDLEN,Number=1,Type=String,Description="Transduced region length">
 ##INFO=<ID=TDLENR,Number=1,Type=String,Description="Transduced region length at RNA level">
@@ -258,7 +260,6 @@ class VCF():
 ##INFO=<ID=CPG,Number=0,Type=Flag,Description="Reported as cancer predisposition gene in 10.1038/nature12981 (DOI).">
 ##INFO=<ID=REP,Number=1,Type=String,Description="Repetitive element overlapping the insertion breakpoint">
 ##INFO=<ID=DIV,Number=1,Type=Integer,Description="Millidivergence of the overlapping repetitive element with respect a consensus sequence">
-##INFO=<ID=MEISEQ,Number=1,Type=String,Description="Assembled sequence of the mobile element 5' boundary">
 ##INFO=<ID=CONTIGA,Number=1,Type=String,Description="Assembled contig sequence spanning 1st bkp (lowest genomic position)">
 ##INFO=<ID=CONTIGB,Number=1,Type=String,Description="Assembled contig sequence spanning 2nd bkp (highest genomic position)">
 ##INFO=<ID=RP,Number=.,Type=String,Description="Reads from the tumour sample and positive cluster that support this insertion">
@@ -344,7 +345,7 @@ class VCFline():
         """
 
         ## Create list containing the order of info fields
-        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "MANUAL", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "SRC", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "MEISEQ", "CONTIGA", "CONTIGB", "RP", "RN" ]
+        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "MANUAL", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "SRCID", "SRCTYPE", "SRC", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "RP", "RN" ]
 
         ## Build dictionary with info tags as keys
         infoDict = {}
@@ -360,20 +361,17 @@ class VCFline():
         infoDict["TSLEN"] = insertionObj.targetSiteSize
         infoDict["TSSEQ"] = insertionObj.targetSiteSeq
         infoDict["POLYA"] = insertionObj.polyA
-        infoDict["SRC"] = insertionObj.srcElement
-        infoDict["TDC"] = insertionObj.srcCoord
+        infoDict["SRCID"] = insertionObj.cytobandId
+        infoDict["SRCTYPE"] = insertionObj.sourceElementType
+        infoDict["SRC"] = insertionObj.sourceElementCoord
+        infoDict["TDC"] = insertionObj.tdCoord
         infoDict["TDLEN"] = insertionObj.tdLen
         infoDict["TDLENR"] = insertionObj.tdLenRna
         infoDict["SRCGENE"] = insertionObj.srcgene
-        infoDict["MEISEQ"] = insertionObj.MEISeq
         infoDict["CONTIGA"] = insertionObj.informativeContigBkpA
         infoDict["CONTIGB"] = insertionObj.informativeContigBkpB
         infoDict["RP"] = insertionObj.clusterPlusObj.readPairIds
         infoDict["RN"] = insertionObj.clusterMinusObj.readPairIds
-
-        # handle specifics of pseudogene insertions
-        if (insertionObj.tdType == "PSD"):
-            infoDict["MEISEQ"] = "UNK"
 
         ## Create info string in the correct order from dictionary
         infoList = []
@@ -422,7 +420,7 @@ class insertion():
             7) blatMinusPath. psl file containing the blat aligments for the negative cluster's assembled contigs.
             8) readPairsPlus. List of + cluster supporting reads.
             9) readPairsMinus. List of - cluster supporting reads.
-            10) srcElement. Source element information in the format: chromSource"_"begSource"_"endSource"_"orientationSource. Note: add cytobandId here!!
+            10) srcElement. Source element information in the format: cytobandId"_"srcElementType"_"chromSource"_"begSource"_"endSource"_"orientationSource. 
             11) transductionInfo. Transduction information in the format: chromSource"_"transductBeg"_"transductEnd"_"transductRnaLen"_"transductLen.
             12) pseudogeneInfo. Pseudogene information in the format: srcgene":"chrExonA"_"begExonA"-"endExonA":"chrExonB"_"begExonB"-"endExonB
             13) sampleId. Sample identifier to be incorporated in the SL field of the output VCF. In PCAWG we use the normal_wgs_aliquot_id or tumor_wgs_aliquot_id.
@@ -435,41 +433,52 @@ class insertion():
         self.coordinates = coordinates
         self.clusterPlusObj = self.create_cluster("+", contigsPlusPath, blatPlusPath, readPairsPlus)
         self.clusterMinusObj = self.create_cluster("-", contigsMinusPath, blatMinusPath, readPairsMinus)
-        self.srcElement = srcElement
         self.sampleId = sampleId
 
         # A) Solo insertion (TD0). Not applicable
         if (self.tdType == "TD0"):
-
-            self.srcCoord = "NA"
+            self.cytobandId = "NA"
+            self.sourceElementType = "NA"
+            self.sourceElementCoord = "NA"
+            self.tdCoord = "NA"
             self.tdLen = "NA"
             self.tdLenRna = "NA"
             self.srcgene = "UNK"
 
         # B) Partnered or orphan transduction (TD1 and TD2)
         elif (self.tdType in ["TD1", "TD2"]):
+
+            ### L1 source element information
+            srcElementList = srcElement.split("_")
+
+            self.cytobandId = srcElementList[0]
+            self.sourceElementType = srcElementList[1]
+            self.sourceElementCoord = srcElementList[2] + "_" + srcElementList[3] + "_" + srcElementList[4]
             
+            status = srcElementList[5]
+
+            ### Mobilized region coord
             transductionInfoList = transductionInfo.split("_")
-            self.srcCoord = transductionInfoList[0] + "_" + transductionInfoList[1] + "_" + transductionInfoList[2]
+            self.tdCoord = transductionInfoList[0] + "_" + transductionInfoList[1] + "_" + transductionInfoList[2]
             self.srcgene = "UNK"
-
-            status = self.srcElement.split("_")[3]
-
-            print "test_status: ", status
 
             # A) Putative. Uncharacterized germline or somatic source element
             if (status == "putative"):
                 self.tdLenRna = "UNK"                
                 self.tdLen = "UNK"
-                
-
+              
             # B) Characterized germline source element
             else:
                 self.tdLenRna = transductionInfoList[3]                
                 self.tdLen = transductionInfoList[4]
+
+            print "test_status: ", status
                 
         # C) pseudogene insertion (PSD)
         elif (self.tdType == "PSD"):
+            self.cytobandId = "NA"
+            self.sourceElementType = "NA"
+            self.sourceElementCoord = "NA"
             self.tdLen = "UNK"
             self.tdLenRna = "UNK"
 
@@ -491,7 +500,7 @@ class insertion():
             # construct source region from exon coordinates
             minBeg = min(begExonA, begExonB)
             maxEnd = max(endExonA, endExonB)
-            self.srcCoord = "%s_%d_%d" % (chrExonA, minBeg, maxEnd)
+            self.tdCoord = "%s_%d_%d" % (chrExonA, minBeg, maxEnd)
 
         ## Unkown values by default:
         self.traficId = "UNK"
@@ -504,7 +513,6 @@ class insertion():
         self.structure = "UNK"
         self.length = "UNK"
         self.percLength = "UNK"
-        self.MEISeq = "UNK"
         self.informativeContigIdBkpA = "UNK"
         self.informativeContigBkpA = "UNK"
         self.informativeContigIdBkpB = "UNK"
@@ -560,12 +568,12 @@ class insertion():
         ## Find informative contig for + cluster 
         subHeader("Searching informative contigs for + cluster")
 
-        bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj = self.clusterPlusObj.find_informative_contigs(self.coordinates, self.tdType, self.srcCoord)
+        bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj = self.clusterPlusObj.find_informative_contigs(self.coordinates, self.tdType, self.tdCoord)
 
         ## Find informative contig for - cluster
         subHeader("Searching informative contigs for - cluster")
 
-        bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj = self.clusterMinusObj.find_informative_contigs(self.coordinates, self.tdType, self.srcCoord)
+        bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj = self.clusterMinusObj.find_informative_contigs(self.coordinates, self.tdType, self.tdCoord)
 
         ### Determine insertion breakpoints, TS and TE orientation from informative contigs 
         subHeader("Determining insertion breakpoint, TS and TE orientation from informative contigs")
@@ -790,9 +798,6 @@ class insertion():
                 self.bkpA = bkp5prime
                 self.informativeContigBkpA = informative5primeContigObj.seq
 
-                 # MEI 5' boundary assembled sequence
-                self.MEISeq = informative5primeContigObj.informativeDict["MEISeq"]
-
             # b) 3' bkp characterized
             elif (bkpCoord5prime == "UNK"):
 
@@ -802,9 +807,6 @@ class insertion():
 
             # c) 5' and 3' bkp characterized
             else:
-
-                # MEI 5' boundary assembled sequence
-                self.MEISeq = informative5primeContigObj.informativeDict["MEISeq"]
 
                 # c.a) 5' bkp < 3' bkp
                 if (bkpCoord5prime < bkpCoord3prime):
@@ -1355,7 +1357,7 @@ class cluster():
             alignmentList = alignmentsDict[contigId]
             self.contigsDict[contigId].alignList = alignmentList
 
-    def find_informative_contigs(self, insertionCoord, tdType, srcCoord):
+    def find_informative_contigs(self, insertionCoord, tdType, tdCoord):
         """
             Identify 5' and 3' informative contig belonging to the cluster. Informative 5' and 3' contigs span 5' and 3' insertion breakpoints, respectively.
 
@@ -1363,7 +1365,7 @@ class cluster():
             1) insertionCoord. Region of interest. Format: ${chrom}_${beg}_${end}.
                                Example: 10_108820680_108820678.
             2) tdType. Type of transduction event ("TD0": solo, "TD1": partnered, "TD2": orphan)
-            3) srcCoord. Mobilized region (relevant for TD2 and PSD events)
+            3) tdCoord. Mobilized region (relevant for TD2 and PSD events)
 
             Output:
             1) bestInformative5primeContigObj. Best 5' Informative contig object. 'na' if not found
@@ -1394,7 +1396,7 @@ class cluster():
             contigObj.cluster = self.ID
 
             # Check if it is an informative contig
-            informative = contigObj.is_informative(insertionCoord, tdType, srcCoord)
+            informative = contigObj.is_informative(insertionCoord, tdType, tdCoord)
 
             # A) Informative contig
             if (informative ==  1):
@@ -1489,7 +1491,6 @@ class contig():
         self.informativeDict["bkp"] = "UNK"                  # bkp -> list: chrom and pos, 'na' for both if type == none)
         self.informativeDict["info"] = "UNK"                 # info -> 5-prime: aligment object with contig's alignment in TE sequence info; 3-prime: PolyA sequence; none: 'na'
         self.informativeDict["targetRegionAlignObj"] = "UNK" # targetRegionAlignObj -> alignment object with contig's alignment in the target region info.
-        self.informativeDict["MEISeq"] = "UNK"               # MEISeq -> Assembled sequence of the mobile element 5' boundary
 
     #### FUNCTIONS ####
     def rev_complement(self, seq):
@@ -1570,7 +1571,7 @@ class contig():
         return (candidate, supportingAlignList)
 
 
-    def is_informative(self, insertionCoord, tdType, srcCoord):
+    def is_informative(self, insertionCoord, tdType, tdCoord):
         """
         Check if candidate contig is 5' or 3' informative. Defined as contigs spanning
         5' or 3' insertion breakpoints:
@@ -1587,7 +1588,7 @@ class contig():
                         "TD1": partnered,
                         "TD2": orphan,
                         "PSD": pseudogene insertion)
-            3) srcCoord. Mobilized region (relevant for TD2 and PSD events)
+            3) tdCoord. Mobilized region (relevant for TD2 and PSD events)
 
         Output:
             1) informativeBoolean. Boolean, 1 (informative) and 0 (not informative)
@@ -1597,7 +1598,6 @@ class contig():
                 info -> 5-prime: aligment object with contig's alignment in TE sequence info;
                         3-prime: PolyA sequence; none: 'na'
                 targetRegionAlignObj -> alignment object with contig's alignment in the target region info.
-                MEISeq -> Assembled sequence of the mobile element 5' boundary
         """
 
         ## Initial status -> no informative
@@ -1626,7 +1626,7 @@ class contig():
             for alignObj in supportingAlignList:
 
                 ## Check if alignment support the contig as informative 5'
-                is5prime, bkpCoord, srcAlignmentObj, MEISeq = self.is_5prime_informative(alignObj, tdType, srcCoord)
+                is5prime, bkpCoord, srcAlignmentObj, MEISeq = self.is_5prime_informative(alignObj, tdType, tdCoord)
 
                 # Contig informative 5-prime, it has TE sequence
                 if (is5prime == 1):
@@ -1636,7 +1636,6 @@ class contig():
                     informative5primeDict[alignObj]["bkp"] = bkpCoord
                     informative5primeDict[alignObj]["info"] = srcAlignmentObj
                     informative5primeDict[alignObj]["targetRegionAlignObj"] = alignObj
-                    informative5primeDict[alignObj]["MEISeq"] = MEISeq
 
                 ## Check if alignment support the contig as informative 3'
                 is3prime, bkpCoord, polyASeq = self.is_3prime_informative(alignObj)
@@ -1833,7 +1832,7 @@ class contig():
 
         return polyASeq
 
-    def is_5prime_informative(self, alignObj, tdType, srcCoord):
+    def is_5prime_informative(self, alignObj, tdType, tdCoord):
         """
         Check if candidate contig is 5' informative. Defined as contigs spanning
         source element (TE or transduced seq.) - insertion target region breakpoint:
@@ -1848,7 +1847,7 @@ class contig():
                     "TD1": partnered,
                     "TD2": orphan,
                     "PSD": pseudogene insertion)
-        3) srcCoord. mobilized region (relevant for TD2 and PSD events)
+        3) tdCoord. mobilized region (relevant for TD2 and PSD events)
 
         Output:
         1) is5prime. Boolean, 1 (5' informative) and 0 (not 5' informative).
@@ -1926,7 +1925,7 @@ class contig():
             #   TD2 (orphan TD)      : transduced region downstream of TE
             has_expected_target = (
               ( (tdType not in ["TD2", "PSD"]) and (alignment.tName in targetMEIs) ) or
-              ( (tdType in ["TD2", "PSD"]) and (alignment.in_target_region(srcCoord, 1000)) )
+              ( (tdType in ["TD2", "PSD"]) and (alignment.in_target_region(tdCoord, 1000)) )
             )
 
             # Contig alignment in TE sequence (L1, Alu, SVA or ERVK) or transduced region
