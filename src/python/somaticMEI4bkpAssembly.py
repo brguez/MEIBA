@@ -205,8 +205,8 @@ for line in insertions:
                 strandSource = "+"
                 tdBeg = endSource
                 tdEnd = fieldsList[27]
-                tdRnaLen = fieldsList[28]
-                tdLen = fieldsList[29]        
+                tdRnaLen = str(abs(int(fieldsList[28])))
+                tdLen = str(abs(int(fieldsList[29])))        
 
             # b) Source element in reverse
             elif (strandSource == "minus"):
@@ -214,8 +214,8 @@ for line in insertions:
                 strandSource = "-"
                 tdBeg = fieldsList[26]
                 tdEnd = begSource
-                tdRnaLen = fieldsList[28]
-                tdLen = fieldsList[29]
+                tdRnaLen = str(abs(int(fieldsList[28])))
+                tdLen = str(abs(int(fieldsList[29])))
 
             # c) Unknown orientation  
             else:
@@ -275,15 +275,15 @@ for line in insertions:
             if (strandSource == "plus"):
 
                 strandSource = "+"
-                tdRnaLen = fieldsList[28]
-                tdLen = fieldsList[29]
+                tdRnaLen = str(abs(int(fieldsList[28])))
+                tdLen = str(abs(int(fieldsList[29]))) 
 
             # b) Source element in reverse
             elif (strandSource == "minus"):
         
                 strandSource = "-"
-                tdRnaLen = fieldsList[28]
-                tdLen = fieldsList[29]
+                tdRnaLen = str(abs(int(fieldsList[28])))
+                tdLen = str(abs(int(fieldsList[29]))) 
         
             # c) Unknown orientation
             else:
