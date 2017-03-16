@@ -213,10 +213,10 @@ print "final-counts: ", categoryCountsFinalDataframe
 # 0_insertions      X1%          Y1%          Z1%     
 # 1-10_insertions   X2%          Y2%          Z2%
 
-donorsPerTumorTypeSerie = categoryCountsFinalDataframe.sum(axis=0)
+donorsPerTumorTypeSerie = categoryCountsDataframe.sum(axis=0)
 
-categories = categoryCountsFinalDataframe.index
-projecCodes = categoryCountsFinalDataframe.columns
+categories = categoryCountsDataframe.index
+projecCodes = categoryCountsDataframe.columns
 
 categoryPercDataframe = pd.DataFrame(index=categories, columns=projecCodes)
 
@@ -226,7 +226,7 @@ for category in categories:
     # Iterate over column index labels (project codes)
     for projectCode in projecCodes:
     
-        categoryCountProjectCode = categoryCountsFinalDataframe.loc[category, projectCode]
+        categoryCountProjectCode = categoryCountsDataframe.loc[category, projectCode]
         nbDonorsInTumortype = donorsPerTumorTypeSerie.loc[projectCode]
 
         # Compute the percentage
@@ -264,7 +264,8 @@ print "donorCountsSortedSeries: ", donorCountsSortedSeries
 ypos = np.arange(1, len(percHighList) + 1)    # the y locations for the groups
 
 height = 0.75      # the width of the bars: can also be len(x) sequence
-fig = plt.figure(figsize=(7,5))
+#fig = plt.figure(figsize=(7,5))
+fig = plt.figure(figsize=(7,7))
 ax = fig.add_subplot(111)
 ax.yaxis.set_label_position("right")
 plt.ylabel('Number of samples', fontsize=10, labelpad=35)
@@ -310,7 +311,6 @@ plt.setp(labels, rotation=90)
 ## Add the number of samples per tumor type on the top of each bar
 donorCountsList = donorCountsSortedSeries.values.tolist()
 autolabel(p4, ax, donorCountsList) ## autolabel function
-
 
 ## Make legend
 circle1 = mpatches.Circle((0, 0), 5, color='#DCDCDC', alpha=0.90)
