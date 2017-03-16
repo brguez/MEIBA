@@ -7,12 +7,13 @@ import argparse
 import os
 
 ## Get user's input
-parser = argparse.ArgumentParser(description= """""")
+parser = argparse.ArgumentParser(description= "Takes a set of tables containing different pieces of PCWAG donors metadata and produces a master metadata table with all the relevant info")
 parser.add_argument('mainMetadata', help='Main file containing metadata information')
 parser.add_argument('multitumor', help='File with representative tumor samples for multitumor donors')
 parser.add_argument('histology', help='File with donor histology information')
 parser.add_argument('ancestry', help='File with donor ancestry information')
 parser.add_argument('traficBlackList', help='File with trafic blacklisted samples')
+parser.add_argument('clinical', help='File with donor clinical information (gender, age at diagnosis...)')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
@@ -21,6 +22,7 @@ multitumorPath = args.multitumor
 histologyPath = args.histology
 ancestryPath = args.ancestry
 traficBlackListPath = args.traficBlackList
+clinicalPath = args.clinical
 outDir = args.outDir
 
 scriptName = os.path.basename(sys.argv[0])
@@ -33,6 +35,7 @@ print "multitumorPath: ", multitumorPath
 print "histologyPath: ", histologyPath
 print "ancestryPath: ", ancestryPath
 print "traficBlackList: ", traficBlackListPath
+print "clinical: ", clinicalPath
 print "outDir: ", outDir
 print
 
@@ -125,15 +128,42 @@ for line in traficBlackList:
         donorUniqueId = fieldsList[0] 
         blackList.append(donorUniqueId)
 
+### 5) Read file with donor clinical information. 
+# Store clinical information into a nested dictionary
+# Key1 (donorUniqueId) -> value (dict)
+# Key2:
+#   - "sex" -> value
+#   - "diagnosisAge" -> value
+#   - "survivalTime" -> value
+#   - "intervalLastFollowup" -> value
 
-### 5) Read main metadata file and make output file containing all the metadata information
+clinical = open(clinicalPath, 'r')
+clinicalDict = {}
+
+# Read file line by line
+for line in clinical:
+    line = line.rstrip('\r\n')
+
+    ## Discard header
+    if not line.startswith("#"):
+        
+        fieldsList = line.split("\t")
+
+        donorUniqueId = fieldsList[0] 
+        clinicalDict[donorUniqueId] = {}
+        clinicalDict[donorUniqueId]["sex"] = fieldsList[1]
+        clinicalDict[donorUniqueId]["diagnosisAge"] = fieldsList[2]
+        clinicalDict[donorUniqueId]["survivalTime"] = fieldsList[3]
+        clinicalDict[donorUniqueId]["intervalLastFollowup"] = fieldsList[4]
+
+### 6) Read main metadata file and make output file containing all the metadata information
 # Open output file
 fileName = "PCAWG_donors_metadata.tsv"
 outFilePath = outDir + "/" + fileName
 outFile = open( outFilePath, "w" )
 
 # Write header:
-row = "#submitted_donor_id" + "\t" + "wgs_exclusion_white_gray" + "\t" + "wgs_exclusion_trafic" + "\t" + "icgc_specimen_id" + "\t" + "ancestry_primary" + "\t" + "dcc_project_code" + "\t" + "histology_abbreviation"	 + "\t" + "histology_tier1" + "\t" +	 "histology_tier2" + "\t" + "normal_wgs_aliquot_id" + "\t" +	"tumor_wgs_specimen_count" + "\t" +	"tumor_wgs_aliquot_id" + "\t" + "tumor_wgs_representative_aliquot_id" + "\t" + "normal_wgs_has_matched_rna_seq"	 + "\t" + "tumor_wgs_has_matched_rna_seq" + "\n"
+row = "#submitted_donor_id" + "\t" + "wgs_exclusion_white_gray" + "\t" + "wgs_exclusion_trafic" + "\t" + "icgc_specimen_id" + "\t" + "ancestry_primary" + "\t" + "dcc_project_code" + "\t" + "histology_abbreviation"	 + "\t" + "histology_tier1" + "\t" +	 "histology_tier2" + "\t" + "normal_wgs_aliquot_id" + "\t" +	"tumor_wgs_specimen_count" + "\t" +	"tumor_wgs_aliquot_id" + "\t" + "tumor_wgs_representative_aliquot_id" + "\t" + "donor_sex" + "\t" + "donor_age_at_diagnosis" + "\t" + "donor_survival_time" + "\t" + "donor_interval_of_last_followup" + "\t" + "normal_wgs_has_matched_rna_seq"	 + "\t" + "tumor_wgs_has_matched_rna_seq" + "\n"
 
 outFile.write(row)
 
@@ -159,10 +189,18 @@ for line in mainMetadata:
         tumorMatchedRnaSeq = fieldsList[7] 
 
         donorUniqueId = projectCode + "::" + donorId
+        
+        ## Histology        
         specimenId = histologyDict[donorUniqueId]["specimenId"] 
         abbreviation = histologyDict[donorUniqueId]["abbreviation"] 
         tier1 = histologyDict[donorUniqueId]["tier1"] 
         tier2 = histologyDict[donorUniqueId]["tier2"]    
+
+        ## Clinical
+        sex = clinicalDict[donorUniqueId]["sex"] 
+        diagnosisAge = clinicalDict[donorUniqueId]["diagnosisAge"] 
+        survivalTime = clinicalDict[donorUniqueId]["survivalTime"] 
+        intervalLastFollowup = clinicalDict[donorUniqueId]["intervalLastFollowup"] 
 
         # a) Donor with a single tumor sample
         if (tumorSpecimenCount == "1"):
@@ -172,6 +210,7 @@ for line in mainMetadata:
         else:
             tumorRepresentativeAliquotId = multitumorDict[donorUniqueId]
     
+        ## Ancestry
         # a) Donor without ancestry information
         # Note: there are 16 donors we do not have ancestry information...         
         if normalAliquotId not in ancestryDict:
@@ -181,6 +220,7 @@ for line in mainMetadata:
         else:     
             ancestry = ancestryDict[normalAliquotId]
 
+        ## Blacklist
         # a) Donor in TraFiC blacklist
         if donorUniqueId in blackList:
             donorStatus2 = "Excluded"
@@ -190,8 +230,8 @@ for line in mainMetadata:
             donorStatus2 = "Whitelist"
 
 
-        # Write metadata row into the output file
-        row = donorId + "\t" + donorStatus + "\t" + donorStatus2 + "\t" + specimenId + "\t" + ancestry + "\t" + projectCode + "\t" + abbreviation + "\t" + tier1 + "\t" +	tier2 + "\t" + normalAliquotId + "\t" +	tumorSpecimenCount + "\t" +	tumorAliquotId + "\t" + tumorRepresentativeAliquotId + "\t" + normalMatchedRnaSeq + "\t" + tumorMatchedRnaSeq + "\n" 
+        ### Write metadata row into the output file
+        row = donorId + "\t" + donorStatus + "\t" + donorStatus2 + "\t" + specimenId + "\t" + ancestry + "\t" + projectCode + "\t" + abbreviation + "\t" + tier1 + "\t" +	tier2 + "\t" + normalAliquotId + "\t" +	tumorSpecimenCount + "\t" +	tumorAliquotId + "\t" + tumorRepresentativeAliquotId + "\t" + sex + "\t" + diagnosisAge + "\t" +	 survivalTime + "\t" + intervalLastFollowup + "\t" + normalMatchedRnaSeq + "\t" + tumorMatchedRnaSeq + "\n" 
 
         outFile.write(row)
 
