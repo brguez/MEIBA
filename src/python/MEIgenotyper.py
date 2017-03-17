@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 #coding: utf-8
 
+
+
 def header(string):
     """
         Display  header
     """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print '\n', timeInfo, "****", string, "****"
+
 
 
 def subHeader(string):
@@ -17,12 +20,14 @@ def subHeader(string):
     print timeInfo, "**", string, "**"
 
 
+
 def info(string):
     """
         Display basic information
     """
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, string
+
 
 
 def log(label, string):
@@ -32,7 +37,43 @@ def log(label, string):
     print "[" + label + "]", string
 
 
-def worker(VCFObj, donorIdBamPathList, maxDist, minClipped, minMapQual, minREF, hetVaf, homVaf):
+
+def overlap(begA, endA, begB, endB):
+
+    """
+    Check if two ranges overlap. 2 criteria for defining overlap: 
+    ## A) Begin of the range A within the range B         
+    #       *beg* <---------range_A---------->                         
+    # <---------range_B----------> 
+                
+    #    *beg* <-------range_A----->
+    # <-------------range_B------------------>
+
+    ## B) Begin of the range B within the range A     
+    # <---------range_A----------> 
+    #               *beg* <---------range_B---------->
+            
+    # <-------------range_A----------------->
+    #    *beg* <-------range_B------>
+    """    
+       
+    # a) Begin of the range A within the range B   
+    if ((begA >= begB) and (begA <= endB)):
+        overlap = True
+        
+    # b) Begin of the range B within the range A            
+    elif ((begB >= begA) and (begB <= endA)):
+        overlap = True
+
+    # c) Ranges do not overlapping
+    else:
+        overlap = False
+
+    return overlap
+
+
+
+def worker(VCFObj, donorIdBamPathList, maxDist, minClipped, minMapQual, minREF, hetVaf, homVaf, genderDict, PARregionDict):
     '''
     '''
 
@@ -47,6 +88,9 @@ def worker(VCFObj, donorIdBamPathList, maxDist, minClipped, minMapQual, minREF, 
         donorId = line[0]
         BAMPath = line[1]
 
+        # Donor gender:
+        gender = genderDict[donorId]
+        
         subHeader(threadId +" genotyping donor " + donorId)
         time.sleep(random.uniform(0, 1))
 
@@ -55,7 +99,8 @@ def worker(VCFObj, donorIdBamPathList, maxDist, minClipped, minMapQual, minREF, 
 
         ## Genotype each MEI polymorphism for the current donor
         for VCFlineObj in VCFObj.lineList:
-            genotype = genotypeMEI(bamFile, VCFlineObj, maxDist, minClipped, minMapQual, minREF, hetVaf, homVaf)
+
+            genotype = genotypeMEI(bamFile, VCFlineObj, maxDist, minClipped, minMapQual, minREF, hetVaf, homVaf, gender, PARregionDict)
             VCFlineObj.genotypesDict[donorId] = genotype
 
         subHeader("Finished " + donorId + " genotyping")
@@ -63,7 +108,9 @@ def worker(VCFObj, donorIdBamPathList, maxDist, minClipped, minMapQual, minREF, 
 
     info( threadId + ' finished')
 
-def genotypeMEI(bamFile, VCFlineObj, maxDist, minClipped, minMapQual, minREF, hetVaf, homVaf):
+
+
+def genotypeMEI(bamFile, VCFlineObj, maxDist, minClipped, minMapQual, minREF, hetVaf, homVaf, gender, PARregionDict):
     '''
     '''
 
@@ -75,7 +122,7 @@ def genotypeMEI(bamFile, VCFlineObj, maxDist, minClipped, minMapQual, minREF, he
     msg = "Breakpoint A VAF"
     if debugBool == True: info(msg)
     bkpPos = int(VCFlineObj.pos)
- 
+
     ## a) Insertion absent in reference genome
     # ------------------__TSD__*********TE******AAA__TSD__------------- Donor genome
     #                          bkpB                bkpA
@@ -138,23 +185,53 @@ def genotypeMEI(bamFile, VCFlineObj, maxDist, minClipped, minMapQual, minREF, he
         vaf = vaf_A
         
     ### 2. Determine donor genotype for the current variant
+    ## Different criteria depending on if haploid or diploid variant. 
+
+    ## A) Haploid variant. Three conditions have to be fulfilled:
+    # 1a. The individual is a male 
+    # 2a. The variant is in a sexual chromosome (X or Y) 
+    # 3a. The variant is outside the 2 pseudo-autosomal regions: PAR1 and PAR2
+    
+    ## B) Diploid variant. At least one of these three conditions has to be fulfilled:
+    # 1b. Individual is a female. All the female chromosomes are diploid. 
+    # 2b. The variant is in a autosomal chromosome
+    # 3b. The individual is a male and the variant is in a sexual chromosome (X or Y) within one of the pseudo autosomal (PAR) regions
+    
     nbReadsREF = totalNbReads - nbReadsALT
 
-    # a) Homozygous for alternative allele
-    if (vaf >= homVaf):
-        genotype = '1/1'
+    msg = "Donor gender: " + gender + "\n"
+    if debugBool == True: info(msg)
 
-    # b) Heterozygous for alternative
-    elif (vaf >= hetVaf):
-        genotype = '0/1'
+    ## A) Haploid variant. At least one of these fulfilled:
+    # 1a. The individual is a male 
+    # 2a. The variant is in a sexual chromosome (X or Y) 
+    if (gender == "male") and ((VCFlineObj.chrom == "X") or (VCFlineObj.chrom == "Y")):
         
-    # c) Homozygous for reference (at least 5 reference supporting reads required by default)
-    elif (nbReadsREF >= minREF):
-        genotype = '0/0'
+        targetPARDict = PARregionDict[VCFlineObj.chrom]
 
-    # d) Missing genotype (Not enough number of reads supporting alternative nor reference alleles)
+        MEIpos = VCFlineObj.pos
+        PAR1beg = targetPARDict['PAR#1'][0]
+        PAR1end = targetPARDict['PAR#1'][1]
+        PAR2beg = targetPARDict['PAR#2'][0]
+        PAR2end = targetPARDict['PAR#2'][1]
+
+        # 3a. The variant is outside the 2 pseudo-autosomal regions: PAR1 and PAR2
+        if (not overlap(MEIpos, MEIpos, PAR1beg, PAR1end)) and (not overlap(MEIpos, MEIpos, PAR2beg, PAR2end)):
+
+            genotype = haploidGt(vaf, homVaf, nbReadsREF, minREF)
+
+        ## B) Diploid variant.Condition fulfilled:
+        # 3b. The individual is a male and the variant is in a sexual chromosome (X or Y) within one of the pseudo autosomal (PAR) regions                  
+        else:
+
+            genotype = diploidGt(vaf, homVaf, hetVaf, nbReadsREF, minREF)
+
+    ## B) Diploid variant. Several possible conditions:
+    # 1b. Individual is a female. All the female chromosomes are diploid. 
+    # 2b. The variant is in a autosomal chromosome
     else:
-        genotype = './.'        
+
+        genotype = diploidGt(vaf, homVaf, hetVaf, nbReadsREF, minREF)
 
     msg = "MEI genotype (genotype, nbReadsALT, totalNbReads, VAF): " + genotype + " " + str(nbReadsALT) + " " + str(totalNbReads) + " " + str(vaf) + "\n"
     if debugBool == True: info(msg)
@@ -163,6 +240,7 @@ def genotypeMEI(bamFile, VCFlineObj, maxDist, minClipped, minMapQual, minREF, he
     genotypeField = genotype + ':' + str(nbReadsALT) + ':' + str(totalNbReads)
 
     return (genotypeField)
+
 
 
 def computeBkpVaf(bamFile, chrom, bkpPos, clippingPos, maxDist, minMapQual):
@@ -188,7 +266,7 @@ def computeBkpVaf(bamFile, chrom, bkpPos, clippingPos, maxDist, minMapQual):
     # Iterate over the alignments
     for alignment in iterator:
 
-        ### Discard unmapped reads and reads with mapping quality lower than X (20 default) 
+        ### Discard unmapped reads and reads with mapping quality lower than X (0 default, disabled) 
         if (alignment.is_unmapped == False) and (alignment.mapping_quality >= minMapQual):
 
             msg = "Alignment info (bkpCoord, start, end, CIGAR): " + str(bkpPos) + " " + str(alignment.reference_start) + " " + str(alignment.reference_end) + " " + alignment.cigarstring
@@ -271,7 +349,6 @@ def computeBkpVaf(bamFile, chrom, bkpPos, clippingPos, maxDist, minMapQual):
                 ## Read supporting the alternative allele:
                 if (bkpBool == True) and (duplicate == False):
                     nbReadsALT += 1
-
                     msg = "Alignment supports ALT"
                     if (debugBool == True): log(tag, msg)
 
@@ -295,6 +372,7 @@ def computeBkpVaf(bamFile, chrom, bkpPos, clippingPos, maxDist, minMapQual):
     if (debugBool == True): log(tag, msg)
 
     return (nbReadsALT, totalNbReads, vaf)
+
 
 
 def computeAverageVaf(nbReadsALT_A, totalNbReads_A, vaf_A, nbReadsALT_B, totalNbReads_B, vaf_B, minClipped):
@@ -328,6 +406,60 @@ def computeAverageVaf(nbReadsALT_A, totalNbReads_A, vaf_A, nbReadsALT_B, totalNb
     return nbReadsALT, totalNbReads, vaf
 
 
+
+def haploidGt(vaf, homVaf, nbReadsREF, minREF):
+    '''
+    Determine the genotype for haploid loci based on the vaf estimation. 
+    
+    Notes:
+    - Males haploid outside the Pseudo Autosomal Region (PAR) for X and Y chromosomes. 
+    '''
+
+    # a) Carrier of alternative allele
+    if (vaf >= homVaf):
+        genotype = '1'
+
+    # c) Carrier of reference allele (at least 3 reads supporting the reference required by default)
+    elif (nbReadsREF >= minREF):
+        genotype = '0'
+
+    # d) Missing genotype (Not enough number of reads supporting alternative nor reference alleles)
+    else:
+        genotype = '.'    
+
+    return genotype    
+
+    
+
+def diploidGt(vaf, homVaf, hetVaf, nbReadsREF, minREF):
+    '''
+    Determine the genotype for diploid loci based on the vaf estimation. 
+    
+    Notes:
+    - All the female chromosomes are diploid. 
+    - Males are diploid for all the autosomal chromosomes
+    - For male X and Y chromosomes only the Pseudo Autosomal Region (PAR) is diploid. 
+    '''
+
+    # a) Homozygous for alternative allele
+    if (vaf >= homVaf):
+        genotype = '1/1'
+
+    # b) Heterozygous for alternative
+    elif (vaf >= hetVaf):
+        genotype = '0/1'
+        
+    # c) Homozygous for reference (at least 3 reads supporting the reference required by default)
+    elif (nbReadsREF >= minREF):
+        genotype = '0/0'
+
+    # d) Missing genotype (Not enough number of reads supporting alternative nor reference alleles)
+    else:
+        genotype = './.'    
+
+    return genotype    
+
+
 #### MAIN ####
 
 ## Import modules ##
@@ -348,12 +480,14 @@ global debugBool ## debug logging mode. Boolean.
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= "Genotype a set of germline mobile element insertions (MEI) across a group of donors. Produce a multi-sample VCF as output")
 parser.add_argument('VCF', help='VCF with the MEI polymorphism to genotype across the set of donors')
-parser.add_argument('BAMPaths', help='Tab separated text file with two columns: 1) donor ids and 2) path to the corresponding donor normal BAM files. One donor per row.')
+parser.add_argument('BAMPaths', help='Tab separated file with two columns: 1) donor ids and 2) path to the corresponding donor normal BAM files.')
+parser.add_argument('gender', help='Tab separated file with two columns: 1) donorId and 2) gender.')
+parser.add_argument('PARregion', help='Bed file containing par region coordinates')
 parser.add_argument('outFileName', help='Identifier to name the output file.')
 parser.add_argument('--maxDist', default=3, dest='maxDist', type=int, help='Maximum distance to breakpoint when searching for clipped reads supporting the alternative allele. Default: 3' )
 parser.add_argument('--minClipped', default=5, dest='minClipped', type=int, help='Minimum number of clipped reads supporting the alternative allele. Default: 5' )
-parser.add_argument('--minREF', default=5, dest='minREF', type=int, help='Minimum number of reads supporting the reference allele. Default: 5' )
-parser.add_argument('--minMapQual', default=30, dest='minMapQual', type=int, help='Minimum mapping quality for considering a clipped read as supporting the alternative allele. Default: 30' )
+parser.add_argument('--minREF', default=3, dest='minREF', type=int, help='Minimum number of reads supporting the reference allele. Default: 3' )
+parser.add_argument('--minMapQual', default=0, dest='minMapQual', type=int, help='Minimum mapping quality for considering a clipped read as supporting the alternative allele. Default: 0. Disabled' )
 parser.add_argument('--hetVaf', default=0.10, dest='hetVaf', type=float, help='Min VAF threshold for heterozygous (0/1). Default: 0.1' )
 parser.add_argument('--homVaf', default=0.9, dest='homVaf', type=float, help='Min VAF threshold for homozygous alternative (1/1). Default: 0.9' )
 parser.add_argument('-t', '--threads', default=1, dest='threads', type=int, help='Number of threads. Default: 1' )
@@ -363,6 +497,8 @@ parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='
 args = parser.parse_args()
 VCF = args.VCF
 BAMPaths = args.BAMPaths
+genderPath = args.gender
+PARregionPath = args.PARregion
 outFileName =  args.outFileName
 maxDist = args.maxDist
 minClipped = args.minClipped
@@ -381,6 +517,8 @@ print
 print "***** ", scriptName, " configuration *****"
 print "VCF: ", VCF
 print "BAMPaths: ", BAMPaths
+print "gender: ", genderPath
+print "PARregion: ", PARregionPath
 print "outFileName: ", outFileName
 print "max-distance-bkp: ", maxDist
 print "min-nb-clipped: ", minClipped
@@ -397,16 +535,63 @@ print
 
 ## Start ## 
 
+#### 1. Create dictionary with donor id gender equivalencies
+header("1. Create dictionary with donor id gender equivalencies")
 
-#### 1. Create VCF object and read input VCF
+gender = open(genderPath, 'r')
+genderDict = {}
 
-header("1. Process input VCF with polymorphic MEI for genotyping")
+# Read file line by line
+for line in gender:
+    line = line.rstrip('\r\n')
+
+    ## Discard header
+    if not line.startswith("#"):
+        
+        fieldsList = line.split("\t")
+
+        donorId = fieldsList[0]
+        gender = fieldsList[1]
+
+        genderDict[donorId] = gender
+
+
+#### 2. Create dictionary with PAR region coordinates
+header("2. Create dictionary with PAR region coordinates")
+
+PARregion = open(PARregionPath, 'r')
+PARregionDict = {}
+
+# Read file line by line
+for line in PARregion:
+    line = line.rstrip('\r\n')
+
+    ## Discard header
+    if not line.startswith("#"):
+        
+        fieldsList = line.split("\t")
+        chrom = fieldsList[0]
+        beg = int(fieldsList[1])
+        end = int(fieldsList[2])
+        regionId = fieldsList[3]
+
+        if chrom not in PARregionDict:
+            PARregionDict[chrom] = {}
+            PARregionDict[chrom][regionId] = {}
+            PARregionDict[chrom][regionId] = (beg, end)
+
+        else:
+            PARregionDict[chrom][regionId] = {}
+            PARregionDict[chrom][regionId] = (beg, end)
+
+#### 3. Create VCF object and read input VCF
+header("3. Process input VCF with polymorphic MEI for genotyping")
 
 VCFObj = formats.VCF()
 VCFObj.read_VCF(VCF)
 
-#### 2. Genotype donors
-header("2. Genotype donors")
+#### 4. Genotype donors
+header("4. Genotype donors")
 
 # Make list of donorId/BAM files:
 donorIdBamPathList = [line.split() for line in open(BAMPaths)]
@@ -425,7 +610,7 @@ for chunk in BAMChunks:
     print "chunk" + str(counter) + ": " + str(len(chunk)) + " donors to genotype"
 
     threadName = "THREAD-" + str(counter)
-    thread = threading.Thread(target=worker, args=(VCFObj, chunk, maxDist, minClipped, minMapQual, minREF, hetVaf, homVaf), name=threadName)
+    thread = threading.Thread(target=worker, args=(VCFObj, chunk, maxDist, minClipped, minMapQual, minREF, hetVaf, homVaf, genderDict, PARregionDict), name=threadName)
     threads.append(thread)
 
     counter += 1
@@ -436,16 +621,16 @@ for chunk in BAMChunks:
 # Wait till threads have finished genotyping
 [t.join() for t in threads]
 
-#### 3. Make output multisample VCF file
-header("3. Produce multi-sample VCF file as ouput")
+#### 5. Make output multisample VCF file
+header("5. Produce multi-sample VCF file as ouput")
 
 fileName = outFileName + '.vcf'
 outFilePath = outDir + '/' + fileName
 
-# 3.1 Write header
+# 5.1 Write header
 VCFObj.write_header(outFilePath)
 
-# 3.2 Write variants
+# 5.2 Write variants
 donorIdList = [line[0] for line in donorIdBamPathList]
 
 VCFObj.write_variants_multiSample(donorIdList, outFilePath)
