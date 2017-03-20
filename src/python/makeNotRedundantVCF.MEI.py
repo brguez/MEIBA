@@ -42,9 +42,8 @@ class cohort():
             line = line.rstrip('\n')
             line = line.split("\t")
 
-            projectCode = line[0]
-            donorId = line[1]
-            VCFfile = line[2]
+            donorId = line[0]
+            VCFfile = line[1]
 
             # Create VCF object
             VCFObj = formats.VCF()
@@ -57,11 +56,16 @@ class cohort():
                 # Read VCF and add information to VCF object
                 VCFObj.read_VCF(VCFfile)
 
-                # Add projectCode and donorId information to the genotype field in each MEI object
+                # Add information to the genotype field in each MEI object
                 for MEIObject in VCFObj.lineList:
 
-                    MEIObject.format = MEIObject.format + ':PRJ:DON'
-                    MEIObject.genotype = MEIObject.genotype + ':' + projectCode + ':' + donorId
+                    ## remove sample list format field
+                    formatList = MEIObject.format.split(':')
+                    genotypeList = MEIObject.genotype.split(':')
+
+                    ## add representative sample format field
+                    MEIObject.format = formatList[0] + ':' + formatList[1] + ':REPR'
+                    MEIObject.genotype = genotypeList[0] + ':' + genotypeList[1] + ':' + donorId
 
                 # Add donor VCF to cohort
                 self.addDonor(VCFObj)
@@ -180,43 +184,52 @@ class cohort():
 ##contig=<ID=X,assembly=GRCh37,length=155270560,species=human>
 ##contig=<ID=Y,assembly=GRCh37,length=59373566,species=human>
 ##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant. (All sequence is on the plus strand and in the forward direction).">
-##INFO=<ID=CLASS,Number=1,Type=String,Description="Transposable element class (L1, ALU, SVA or ERVK)">
-##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction)">
-##INFO=<ID=SCORE,Number=1,Type=String,Description="Insertion score (5: 5' and 3' breakpoints (bkp) assembled, 4: 3'bkp assembled, 3: 5'bkp assembled, 2: no bkp assembled, 1: inconsistent (contradictory orientation, bkp or TSD))">
-##INFO=<ID=BKPB,Number=1,Type=String,Description="MEI right-most breakpoint position (bkp B). Left-most breakpoint position (bkp A) represented in the POS field">
+##INFO=<ID=CLASS,Number=1,Type=String,Description="Mobile element class (L1, ALU, SVA or ERVK)">
+##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction, PSD: processed-pseudogene)>
+##INFO=<ID=SCORE,Number=1,Type=Integer,Description="Insertion score (5: 5' and 3' breakpoints (bkp) assembled, 4: 3'bkp assembled, 3: 5'bkp assembled, 2: no bkp assembled, 1: inconsistent (contradictory orientation, bkp or TSD))">
+##INFO=<ID=MANUAL,Number=0,Type=Flag,Description="MEI manually verified and curated through BAM inspection (Only used for PSD)">
+##INFO=<ID=BKPB,Number=1,Type=Integer,Description="MEI right-most breakpoint position (bkp B). Left-most breakpoint position (bkp A) represented in the POS field">
 ##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoints">
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
-##INFO=<ID=STRUCT,Number=1,Type=String,Description="Transposable element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
-##INFO=<ID=LEN,Number=1,Type=Integer,Description="Transposable element length">
-##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site duplication length">
+##INFO=<ID=STRUCT,Number=1,Type=String,Description="Mobile element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
+##INFO=<ID=LEN,Number=1,Type=Integer,Description="Mobile element length">
+##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site duplication (+_value) or deletion (-_value) length">
 ##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication sequence">
 ##INFO=<ID=POLYA,Number=1,Type=String,Description="Poly-A sequence">
-##INFO=<ID=SRC,Number=1,Type=String,Description="Coordinates of the source element that mediated the transduction in the format: $chrom:beg-end_strand">
-##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the transduced region in the format: $chrom:beg-end">
-##INFO=<ID=TDLEN,Number=1,Type=String,Description="Transduced region length">
-##INFO=<ID=TDLENR,Number=1,Type=String,Description="Transduced region length at RNA level">
+##INFO=<ID=SRCID,Number=1,Type=String,Description="Source element cytoband identifier. Only for gemline source elements">
+##INFO=<ID=SRCTYPE,Number=1,Type=String,Description="Source element type (GERMLINE or SOMATIC)">
+##INFO=<ID=SRC,Number=1,Type=String,Description="Coordinates of the source element that mediated the transduction in the format: chrom_beg_end">
+##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the integrated transduced or pseudogene sequence in the format: chrom_beg_end">
+##INFO=<ID=TDLEN,Number=1,Type=Integer,Description="Transduced region length">
+##INFO=<ID=TDLENR,Number=1,Type=Integer,Description="Transduced region length at RNA level">
+##INFO=<ID=SRCGENE,Number=1,Type=String,Description="Source gene of the processed pseudogene insertion">
 ##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1KGENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), TRAFIC: TraFic in-house database)">
-##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the transposable element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
+##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the mobile element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
 ##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
 ##INFO=<ID=ROLE,Number=1,Type=String,Description="Role in cancer (oncogene, TSG: tumor suppressor gene, oncogene/TSG: both roles)">
 ##INFO=<ID=COSMIC,Number=0,Type=Flag,Description="Reported as cancer driver in COSMIC cancer gene census database">
 ##INFO=<ID=CPG,Number=0,Type=Flag,Description="Reported as cancer predisposition gene in 10.1038/nature12981 (DOI).">
 ##INFO=<ID=REP,Number=1,Type=String,Description="Repetitive element overlapping the insertion breakpoint">
 ##INFO=<ID=DIV,Number=1,Type=Integer,Description="Millidivergence of the overlapping repetitive element with respect a consensus sequence">
-##INFO=<ID=MEISEQ,Number=1,Type=String,Description="Assembled sequence of the mobile element 5' boundary">
 ##INFO=<ID=CONTIGA,Number=1,Type=String,Description="Assembled contig sequence spanning 1st bkp (lowest genomic position)">
 ##INFO=<ID=CONTIGB,Number=1,Type=String,Description="Assembled contig sequence spanning 2nd bkp (highest genomic position)">
 ##INFO=<ID=RP,Number=.,Type=String,Description="Reads from the tumour sample and positive cluster that support this insertion">
 ##INFO=<ID=RN,Number=.,Type=String,Description="Reads from the tumour sample and negative cluster that support this insertion">
 ##FILTER=<ID=SCORE,Description="Insertion with an score < threshold">
 ##FILTER=<ID=REP,Description="Insertion overlapping a satellite region or a repetitive element of the same class">
+##FILTER=<ID=DUP,Description="Duplicated MEI call">
+##FILTER=<ID=GERMLINE,Description="Germline MEI miscalled as somatic">
+##FILTER=<ID=TD,Description="L1 transduction incorrectly identified as a processed pseudogene insertion">
 ##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting reads">
 ##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
+##FORMAT=<ID=SL,Number=1,Type=String,Description="List of samples where the variant was found (specially relevant for multi-tumor donors)">
+##FORMAT=<ID=REPR,Number=1,Type=String,Description="Sample selected as representative among all the samples where the variant was found (specially relevant for multi-sample VCF).">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Unphased genotypes">
 ##FORMAT=<ID=NV,Number=1,Type=Integer,Description="Number of reads supporting the variant in this sample">
 ##FORMAT=<ID=NR,Number=1,Type=Integer,Description="Number of reads covering variant location in this sample">
-#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  CONSENSUS
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  
 """
+
         ## Replace variables into the template and print header into the output file
         with  open(outFilePath,'w') as outFile:
             outFile.write(template.format(**context))
@@ -411,17 +424,20 @@ import sys
 import os.path
 import formats
 import time
+import re
 from operator import itemgetter, attrgetter, methodcaller
 
 
 ## Get user's input ##
-parser = argparse.ArgumentParser(description= """""")
-parser.add_argument('inputPath', help='Tabular text file containing one row per donor with the following consecutive fields: projectCode donorId vcf_path')
+parser = argparse.ArgumentParser(description="Takes a set of input VCFs and merge them into a non-redundant VCF containing for those MEI shared between multiple VCFs only the one selected as representative.")
+parser.add_argument('inputPath', help='Tabular text file containing one row per donor with the following consecutive fields: donorId vcf_path')
+parser.add_argument('fileName', help='File name of the merged VCF generated as output')
 parser.add_argument('--overhang', default=5, type=int, dest='overhang', help='Maximum overhang for MEI clustering. Default: 5 base pairs.')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.')
 
 args = parser.parse_args()
 inputPath = args.inputPath
+fileName = args.fileName
 overhang = args.overhang
 outDir = args.outDir
 
@@ -431,6 +447,7 @@ scriptName = os.path.basename(sys.argv[0])
 print
 print "***** ", scriptName, " configuration *****"
 print "inputPath: ", inputPath
+print "fileName: ", fileName
 print "overhang: ", overhang
 print "outDir: ", outDir
 print
@@ -442,7 +459,7 @@ print
 ## 1. Initialize cohort object
 cohortObj = cohort()
 
-## 2. Read VCF files and make a list of VCF objects. Add donorId and projectCode information
+## 2. Read VCF files and make a list of VCF objects. Add donorId information
 cohortObj.read_VCFs(inputPath)
 
 ## 3. Organize MEI by chromosome, insertion class and in increasing cromosomal coordinates
@@ -452,7 +469,7 @@ cohortObj.build_MEI_dict()
 cohortObj.make_consensus_MEI_dict()
 
 ## 5. Make output VCF containing consensus MEI objects
-outFilePath = outDir + '/not_redundant_germline_MEI.vcf'
+outFilePath = outDir + '/' + fileName +'.vcf'
 
 # 5.1 Write header
 cohortObj.write_header(outFilePath)
