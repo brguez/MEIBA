@@ -235,9 +235,9 @@ class VCF():
 ##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant. (All sequence is on the plus strand and in the forward direction).">
 ##INFO=<ID=CLASS,Number=1,Type=String,Description="Mobile element class (L1, ALU, SVA or ERVK)">
 ##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction, PSD: processed-pseudogene)>
-##INFO=<ID=SCORE,Number=1,Type=String,Description="Insertion score (5: 5' and 3' breakpoints (bkp) assembled, 4: 3'bkp assembled, 3: 5'bkp assembled, 2: no bkp assembled, 1: inconsistent (contradictory orientation, bkp or TSD))">
+##INFO=<ID=SCORE,Number=1,Type=Integer,Description="Insertion score (5: 5' and 3' breakpoints (bkp) assembled, 4: 3'bkp assembled, 3: 5'bkp assembled, 2: no bkp assembled, 1: inconsistent (contradictory orientation, bkp or TSD))">
 ##INFO=<ID=MANUAL,Number=0,Type=Flag,Description="MEI manually verified and curated through BAM inspection (Only used for PSD)">
-##INFO=<ID=BKPB,Number=1,Type=String,Description="MEI right-most breakpoint position (bkp B). Left-most breakpoint position (bkp A) represented in the POS field">
+##INFO=<ID=BKPB,Number=1,Type=Integer,Description="MEI right-most breakpoint position (bkp B). Left-most breakpoint position (bkp A) represented in the POS field">
 ##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoints">
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
 ##INFO=<ID=STRUCT,Number=1,Type=String,Description="Mobile element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
@@ -249,8 +249,8 @@ class VCF():
 ##INFO=<ID=SRCTYPE,Number=1,Type=String,Description="Source element type (GERMLINE or SOMATIC)">
 ##INFO=<ID=SRC,Number=1,Type=String,Description="Coordinates of the source element that mediated the transduction in the format: chrom_beg_end">
 ##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the integrated transduced or pseudogene sequence in the format: chrom_beg_end">
-##INFO=<ID=TDLEN,Number=1,Type=String,Description="Transduced region length">
-##INFO=<ID=TDLENR,Number=1,Type=String,Description="Transduced region length at RNA level">
+##INFO=<ID=TDLEN,Number=1,Type=Integer,Description="Transduced region length">
+##INFO=<ID=TDLENR,Number=1,Type=Integer,Description="Transduced region length at RNA level">
 ##INFO=<ID=SRCGENE,Number=1,Type=String,Description="Source gene of the processed pseudogene insertion">
 ##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1KGENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), TRAFIC: TraFic in-house database)">
 ##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the mobile element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
@@ -271,12 +271,14 @@ class VCF():
 ##FILTER=<ID=TD,Description="L1 transduction incorrectly identified as a processed pseudogene insertion">
 ##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting reads">
 ##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
-##FORMAT=<ID=SL,Number=1,Type=Integer,Description="List of samples where the variant was found (specially relevant for multi-tumor donors)">
+##FORMAT=<ID=SL,Number=1,Type=String,Description="List of samples where the variant was found (specially relevant for multi-tumor donors)">
+##FORMAT=<ID=REPR,Number=1,Type=String,Description="Sample selected as representative among all the samples where the variant was found (specially relevant for multi-sample VCF).">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Unphased genotypes">
 ##FORMAT=<ID=NV,Number=1,Type=Integer,Description="Number of reads supporting the variant in this sample">
 ##FORMAT=<ID=NR,Number=1,Type=Integer,Description="Number of reads covering variant location in this sample">
 #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  
 """
+
         ## Replace variables into the template and print header into the output file
         with  open(outFilePath,'w') as outFile:
             outFile.write(template.format(**context))
