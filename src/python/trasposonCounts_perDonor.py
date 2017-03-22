@@ -75,7 +75,7 @@ outPath = outDir + '/transposonCounts_perDonor.tsv'
 outFile = open(outPath, 'w')
 
 ## Write file header in the output file
-row = "donorId" + "\t" + "projectCode" + "\t" + "histology" + "\t" + "nbTotal" + "\t" + "nbSoloL1" + "\t" + "nbTD" + "\t" + "nbAlu" + "\t" + "nbSVA" + "\t" + "nbERVK"  + "\t" + "nbPSD" + "\t" + "nbDEL" + "\n"     
+row = "#donorId" + "\t" + "projectCode" + "\t" + "histology" + "\t" + "nbTotal" + "\t" + "nbSoloL1" + "\t" + "nbTD" + "\t" + "nbAlu" + "\t" + "nbSVA" + "\t" + "nbERVK"  + "\t" + "nbPSD" + "\t" + "nbDEL" + "\n"     
 
 outFile.write(row)
 
