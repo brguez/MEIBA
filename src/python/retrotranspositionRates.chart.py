@@ -45,7 +45,7 @@ class cohort():
             projectCode = line[1].split("-")[0]
             VCFfile = line[2]
 
-            print "tiooo: ", donorId, projectCode, VCFfile
+            #print "tiooo: ", donorId, projectCode, VCFfile
 
             # Create VCF object
             VCFObj = formats.VCF()
@@ -79,7 +79,7 @@ def autolabel(rects, ax, valuesList):
     index = 0
     for rect in rects:
         value = valuesList[index]
-        ax.text(1.03*x_length, rect.get_y(), 
+        ax.text(1.05*x_length, rect.get_y(), 
                 '%d' % int(value),
                 ha='center', va='bottom', fontsize=8)    
 
@@ -146,10 +146,18 @@ for projectCode in cohortObj.VCFdict:
     categoryCountsDict[projectCode]["High"] = 0
 
     ## Count total number of donors per tumor type and number of donor per category
+    ## For each donor    
     for VCFObj in cohortObj.VCFdict[projectCode]:
 
-        nbInsertions = int(len(VCFObj.lineList))
-       
+        nbInsertions = 0
+
+        # For each MEI in a given donor
+        for MEIObj in VCFObj.lineList:
+        
+            # Only count MEI that passes the filters:
+            if (MEIObj.filter == "PASS"):
+                nbInsertions += 1
+        
         ## a) None (0 insertions):
         if (nbInsertions == 0):
             categoryCountsDict[projectCode]["None"] += 1
@@ -213,10 +221,11 @@ print "final-counts: ", categoryCountsFinalDataframe
 # 0_insertions      X1%          Y1%          Z1%     
 # 1-10_insertions   X2%          Y2%          Z2%
 
-donorsPerTumorTypeSerie = categoryCountsDataframe.sum(axis=0)
+donorsPerTumorTypeSerie = categoryCountsFinalDataframe.sum(axis=0)
+#donorsPerTumorTypeSerie = categoryCountsDataframe.sum(axis=0)
 
-categories = categoryCountsDataframe.index
-projecCodes = categoryCountsDataframe.columns
+categories = categoryCountsFinalDataframe.index
+projecCodes = categoryCountsFinalDataframe.columns
 
 categoryPercDataframe = pd.DataFrame(index=categories, columns=projecCodes)
 
@@ -226,7 +235,7 @@ for category in categories:
     # Iterate over column index labels (project codes)
     for projectCode in projecCodes:
     
-        categoryCountProjectCode = categoryCountsDataframe.loc[category, projectCode]
+        categoryCountProjectCode = categoryCountsFinalDataframe.loc[category, projectCode]
         nbDonorsInTumortype = donorsPerTumorTypeSerie.loc[projectCode]
 
         # Compute the percentage
@@ -264,8 +273,8 @@ print "donorCountsSortedSeries: ", donorCountsSortedSeries
 ypos = np.arange(1, len(percHighList) + 1)    # the y locations for the groups
 
 height = 0.75      # the width of the bars: can also be len(x) sequence
-#fig = plt.figure(figsize=(7,5))
-fig = plt.figure(figsize=(7,7))
+fig = plt.figure(figsize=(5,3))
+#fig = plt.figure(figsize=(7,7))
 ax = fig.add_subplot(111)
 ax.yaxis.set_label_position("right")
 plt.ylabel('Number of samples', fontsize=10, labelpad=35)
@@ -313,12 +322,12 @@ donorCountsList = donorCountsSortedSeries.values.tolist()
 autolabel(p4, ax, donorCountsList) ## autolabel function
 
 ## Make legend
-circle1 = mpatches.Circle((0, 0), 5, color='#DCDCDC', alpha=0.90)
-circle2 = mpatches.Circle((0, 0), 5, color='#fff68f', alpha=0.90)
-circle3 = mpatches.Circle((0, 0), 5, color='#fdb913', alpha=0.90)
-circle4 = mpatches.Circle((0, 0), 5, color='#ff0000', alpha=0.90)
+#circle1 = mpatches.Circle((0, 0), 5, color='#DCDCDC', alpha=0.90)
+#circle2 = mpatches.Circle((0, 0), 5, color='#fff68f', alpha=0.90)
+#circle3 = mpatches.Circle((0, 0), 5, color='#fdb913', alpha=0.90)
+#circle4 = mpatches.Circle((0, 0), 5, color='#ff0000', alpha=0.90)
 
-l = plt.figlegend((circle1, circle2, circle3, circle4), ('0', '[1-10]', '(10-100]', '>100'), loc='upper center', ncol=4, labelspacing=0.75, title="Number of retrotransposition events", fontsize=10, fancybox=True)
+#l = plt.figlegend((circle1, circle2, circle3, circle4), ('0', '[1-10]', '(10-100]', '>100'), loc='upper center', ncol=4, labelspacing=0.75, title="Number of retrotransposition events", fontsize=10, fancybox=True)
 
 ## Save figure
 fileName = outDir + "/PCAWG_retrotranspositionRates_barPlot.pdf"
