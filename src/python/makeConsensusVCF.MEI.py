@@ -107,7 +107,7 @@ def clusterMEI(MEIDict):
 
                     #msg = "Initialize first cluster"
                     #log("CLUSTER", msg) 
-                    clusterObj = MEIcluster(MEIObj, 5) # Allow up to 5 nucleotides of margin
+                    clusterObj = MEIcluster(MEIObj, 10) # Allow up to 10 nucleotides of margin
                     clusterList.append(clusterObj)
         
                 # B) There is already at least one cluster in the list -> Check if current MEI within the latest cluster
@@ -122,7 +122,7 @@ def clusterMEI(MEIDict):
                     endClusterRange = lastClusterObj.end
 
                     ## Define insertion range for searching for overlap:    
-                    begMEIrange, endMEIrange = insertionRange(MEIObj, 5)     
+                    begMEIrange, endMEIrange = insertionRange(MEIObj, 10) # Allow up to 10 nucleotides of margin    
               
                     #### Check if both ranges overlap.
                     overlapping = overlap(begMEIrange, endMEIrange, begClusterRange, endClusterRange) 
@@ -135,13 +135,13 @@ def clusterMEI(MEIDict):
                     if overlapping:
                         #msg = "MEI within cluster -> add MEI to the cluster"
                         #log("CLUSTER", msg) 
-                        lastClusterObj.addMEI(MEIObj, 5) # Allow up to 5 nucleotides of margin 
+                        lastClusterObj.addMEI(MEIObj, 10) # Allow up to 10 nucleotides of margin 
                      
                     ## B) Current MEI outside previous cluster interval -> create new cluster and add it into the list
                     else:
                         #msg = "MEI outside the cluster -> create new cluster "
                         #log("CLUSTER", msg) 
-                        clusterObj = MEIcluster(MEIObj, 5) # Allow up to 5 nucleotides of margin
+                        clusterObj = MEIcluster(MEIObj, 10) # Allow up to 10 nucleotides of margin
                         clusterList.append(clusterObj)
                     
                     #msg = "Number of MEI within cluster: ", len(clusterObj.MEIlist)
@@ -541,13 +541,11 @@ from operator import itemgetter, attrgetter, methodcaller
 parser = argparse.ArgumentParser(description="Takes a set of input VCFs and merge them into a non-redundant VCF containing for those MEI shared between multiple VCFs only the one selected as representative.")
 parser.add_argument('inputPath', help='Tabular text file containing one row per donor with the following consecutive fields: donorId vcf_path')
 parser.add_argument('fileName', help='File name of the merged VCF generated as output')
-parser.add_argument('--overhang', default=5, type=int, dest='overhang', help='Maximum overhang for MEI clustering. Default: 5 base pairs.')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.')
 
 args = parser.parse_args()
 inputPath = args.inputPath
 fileName = args.fileName
-overhang = args.overhang
 outDir = args.outDir
 
 scriptName = os.path.basename(sys.argv[0])
@@ -557,7 +555,6 @@ print
 print "***** ", scriptName, " configuration *****"
 print "inputPath: ", inputPath
 print "fileName: ", fileName
-print "overhang: ", overhang
 print "outDir: ", outDir
 print
 print "***** Executing ", scriptName, ".... *****"
