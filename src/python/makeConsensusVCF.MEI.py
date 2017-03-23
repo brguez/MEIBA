@@ -76,8 +76,8 @@ def clusterMEI(MEIDict):
     """
     """
     
-    msg = "** CLUSTER MEI **"  
-    log("CLUSTER", msg)
+    #msg = "** CLUSTER MEI **"  
+    #log("CLUSTER", msg)
 
     # Cluster MEI objects
     #  chr1 --------*---------------*-------------*------------
@@ -99,22 +99,22 @@ def clusterMEI(MEIDict):
 
                 bkpB = int(MEIObj.infoDict["BKPB"]) if "BKPB" in MEIObj.infoDict else "UNK"
         
-                msg = "MEI: " + chrom + " " + str(MEIObj.pos) + " " + str(bkpB) + " " + MEIObj.infoDict["TYPE"] + " " + MEIObj.infoDict["CLASS"] + " " + MEIObj.infoDict["SCORE"] + " " + MEIObj.infoDict["CIPOS"] 
-                log("CLUSTER", msg)    
+                #msg = "MEI: " + chrom + " " + str(MEIObj.pos) + " " + str(bkpB) + " " + MEIObj.infoDict["TYPE"] + " " + MEIObj.infoDict["CLASS"] + " " + MEIObj.infoDict["SCORE"] + " " + MEIObj.infoDict["CIPOS"] 
+                #log("CLUSTER", msg)    
         
                 # A) No cluster in the list -> Create first cluster
                 if not clusterList:
 
-                    msg = "Initialize first cluster"
-                    log("CLUSTER", msg) 
+                    #msg = "Initialize first cluster"
+                    #log("CLUSTER", msg) 
                     clusterObj = MEIcluster(MEIObj, 5) # Allow up to 5 nucleotides of margin
                     clusterList.append(clusterObj)
         
                 # B) There is already at least one cluster in the list -> Check if current MEI within the latest cluster
                 else:
                     
-                    msg = "Check if MEI within latest cluster"
-                    log("CLUSTER", msg) 
+                    #msg = "Check if MEI within latest cluster"
+                    #log("CLUSTER", msg) 
 
                     ## Define cluster range for searching for overlap
                     lastClusterObj = clusterList[-1]     
@@ -127,27 +127,27 @@ def clusterMEI(MEIDict):
                     #### Check if both ranges overlap.
                     overlapping = overlap(begMEIrange, endMEIrange, begClusterRange, endClusterRange) 
 
-                    msg = "cluster_range,MEI_range: " + str(begClusterRange) + " " + str(endClusterRange) + " " + str(begMEIrange) + " " + str(endMEIrange)
-                    log("CLUSTER", msg) 
+                    #msg = "cluster_range,MEI_range: " + str(begClusterRange) + " " + str(endClusterRange) + " " + str(begMEIrange) + " " + str(endMEIrange)
+                    #log("CLUSTER", msg) 
 
     
                     ## A) Overlapping ranges, so current MEI within previous cluster interval -> add MEI to the cluster                                
                     if overlapping:
-                        msg = "MEI within cluster -> add MEI to the cluster"
-                        log("CLUSTER", msg) 
+                        #msg = "MEI within cluster -> add MEI to the cluster"
+                        #log("CLUSTER", msg) 
                         lastClusterObj.addMEI(MEIObj, 5) # Allow up to 5 nucleotides of margin 
                      
                     ## B) Current MEI outside previous cluster interval -> create new cluster and add it into the list
                     else:
-                        msg = "MEI outside the cluster -> create new cluster "
-                        log("CLUSTER", msg) 
+                        #msg = "MEI outside the cluster -> create new cluster "
+                        #log("CLUSTER", msg) 
                         clusterObj = MEIcluster(MEIObj, 5) # Allow up to 5 nucleotides of margin
                         clusterList.append(clusterObj)
                     
-                    msg = "Number of MEI within cluster: ", len(clusterObj.MEIlist)
-                    log("CLUSTER", msg) 
-                    msg = "----------------------"
-                    log("CLUSTER", msg) 
+                    #msg = "Number of MEI within cluster: ", len(clusterObj.MEIlist)
+                    #log("CLUSTER", msg) 
+                    #msg = "----------------------"
+                    #log("CLUSTER", msg) 
 
     return clusterList     
 
