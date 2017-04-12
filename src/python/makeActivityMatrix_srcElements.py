@@ -58,12 +58,11 @@ print
 
 
 ## Start ##
+
 #### 1. Read metadata file and create dictionary with germline source element activity
-
-donorMetadataFile = open(donorMetadata, 'r')
-
 info("1. Read metadata file and create dictionary with germline source element activity")
 
+donorMetadataFile = open(donorMetadata, 'r')
 germlineSrcActivityDict = {}
 
 ## For donor's metadata:
@@ -103,6 +102,7 @@ for line in srcElementsFile:
 info("2. Read input VCFs")
 
 inputFile = open(inputPath, 'r')
+somaticSrcActivityDict = {}
 
 # Per iteration process a donor's VCF
 for line in inputFile:
@@ -132,20 +132,63 @@ for line in inputFile:
                 # Select transductions that passess all the filters:
                 if (MEIObj.filter == "PASS") and ((MEIObj.infoDict["TYPE"] == "TD1") or (MEIObj.infoDict["TYPE"] == "TD2")):
 
-                    # Select germline source elements                     
+                    # A) germline source element                     
                     if (MEIObj.infoDict["SRCTYPE"] == "GERMLINE"):
                         srcId = MEIObj.infoDict["SRCID"] # Use the cytoband as the source element identifier
-                        germlineSrcActivityDict[donorId][srcId] += 1                                
+                        germlineSrcActivityDict[donorId][srcId] += 1  
+                    
+                    # B) somatic germline element
+                    else:
+                        srcId = MEIObj.infoDict["SRC"]
+                        print "SOMATIC: ", srcId, MEIObj.infoDict["SRCTYPE"]                               
 
+                        # a) somatic source element not reported yet
+                        if srcId not in somaticSrcActivityDict:
+                            somaticSrcActivityDict[srcId] = {}
+                            somaticSrcActivityDict[srcId][donorId] = 1
 
-### 3. Convert dictionary into dataframe and write into tsv
+                        # b) somatic source element not reported yet in a given donor
+                        elif donorId not in somaticSrcActivityDict[srcId]:
+                            somaticSrcActivityDict[srcId][donorId] = 1
+                    
+                        # c) somatic source element already reported in the donor
+                        else:
+                            somaticSrcActivityDict[srcId][donorId] += 1
+                           
+### 3. Convert germline dictionary into dataframe and write into tsv
 info("3. Convert dictionary into dataframe and write into tsv")
 germlineSrcActivityDf = pd.DataFrame(germlineSrcActivityDict)
 
 ## Save output into tsv
-outFilePath = outDir + '/' +  outFileName +'.tsv'
-
+outFilePath = outDir + '/germline_' +  outFileName +'.tsv'
 germlineSrcActivityDf.to_csv(outFilePath, sep='\t') 
+
+### 4. Generate tsv with the somatic source elements activity:
+## tsv with 5 Fields:
+# srcId, nbSamples, maxActivity, sampleList, activityList
+
+info("4. Generate tsv with the somatic source elements activity")
+
+outFilePath = outDir + '/somatic_' +  outFileName +'.tsv'
+outFile = open(outFilePath, 'w')
+
+# For each somatic source element
+for srcId in somaticSrcActivityDict:
+    sampleList = somaticSrcActivityDict[srcId].keys()
+    activityList = somaticSrcActivityDict[srcId].values()
+
+    nbSamples = len(sampleList)
+    maxActicity = max(activityList)
+
+    sampleListStr = ",".join(sampleList)
+    activityListStr = ",".join(map(str, activityList))
+    
+    # Write row into the tsv
+    row = srcId + "\t" + str(nbSamples) + "\t" + str(maxActicity) + "\t" + sampleListStr + "\t" + activityListStr + "\n"
+    outFile.write(row)
+   
+outFile.close()
+
 
 ## End ##
 print
