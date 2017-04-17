@@ -33,7 +33,7 @@ while read CHROM POS CLASS PROJECT DONOR; do
     samtools view -H $BAM > $outDir/${CHROM}_${POS}_${CLASS}.sam
     samtools view $BAM | grep -m $NUMREADS -Ff $outDir/${CHROM}_${POS}_${CLASS}.reads >> $outDir/${CHROM}_${POS}_${CLASS}.sam
     echo "Compressing to BAM"
-    samtools view -Sb $outDir${CHROM}_${POS}_${CLASS}.sam > $outDir/${CHROM}_${POS}_${CLASS}.bam
+    samtools view -Sb $outDir/${CHROM}_${POS}_${CLASS}.sam > $outDir/${CHROM}_${POS}_${CLASS}.bam
     rm $outDir/${CHROM}_${POS}_${CLASS}.reads $outDir/${CHROM}_${POS}_${CLASS}.sam
     echo "Done"
     
