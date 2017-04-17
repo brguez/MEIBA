@@ -5,7 +5,11 @@
 
 # $1: tab-delimited file with no header and columns: chrom, pos, class, projectCode, donorId
 # $2: tab-delimited file with no header and columns: donorId, bamFile
+# $3: output directory
 
+input=$1
+bamPaths=$2
+outDir=$3 
 
 # For each insertion
 while read CHROM POS CLASS PROJECT DONOR; do
@@ -13,26 +17,26 @@ while read CHROM POS CLASS PROJECT DONOR; do
     echo -e "\nProcessing: $CHROM $POS $CLASS $PROJECT $DONOR"
     
     # Get path to BAM file
-    BAM=`grep -P "^$DONOR\t" $2 | cut -f2`
+    BAM=`grep -P "^$DONOR\t" $bamPaths | cut -f2`
     echo "BAM file: $BAM"
     
     # Extract read IDs in interval of +/-1000 bp
     START=$(( POS - 1000 ))
     END=$(( POS + 1000 ))
     echo "Running samtools view in interval ${CHROM}:${START}-${END}"
-    samtools view $BAM ${CHROM}:${START}-${END} | cut -f1 > ${CHROM}_$POS.reads
-    NUMREADS=`cat ${CHROM}_$POS.reads | wc -l`
+    samtools view $BAM ${CHROM}:${START}-${END} | cut -f1 > $outDir/${CHROM}_${POS}_${CLASS}.reads
+    NUMREADS=`cat $outDir/${CHROM}_${POS}_${CLASS}.reads | wc -l`
     NUMREADS=$(( NUMREADS * 2 ))
     
     # Extract all the reads and their mates
     echo "Extracting all found reads and their mates ($NUMREADS)"
-    samtools view -H $BAM > ${CHROM}_$POS.sam
-    samtools view $BAM | grep -m $NUMREADS -Ff ${CHROM}_$POS.reads >> ${CHROM}_$POS.sam
+    samtools view -H $BAM > $outDir/${CHROM}_${POS}_${CLASS}.sam
+    samtools view $BAM | grep -m $NUMREADS -Ff $outDir/${CHROM}_${POS}_${CLASS}.reads >> $outDir/${CHROM}_${POS}_${CLASS}.sam
     echo "Compressing to BAM"
-    samtools view -Sb ${CHROM}_$POS.sam > FDR_${CLASS}_${CHROM}_$POS.bam
-    rm ${CHROM}_$POS.reads ${CHROM}_$POS.sam
+    samtools view -Sb $outDir${CHROM}_${POS}_${CLASS}.sam > $outDir/${CHROM}_${POS}_${CLASS}.bam
+    rm $outDir/${CHROM}_${POS}_${CLASS}.reads $outDir/${CHROM}_${POS}_${CLASS}.sam
     echo "Done"
     
-done < $1
+done < $input
 
 echo -e "\nALL DONE"
