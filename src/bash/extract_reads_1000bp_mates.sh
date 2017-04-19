@@ -3,7 +3,7 @@
 # Create one miniBAM per insertion, taking all the reads in +/-1000 bp around the 
 # insertion position, AND their mates
 
-# $1: tab-delimited file with no header and columns: chrom, pos, class, projectCode, donorId
+# $1: tab-delimited file with no header and columns: chrom, pos, class, donorId
 # $2: BAM file path
 # $3: output directory
 
@@ -12,9 +12,9 @@ BAM=$2
 outDir=$3 
 
 # For each insertion
-while read CHROM POS CLASS PROJECT DONOR; do
+while read CHROM POS CLASS DONOR; do
     
-    echo -e "\nProcessing: $CHROM $POS $CLASS $PROJECT $DONOR"
+    echo -e "\nProcessing: $CHROM $POS $CLASS $DONOR"
     
     # Get path to BAM file
     echo "BAM file: $BAM"
