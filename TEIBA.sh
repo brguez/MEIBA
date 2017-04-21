@@ -973,7 +973,7 @@ else
 fi
 
 ## Remove temporary contigs and blat directories
-#if [[ "$cleanup" == "TRUE" ]]; then rm $paths2bkpAnalysis ; fi
+if [[ "$cleanup" == "TRUE" ]]; then rm $paths2bkpAnalysis ; fi
 if [[ "$cleanup" == "TRUE" ]]; then rm -r $contigsDir $blatDir ; fi
 
 

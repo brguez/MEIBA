@@ -1174,33 +1174,29 @@ class insertion():
 
             strand = informative5primeContigObj.informativeDict["info"].strand
 
-            ## Determine TE insertion structure
+            ## Determine MEI length
+            tBeg = informative5primeContigObj.informativeDict["info"].tBeg
+            tSize = informative5primeContigObj.informativeDict["info"].tSize
 
+            length = tSize - tBeg
+            percLength = float(length) / tSize * 100
+
+            ## Determine TE insertion structure
             # a) TE inverted in its 5'
             if (strand == "-"):
                 structure = "INV"
-                length = "UNK"
-                percLength = "UNK"
+           
+            # b) Full length 
+            elif (percLength > 95):
+                # L1 (6021 bp length + 30bp polyA, first ~300bp correspond to promoter)
+                # Alu (282 bp length + 30bp polyA).
+                # SVA (X bp length + 30bp polyA).
+                # ERVK (X bp length + 30bp polyA).
+                structure = "FULL"
 
-            # b) Full length or 5' truncated
+            # c) 5' truncated
             else:
-                tBeg = informative5primeContigObj.informativeDict["info"].tBeg
-                tSize = informative5primeContigObj.informativeDict["info"].tSize
-
-                length = tSize - tBeg
-                percLength = float(length) / tSize * 100
-
-                # b.a) full length TE insertion
-                if (percLength > 95):
-                    # L1 (6021 bp length + 30bp polyA, first ~300bp correspond to promoter)
-                    # Alu (282 bp length + 30bp polyA).
-                    # SVA (X bp length + 30bp polyA).
-                    # ERVK (X bp length + 30bp polyA).
-                    structure = "FULL"
-
-                # b.b) 5' truncated
-                else:
-                    structure = "DEL"
+                structure = "DEL"
 
         ## B) TD2 or ERVK or No 5' informative contig 
         else:
