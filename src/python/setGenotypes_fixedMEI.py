@@ -107,7 +107,6 @@ for VCFlineObj in VCFObj.lineList:
         donorId = line.rstrip('\n')
         genotype = "0/0:.:."
     
-        print "donorId: ", donorId, genotype
         VCFlineObj.genotypesDict[donorId] = genotype
           
 #### 3. Make output multisample VCF file
@@ -122,7 +121,6 @@ VCFObj.write_header(outFilePath)
 # 3.2 Write variants
 donorIdList = [line.rstrip('\n') for line in open(donorIds)]
 
-print donorIdList
 VCFObj.write_variants_multiSample(donorIdList, outFilePath)
 
 header("Finished")        
