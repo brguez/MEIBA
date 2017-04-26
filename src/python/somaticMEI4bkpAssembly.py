@@ -75,10 +75,8 @@ print
 
 
 
-### 1) Read source elements metadata dictionary and generate a nested dictionary with the following structure:
-# dict1 -> Key1 [source_element_coord_old] -> dict2
-# dict2 -> key2 [sourceCoordNew] -> value
-#          key3 [cytobandId] -> value
+### 1) Read source elements metadata dictionary and generate a dictionary with the following structure:
+# dict1 -> Key(chrom) -> tuple(cytobandId, sourceCoord)
 
 sourceMetadata = open(sourceMetadataPath, 'r')
 sourceMetadataDict = {}
@@ -93,14 +91,15 @@ for line in sourceMetadata:
         # Extract needed info
         fieldsList = line.split("\t")
         cytobandId =	 fieldsList[0]
-        sourceCoordNew = fieldsList[1]
-
-        chrom = sourceCoordNew.split(":")[0]
+        chrom = fieldsList[1]
+        beg = fieldsList[2]
+        end = fieldsList[3]
+        sourceCoord = chrom + ':' + beg + '-' + end
         
         if chrom not in sourceMetadataDict:
             sourceMetadataDict[chrom] = []
 
-        sourceTuple = (cytobandId, sourceCoordNew)
+        sourceTuple = (cytobandId, sourceCoord)
         sourceMetadataDict[chrom].append(sourceTuple)
         
            
@@ -169,7 +168,7 @@ for line in insertions:
             sourceType = "SOMATIC"
 
             ### Assess if it overlaps with a germline source element -> then germline 
-            # Ther are germline source elements in the chromosome
+            # There are germline source elements in the chromosome
             if (chromSource in sourceMetadataDict):
 
                 # For germline source element 
@@ -192,8 +191,8 @@ for line in insertions:
                         sourceType = "GERMLINE"
 
                         # Update source element beg and end coordinates
-                        sourceCoordNew = sourceTuple[1]
-                        chrom, coords = sourceCoordNew.split(":")
+                        sourceCoord = sourceTuple[1]
+                        chrom, coords = sourceCoord.split(":")
                         begSource, endSource = coords.split("-")
            
                         break
@@ -265,8 +264,8 @@ for line in insertions:
                         sourceType = "GERMLINE"
 
                         # Update source element beg and end coordinates
-                        sourceCoordNew = sourceTuple[1]
-                        chrom, coords = sourceCoordNew.split(":")
+                        sourceCoord = sourceTuple[1]
+                        chrom, coords = sourceCoord.split(":")
                         begSource, endSource = coords.split("-")
            
                         break 
