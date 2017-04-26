@@ -119,6 +119,7 @@ cohortObj.read_VCFs(inputPath)
 
 rtTumorTypeDict = {}
 totalNbEvents = 0
+totalNbL1Events = 0
 
 ## For each tumor type
 for projectCode in cohortObj.VCFdict:
@@ -142,6 +143,13 @@ for projectCode in cohortObj.VCFdict:
                 totalNbEvents += 1 
                 nbEvents += 1 
 
+                ## Select only L1 events: 
+                # - TD1 (partnered_transductions)
+                # - TD2 (orphan_transductions)
+                # - TD0 L1 (solo-L1)                
+                if (MEIObj.infoDict["TYPE"] == "TD1") or (MEIObj.infoDict["TYPE"] == "TD2") or ((MEIObj.infoDict["TYPE"] == "TD0") and (MEIObj.infoDict["CLASS"]=="L1")):
+                    totalNbL1Events += 1 
+
     # Retrotransposition rate (average number of events per donor):
     rtRate = float(nbEvents) / float(nbDonors)     
 
@@ -151,7 +159,8 @@ for projectCode in cohortObj.VCFdict:
     rtTumorTypeDict[projectCode]["rtRate"] = rtRate
 
 
-print  "totalNbEvents: ", totalNbEvents
+print "totalNbEvents: ", totalNbEvents
+print "totalNbL1Events: ", totalNbL1Events
 print "rtTumorTypeDict: ", rtTumorTypeDict
 
 ### 4. Make dataframe with the info gathered in 3
