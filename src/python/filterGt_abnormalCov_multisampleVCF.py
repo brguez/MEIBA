@@ -154,7 +154,6 @@ for donorId, gtSerie in genotypesDf.iteritems():
     medianNVHetDict[donorId] = medianNVHet
     medianNVHaplDict[donorId] = medianNVHapl
 
-
 #### 5. For each genotype assess if it has an abnormally 
 #########################################################
 # high number of reads supporting the alternative allele 
@@ -190,11 +189,12 @@ for donorId, gtSerie in genotypesDf.iteritems():
             # c) Haploid variant
             else:
                 ratioNV = NV/medianNVHaplDict[donorId]
-
+ 
             ## If 5 times more reads than the median set genotype as unknown             
-            if (ratioNV >= 4):
+            if (ratioNV >= 5):
+
                 genotype = './.'
-    
+
                 # Count the total number of unknown genotypes and number of unknown genotypes per each variant. 
                 nbWrongGt += 1
 
