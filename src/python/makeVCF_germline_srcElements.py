@@ -129,47 +129,14 @@ def write_header(outFilePath):
 ##contig=<ID=X,assembly=GRCh37,length=155270560,species=human>
 ##contig=<ID=Y,assembly=GRCh37,length=59373566,species=human>
 ##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant. (All sequence is on the plus strand and in the forward direction).">
-##INFO=<ID=CLASS,Number=1,Type=String,Description="Mobile element class (L1, ALU, SVA or ERVK)">
-##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction, PSD: processed-pseudogene)>
-##INFO=<ID=SCORE,Number=1,Type=Integer,Description="Insertion score (5: 5' and 3' breakpoints (bkp) assembled, 4: 3'bkp assembled, 3: 5'bkp assembled, 2: no bkp assembled, 1: inconsistent (contradictory orientation, bkp or TSD))">
-##INFO=<ID=MANUAL,Number=0,Type=Flag,Description="MEI manually verified and curated through BAM inspection (Only used for PSD)">
+##INFO=<ID=CLASS,Number=1,Type=String,Description="L1 element class (L1, L1HS, L1PA2 or L1PA3)">
 ##INFO=<ID=BKPB,Number=1,Type=Integer,Description="MEI right-most breakpoint position (bkp B). Left-most breakpoint position (bkp A) represented in the POS field">
-##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoints">
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
-##INFO=<ID=STRUCT,Number=1,Type=String,Description="Mobile element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
-##INFO=<ID=LEN,Number=1,Type=Integer,Description="Mobile element length">
-##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site duplication (+_value) or deletion (-_value) length">
-##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication sequence">
-##INFO=<ID=POLYA,Number=1,Type=String,Description="Poly-A sequence">
 ##INFO=<ID=SRCID,Number=1,Type=String,Description="Source element cytoband identifier. Only for gemline source elements">
-##INFO=<ID=SRCTYPE,Number=1,Type=String,Description="Source element type (GERMLINE or SOMATIC)">
-##INFO=<ID=SRC,Number=1,Type=String,Description="Coordinates of the source element that mediated the transduction in the format: chrom_beg_end">
-##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the integrated transduced or pseudogene sequence in the format: chrom_beg_end">
-##INFO=<ID=TDLEN,Number=1,Type=Integer,Description="Transduced region length">
-##INFO=<ID=TDLENR,Number=1,Type=Integer,Description="Transduced region length at RNA level">
-##INFO=<ID=SRCGENE,Number=1,Type=String,Description="Source gene of the processed pseudogene insertion">
-##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1KGENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), TRAFIC: TraFic in-house database)">
-##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the mobile element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
-##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
-##INFO=<ID=ROLE,Number=1,Type=String,Description="Role in cancer (oncogene, TSG: tumor suppressor gene, oncogene/TSG: both roles)">
-##INFO=<ID=COSMIC,Number=0,Type=Flag,Description="Reported as cancer driver in COSMIC cancer gene census database">
-##INFO=<ID=CPG,Number=0,Type=Flag,Description="Reported as cancer predisposition gene in 10.1038/nature12981 (DOI).">
-##INFO=<ID=REP,Number=1,Type=String,Description="Repetitive element overlapping the insertion breakpoint">
-##INFO=<ID=DIV,Number=1,Type=Integer,Description="Millidivergence of the overlapping repetitive element with respect a consensus sequence">
-##INFO=<ID=CONTIGA,Number=1,Type=String,Description="Assembled contig sequence spanning 1st bkp (lowest genomic position)">
-##INFO=<ID=CONTIGB,Number=1,Type=String,Description="Assembled contig sequence spanning 2nd bkp (highest genomic position)">
-##INFO=<ID=RP,Number=.,Type=String,Description="Reads from the tumour sample and positive cluster that support this insertion">
-##INFO=<ID=RN,Number=.,Type=String,Description="Reads from the tumour sample and negative cluster that support this insertion">
-##FILTER=<ID=SCORE,Description="Insertion with an score < threshold">
-##FILTER=<ID=REP,Description="Insertion overlapping a satellite region or a repetitive element of the same class">
-##FILTER=<ID=DUP,Description="Duplicated MEI call">
-##FILTER=<ID=GERMLINE,Description="Germline MEI miscalled as somatic">
-##FILTER=<ID=TD,Description="L1 transduction incorrectly identified as a processed pseudogene insertion">
+##INFO=<ID=POLYMORPHIC,Number=0,Type=Flag,Description="Polymorphic source element.">
+##INFO=<ID=NOVEL,Number=0,Type=Flag,Description="Novel source element. Not already reported in Tubio et. al. Science (2014)">
 ##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting reads">
 ##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
-##FORMAT=<ID=SL,Number=1,Type=String,Description="List of samples where the variant was found (specially relevant for multi-tumor donors)">
-##FORMAT=<ID=REPR,Number=1,Type=String,Description="Sample selected as representative among all the samples where the variant was found (specially relevant for multi-sample VCF).">
-##FORMAT=<ID=GT,Number=1,Type=String,Description="Unphased genotypes">
 ##FORMAT=<ID=NV,Number=1,Type=Integer,Description="Number of reads supporting the variant in this sample">
 ##FORMAT=<ID=NR,Number=1,Type=Integer,Description="Number of reads covering variant location in this sample">
 """
@@ -190,12 +157,12 @@ import time
 
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= "Make VCF file containing annotated source elements")
-parser.add_argument('inputBED', help='BED file with annotated source elements')
+parser.add_argument('metadata', help='Source elements metadata')
 parser.add_argument('fileName', help='Output file name')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
-inputBED = args.inputBED
+metadata = args.metadata
 fileName = args.fileName
 outDir = args.outDir
 
@@ -204,26 +171,28 @@ scriptName = os.path.basename(sys.argv[0])
 ## Display configuration to standard output ##
 print
 print "***** ", scriptName, " configuration *****"
-print "inputBED: ", inputBED
+print "metadata: ", metadata
 print "fileName: ", fileName
 print "outDir: ", outDir
 print
 print "***** Executing ", scriptName, ".... *****"
 print
 
+
 ## Start ## 
 
-#### 1. Read input BED file and create a VCF object with source element information
+#### 1. Read metadata file and create a VCF object with source element information
 #####################################################################################
-header("1. Read input BED file and create a VCF object with source element information")
+header("1. Read metadata file and create a VCF object with source element information")
 
 # Initialize VCF object
 VCFObj = formats.VCF()
 
-inputBED = open(inputBED, 'r')
+metadata = open(metadata, 'r')
 
 # For each source element in the bed
-for line in inputBED:
+for line in metadata:
+
 
     # Discard header
     if not line.startswith("#"):
@@ -232,14 +201,19 @@ for line in inputBED:
         line = line.rstrip('\r')
         line = line.split('\t')
 
-        ### 1.  Get input values       
-        chrom = line[0]	
-        bkpA = int(line[1]) 
-        bkpB = line[2]  
-        category = line[3]	
-        orientation = line[4]
-        refBool = line[5]	       
-        
+        ### 1.  Get input values  
+        #cytobandId	chrom	bkpA	    bkpB	    class	orientation	ref	novel	polymorphic
+     
+        cytobandId = line[0]
+        chrom = 	line[1]
+        bkpA = int(line[2]) 
+        bkpB = line[3]  
+        category = line[4]	
+        orientation = line[5]
+        refBool = int(line[6])	       
+        novelBool = int(line[7])
+        polymorphicBool = int(line[8])
+
         ### 2. Define vcf fields
         CHROM = chrom 	
         POS	= bkpA
@@ -247,7 +221,7 @@ for line in inputBED:
         
         ## Reference and alternative field
         # a) MEI in the reference genome
-        if (refBool == "1"):
+        if (refBool == 1):
             REF	= '<MEI>'
             ALT = '.'
     
@@ -256,18 +230,36 @@ for line in inputBED:
             REF	= '.'
             ALT = '<MEI>'
 
-        ## Source element orientation
-        # a) Plus orientation
-        if (orientation == "plus"):
-            orientation = "+"
-    
-        # b) Minus orientation
+        ## Orientation
+        # a) Plus
+        if (orientation == 'plus'):
+            orientation = '+'
+
+        # b) Minus
         else:
-            orientation = "-"
+            orientation = '-'
+        
+        ## Polymorphic flag
+        # a) Polymorphic element
+        if (polymorphicBool == 1):
+            polymorphicFlag = ';POLYMORPHIC'
+
+        # b) Fixed element
+        else:
+            polymorphicFlag = ''
+
+        ## Novel flag
+        # a) Novel element
+        if (novelBool == 1):
+            novelFlag = ';NOVEL'
+
+        # b) Known element
+        else:
+            novelFlag = ''
 
         QUAL = '.'    
         FILTER = '.' 
-        INFO	 = 'SVTYPE=<MEI>;' + 'CLASS=' + category + ';TYPE=TD0;BKPB=' + str(bkpB) + ';CIPOS=0;STRAND=' + orientation 
+        INFO	 = 'SVTYPE=<MEI>;' + 'CLASS=' + category + ';BKPB=' + str(bkpB) + ';STRAND=' + orientation + ';SRCID=' + cytobandId + polymorphicFlag + novelFlag
         FORMAT = 'RCP:RCN' 
         GT = '.:.'
 
@@ -276,6 +268,7 @@ for line in inputBED:
         
         VCFlineObj = formats.VCFline(lineList)
         VCFlineObj.info = VCFlineObj.make_info()        
+
         VCFObj.addLine(VCFlineObj)      
     
 
@@ -287,7 +280,10 @@ outFilePath = outDir + '/' + fileName + '.vcf'
 # 3.1 Write header
 write_header(outFilePath)
 
-# 3.2 Write variants
+# 3.2 Sort variants
+VCFObj.lineList = VCFObj.sort()
+
+# 3.3 Write variants
 VCFObj.write_variants(outFilePath)
 
 #### END
