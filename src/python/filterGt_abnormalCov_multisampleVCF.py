@@ -89,7 +89,6 @@ genotypesDict = {}
 indexDict = {}
 index = 0
 
-
 ## For each MEI
 for MEIObj in VCFObj.lineList:
 
