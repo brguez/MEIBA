@@ -247,11 +247,13 @@ import formats
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('vcf', help='Multisample VCF containing genotyped MEI')
 parser.add_argument('metadata', help='PCAWG donor metadata')
+parser.add_argument('fileName', help='Output file name')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
 inputVCF = args.vcf
 metadata = args.metadata
+fileName = args.fileName
 outDir = args.outDir
 
 scriptName = os.path.basename(sys.argv[0])
@@ -261,6 +263,7 @@ print
 print "***** ", scriptName, " configuration *****"
 print "vcf: ", inputVCF
 print "metadata: ", metadata
+print "fileName: ", fileName
 print "outDir: ", outDir
 print
 print "***** Executing ", scriptName, ".... *****"
@@ -320,8 +323,6 @@ for MEIObj in VCFObj.lineList:
     else:
 
         MEIid = MEIObj.infoDict["CLASS"] + '_' + MEIObj.chrom + '_' + str(MEIObj.pos)
-    
-    # print "MEI-ID: ",  MEIid, MEIObj.ref, MEIObj.alt 
 
     ## Compute MEI allele count and frequencies
     alleleCountDict[MEIid] = {}
@@ -373,7 +374,7 @@ colOrder = ['PCAWG', 'EUR', 'ASN', 'AFR', 'SAN', 'AMR']
 alleleCountDf = alleleCountDf[colOrder]
 
 # Save output into tsv
-outFilePath = outDir + '/germline_source_elements.alleleCount.tsv'
+outFilePath = outDir + '/' + fileName + '.alleleCount.tsv'
 alleleCountDf.to_csv(outFilePath, sep='\t') 
 
 ### 3.1 MEI allele frequency 
@@ -388,7 +389,7 @@ colOrder = ['PCAWG', 'EUR', 'ASN', 'AFR', 'SAN', 'AMR']
 alleleFreqDf = alleleFreqDf[colOrder]
 
 # Save output into tsv
-outFilePath = outDir + '/germline_source_elements.alleleFreq.tsv'
+outFilePath = outDir + '/' + fileName + '.alleleFreq.tsv'
 alleleFreqDf.to_csv(outFilePath, sep='\t') 
 
 
