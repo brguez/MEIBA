@@ -131,6 +131,7 @@ def write_header(outFilePath):
 ##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant. (All sequence is on the plus strand and in the forward direction).">
 ##INFO=<ID=CLASS,Number=1,Type=String,Description="L1 element class (L1, L1HS, L1PA2 or L1PA3)">
 ##INFO=<ID=BKPB,Number=1,Type=Integer,Description="MEI right-most breakpoint position (bkp B). Left-most breakpoint position (bkp A) represented in the POS field">
+##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoints">
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
 ##INFO=<ID=SRCID,Number=1,Type=String,Description="Source element cytoband identifier. Only for gemline source elements">
 ##INFO=<ID=POLYMORPHIC,Number=0,Type=Flag,Description="Polymorphic source element.">
@@ -259,7 +260,7 @@ for line in metadata:
 
         QUAL = '.'    
         FILTER = '.' 
-        INFO	 = 'SVTYPE=<MEI>;' + 'CLASS=' + category + ';BKPB=' + str(bkpB) + ';STRAND=' + orientation + ';SRCID=' + cytobandId + polymorphicFlag + novelFlag
+        INFO	 = 'SVTYPE=<MEI>;' + 'CLASS=' + category + ';BKPB=' + str(bkpB) + ';CIPOS=0' + ';STRAND=' + orientation + ';SRCID=' + cytobandId + polymorphicFlag + novelFlag
         FORMAT = 'RCP:RCN' 
         GT = '.:.'
 
