@@ -64,14 +64,15 @@ for line in multitumor:
         multitumorDict[donorUniqueId] = tumorAliquotId
 
 
-### 2) Read file with specimenIds and histology information. 
-# Store specimen and histology information into a nested dictionary
+### 2) Read file with histology information. 
+# Store histology information into a nested dictionary
 # Key1 (donorUniqueId) -> value (dict)
 # Key2:
-#   - "specimenId" -> value
 #   - "abbreviation" -> value
 #   - "tier1" -> value
 #   - "tier2" -> value
+
+# #donor_unique_id    	histology_abbreviation	histology_tier1	histology_tier2
 
 histology = open(histologyPath, 'r')
 histologyDict = {}
@@ -86,12 +87,15 @@ for line in histology:
         fieldsList = line.split("\t")
 
         donorUniqueId = fieldsList[0] 
+        histologyAbbrv = fieldsList[1] 
+        histologyTier1 = fieldsList[2]
+        histologyTier2 = fieldsList[3]
+
         histologyDict[donorUniqueId] = {}
-        histologyDict[donorUniqueId]["specimenId"] = fieldsList[1]
-        histologyDict[donorUniqueId]["abbreviation"] = fieldsList[2]
-        histologyDict[donorUniqueId]["tier1"] = fieldsList[3]
-        histologyDict[donorUniqueId]["tier2"] = fieldsList[4]
- 
+        histologyDict[donorUniqueId]["abbreviation"] = histologyAbbrv
+        histologyDict[donorUniqueId]["tier1"] = histologyTier1
+        histologyDict[donorUniqueId]["tier2"] = histologyTier2
+
 
 ### 3) Read file with representative donor's ancestry 
 # Make dictionary with normalAliquotId as keys and donor's ancestry as values
@@ -163,10 +167,9 @@ outFilePath = outDir + "/" + fileName
 outFile = open( outFilePath, "w" )
 
 # Write header:
-row = "#submitted_donor_id" + "\t" + "wgs_exclusion_white_gray" + "\t" + "wgs_exclusion_trafic" + "\t" + "icgc_specimen_id" + "\t" + "ancestry_primary" + "\t" + "dcc_project_code" + "\t" + "histology_abbreviation"	 + "\t" + "histology_tier1" + "\t" +	 "histology_tier2" + "\t" + "normal_wgs_aliquot_id" + "\t" +	"tumor_wgs_specimen_count" + "\t" +	"tumor_wgs_aliquot_id" + "\t" + "tumor_wgs_representative_aliquot_id" + "\t" + "donor_sex" + "\t" + "donor_age_at_diagnosis" + "\t" + "donor_survival_time" + "\t" + "donor_interval_of_last_followup" + "\t" + "normal_wgs_has_matched_rna_seq"	 + "\t" + "tumor_wgs_has_matched_rna_seq" + "\n"
+row = "#submitted_donor_id" + "\t" + "icgc_donor_id" + "\t" + "wgs_exclusion_white_gray" + "\t" + "wgs_exclusion_trafic" + "\t" + "ancestry_primary" + "\t" + "donor_sex" + "\t" + "donor_age_at_diagnosis" + "\t" + "donor_survival_time" + "\t" + "donor_interval_of_last_followup" + "\t" + "dcc_project_code" + "\t" + "histology_abbreviation"	 + "\t" + "histology_tier1" + "\t" +	 "histology_tier2" + "\t" + "normal_wgs_icgc_specimen_id" + "\t" + "normal_wgs_icgc_sample_id" + "\t" + "normal_wgs_aliquot_id" + "\t" + "tumor_wgs_specimen_count"	+ "\t" + "tumor_wgs_icgc_specimen_id" + "\t" + "tumor_wgs_icgc_sample_id" + "\t" + "tumor_wgs_aliquot_id" + "\t" + "tumor_wgs_representative_aliquot_id" + "\t" + "normal_wgs_has_matched_rna_seq" + "\t" + "tumor_wgs_has_matched_rna_seq" + "\t" + 	"normal_rna_seq_icgc_specimen_id" + "\t" + "normal_rna_seq_icgc_sample_id" + "\t" + "tumor_rna_seq_specimen_count" + "\t" + "tumor_rna_seq_icgc_specimen_id" + "\t" + "tumor_rna_seq_icgc_sample_id" + "\n" 
 
 outFile.write(row)
-
 
 mainMetadata = open(mainMetadataPath, 'r')
 
@@ -179,59 +182,69 @@ for line in mainMetadata:
         
         fieldsList = line.split("\t")
 
-        donorId = fieldsList[0]	
-        donorStatus = fieldsList[1]	    
-        projectCode = fieldsList[2]
-        normalAliquotId	= fieldsList[3]
-        tumorSpecimenCount = fieldsList[4]     	
-        tumorAliquotId = fieldsList[5]  	
-        normalMatchedRnaSeq = fieldsList[6]
-        tumorMatchedRnaSeq = fieldsList[7] 
+        submitted_donor_id = fieldsList[0]	
+        icgc_donor_id = fieldsList[1]	
+        wgs_exclusion_white_gray = fieldsList[2]	
+        dcc_project_code = fieldsList[3]	
+        normal_wgs_icgc_specimen_id = fieldsList[4]	
+        normal_wgs_icgc_sample_id = fieldsList[5]	
+        normal_wgs_aliquot_id = fieldsList[6]	
+        tumor_wgs_specimen_count = fieldsList[7]	
+        tumor_wgs_icgc_specimen_id = fieldsList[8]	
+        tumor_wgs_icgc_sample_id = fieldsList[9]	
+        tumor_wgs_aliquot_id = fieldsList[10]	
+        normal_wgs_has_matched_rna_seq = fieldsList[11]	
+        tumor_wgs_has_matched_rna_seq = fieldsList[12]	
+        normal_rna_seq_icgc_specimen_id = fieldsList[13]	
+        normal_rna_seq_icgc_sample_id = fieldsList[14]	
+        tumor_rna_seq_specimen_count = fieldsList[15]	
+        tumor_rna_seq_icgc_specimen_id = fieldsList[16]	
+        tumor_rna_seq_icgc_sample_id = fieldsList[17]	
 
-        donorUniqueId = projectCode + "::" + donorId
+
+        donorUniqueId = dcc_project_code + "::" + submitted_donor_id
         
         ## Histology        
-        specimenId = histologyDict[donorUniqueId]["specimenId"] 
-        abbreviation = histologyDict[donorUniqueId]["abbreviation"] 
-        tier1 = histologyDict[donorUniqueId]["tier1"] 
-        tier2 = histologyDict[donorUniqueId]["tier2"]    
+        histology_abbreviation = histologyDict[donorUniqueId]["abbreviation"] 
+        histology_tier1 = histologyDict[donorUniqueId]["tier1"] 
+        histology_tier2 = histologyDict[donorUniqueId]["tier2"]    
 
         ## Clinical
-        sex = clinicalDict[donorUniqueId]["sex"] 
-        diagnosisAge = clinicalDict[donorUniqueId]["diagnosisAge"] 
-        survivalTime = clinicalDict[donorUniqueId]["survivalTime"] 
-        intervalLastFollowup = clinicalDict[donorUniqueId]["intervalLastFollowup"] 
+        donor_sex = clinicalDict[donorUniqueId]["sex"] 
+        donor_age_at_diagnosis = clinicalDict[donorUniqueId]["diagnosisAge"] 
+        donor_survival_time = clinicalDict[donorUniqueId]["survivalTime"] 
+        donor_interval_of_last_followup = clinicalDict[donorUniqueId]["intervalLastFollowup"] 
 
         # a) Donor with a single tumor sample
-        if (tumorSpecimenCount == "1"):
-            tumorRepresentativeAliquotId = "NA"
+        if (tumor_wgs_specimen_count == "1"):
+            tumor_wgs_representative_aliquot_id = "NA"
         
         # b) Multi tumor sample donor 
         else:
-            tumorRepresentativeAliquotId = multitumorDict[donorUniqueId]
+            tumor_wgs_representative_aliquot_id = multitumorDict[donorUniqueId]
     
         ## Ancestry
         # a) Donor without ancestry information
         # Note: there are 16 donors we do not have ancestry information...         
-        if normalAliquotId not in ancestryDict:
-            ancestry = "UNK"  
+        if normal_wgs_aliquot_id not in ancestryDict:
+            ancestry_primary = "UNK"  
     
         # b) Donor with ancestry information available         
         else:     
-            ancestry = ancestryDict[normalAliquotId]
+            ancestry_primary = ancestryDict[normal_wgs_aliquot_id]
 
         ## Blacklist
         # a) Donor in TraFiC blacklist
         if donorUniqueId in blackList:
-            donorStatus2 = "Excluded"
+            wgs_exclusion_trafic = "Excluded"
             
         # b) Donor not in blacklist
         else:
-            donorStatus2 = "Whitelist"
+            wgs_exclusion_trafic = "Whitelist"
 
 
         ### Write metadata row into the output file
-        row = donorId + "\t" + donorStatus + "\t" + donorStatus2 + "\t" + specimenId + "\t" + ancestry + "\t" + projectCode + "\t" + abbreviation + "\t" + tier1 + "\t" +	tier2 + "\t" + normalAliquotId + "\t" +	tumorSpecimenCount + "\t" +	tumorAliquotId + "\t" + tumorRepresentativeAliquotId + "\t" + sex + "\t" + diagnosisAge + "\t" +	 survivalTime + "\t" + intervalLastFollowup + "\t" + normalMatchedRnaSeq + "\t" + tumorMatchedRnaSeq + "\n" 
+        row = submitted_donor_id + "\t" + icgc_donor_id + "\t" + wgs_exclusion_white_gray + "\t" + wgs_exclusion_trafic + "\t" + ancestry_primary + "\t" + donor_sex + "\t" + donor_age_at_diagnosis + "\t" + donor_survival_time + "\t" + donor_interval_of_last_followup + "\t" + dcc_project_code + "\t" + histology_abbreviation	 + "\t" + histology_tier1 + "\t" +	 histology_tier2 + "\t" + normal_wgs_icgc_specimen_id + "\t" + normal_wgs_icgc_sample_id + "\t" + normal_wgs_aliquot_id + "\t" + tumor_wgs_specimen_count	 + "\t" + tumor_wgs_icgc_specimen_id + "\t" + tumor_wgs_icgc_sample_id + "\t" + tumor_wgs_aliquot_id + "\t" + tumor_wgs_representative_aliquot_id + "\t" + normal_wgs_has_matched_rna_seq + "\t" + tumor_wgs_has_matched_rna_seq + "\t" + normal_rna_seq_icgc_specimen_id + "\t" + normal_rna_seq_icgc_sample_id + "\t" + tumor_rna_seq_specimen_count + "\t" + tumor_rna_seq_icgc_specimen_id + "\t" + tumor_rna_seq_icgc_sample_id + "\n" 
 
         outFile.write(row)
 
