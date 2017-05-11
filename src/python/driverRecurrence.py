@@ -60,6 +60,9 @@ totalNbGene = 0 # Total number L1 insertions affecting genes (exonic, splicing,
 recurrencyExonicDict = {}
 recurrencyGeneDict = {}
 
+outFilePath = outDir + '/L1_events_PCAWG.bed'
+outFile = open(outFilePath, 'w')
+
 # Per iteration, read a VCF
 for line in inputFile:
     line = line.rstrip('\n')
@@ -92,6 +95,10 @@ for line in inputFile:
             ## Select only those L1 insertions that that pass all the filters:
             if (MEIObj.filter == "PASS") and (MEIClass == "L1"):
                 totalNbL1 += 1
+
+                row = MEIObj.chrom + "\t" + str(MEIObj.pos) + "\t" + str(MEIObj.pos + 1) + "\n"
+                outFile.write(row)
+
 
                 # Select insertions affecting genes
                 if ("GENE" in MEIObj.infoDict): 
