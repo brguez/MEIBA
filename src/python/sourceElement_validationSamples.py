@@ -198,8 +198,12 @@ for line in metadataFile:
         line = line.split('\t')
 
         donorId = line[0]
-        tumorType = line[5]
+        tumorType = line[9]
         donorIdProjectCodeDict[donorId] = tumorType
+
+        #print "test: ", donorId, tumorType
+
+#print "donorIdProjectCodeDict: ", donorIdProjectCodeDict
 
 #### 2. Compute the allele count of each source element in EOPC-DE
 ###################################################################
@@ -216,6 +220,7 @@ donorIdList = VCFObj.read_VCF_multiSample(sourceElementGt)
 
 alleleCountsDict = {}
 
+
 ## For each MEI:
 for MEIObj in VCFObj.lineList:
 
@@ -229,11 +234,14 @@ for MEIObj in VCFObj.lineList:
     alleleCountsDict[sourceElementId]["alleleCount"] = 0
     alleleCountsDict[sourceElementId]["donorIdList"] = []
 
+
     ## For each donor:
     for donorId, genotypeField in MEIObj.genotypesDict.iteritems():
 
         genotypeFieldList = genotypeField.split(":")
         genotype = genotypeFieldList[0]
+
+        #print donorId
 
         ## Project code available for current donors
         if (donorId in donorIdProjectCodeDict):
@@ -282,7 +290,7 @@ for MEIObj in VCFObj.lineList:
         # I don't know why this happens...  check later     
         else:
          
-            print "[ERROR] Unknown donor tumor type"        
+            print "[ERROR] Unknown donor tumor type: ", donorId       
 
 
 #### 3. Make output file containing source element metadata + allele count
@@ -305,7 +313,8 @@ for line in metadataFile:
     if not line.startswith("#"):
         line = line.split('\t')
     
-        cytobandId, sourceIdNew, sourceIdOld, refStatus, strand, TSDlen, novelty, activityStatus = line
+        print "line: ", line
+        cytobandId, sourceIdNew, sourceIdOld, novelty, activityStatus = line
 
         ## If inconsistencies between source element identifier raise an error an skip
         # Problem only affects one element
@@ -317,7 +326,7 @@ for line in metadataFile:
         
         donorIdList = (','.join(alleleCountsDict[sourceIdNew]["donorIdList"]) if len(alleleCountsDict[sourceIdNew]["donorIdList"]) > 0 else "-")
 
-        row = cytobandId + "\t" + sourceIdNew + "\t" + sourceIdOld + "\t" + refStatus + "\t" + strand + "\t" + TSDlen + "\t" + novelty + "\t" + activityStatus + "\t" + str(alleleCount) + "\t" + donorIdList + "\n"
+        row = cytobandId + "\t" + sourceIdNew + "\t" + sourceIdOld + "\t" + novelty + "\t" + activityStatus + "\t" + str(alleleCount) + "\t" + donorIdList + "\n"
         outFile.write(row)
 
 
@@ -356,9 +365,8 @@ for donorId in donorIdProjectCodeDict:
     if (projectCode == "EOPC-DE"):
         EOPCdonorIdList.append(donorId)
 
-binaryGtAbsentSrcEOPCdf =  gtAbsentBinaryDfPCAWG[EOPCdonorIdList]
 
-binaryGtAbsentSrcEOPCdf2 = gtAbsentBinaryDfPCAWG[EOPCdonorIdList]
+binaryGtAbsentSrcEOPCdf = gtAbsentBinaryDfPCAWG[EOPCdonorIdList]
 
 
 #### 5. Find the collection of donors maximizing the number of 
@@ -372,9 +380,32 @@ selectedDonorList = []
 
 print "nbAbsentSrc: ", nbAbsentSrc
 
-selectDonorSet(nbAbsentSrc, binaryGtAbsentSrcEOPCdf2)
+selectDonorSet(nbAbsentSrc, binaryGtAbsentSrcEOPCdf)
 
 
+#### 6. Report the number of source L1 in each EOPC 
+####################################################
+
+# Open output file
+outFilePath = outDir + '/donorId_nbSourceL1_EOPCDE.tsv'
+outFile = open(outFilePath, 'w')
+
+for donorId in binaryGtAbsentSrcEOPCdf:
+
+    sourceL1list = [ sourceId for sourceId, active in binaryGtAbsentSrcEOPCdf[donorId].iteritems() if active == 1]
+    nbSourceL1 = len(sourceL1list)
+    sourceL1Str = ",".join(sourceL1list)
+    
+    row = donorId + "\t" + str(nbSourceL1) + "\t" + sourceL1Str + "\n"
+    outFile.write(row)
+
+#    medianNVHom = np.median([float(genotype[1]) for genotype in genotypesList if genotype[0] == '1/1'])
+
+
+
+#binaryGtAbsentSrcEOPCdf = binaryGtAbsentSrcEOPCdf
+
+#print "binaryGtAbsentSrcEOPCdf: ", binaryGtAbsentSrcEOPCdf
 
 ####
 header("Finished")
