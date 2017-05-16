@@ -39,12 +39,14 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 ## Get user's input ##
-parser = argparse.ArgumentParser(description= """""")
+parser = argparse.ArgumentParser(description= "Filter out genotyped MEI according to two criteria: allele count and % missing genotypes")
 parser.add_argument('inputVCF', help='multi-sample VCF file containing genotyped MEI')
+parser.add_argument('metadata', help='PCAWG donors metadata file.')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
 inputVCF = args.inputVCF
+metadata = args.metadata
 outDir = args.outDir
 
 scriptName = os.path.basename(sys.argv[0])
@@ -53,12 +55,36 @@ scriptName = os.path.basename(sys.argv[0])
 print
 print "***** ", scriptName, " configuration *****"
 print "inputVCF: ", inputVCF
+print "metadata: ", metadata
 print "outDir: ", outDir
 print
 print "***** Executing ", scriptName, ".... *****"
 print
 
+
+
 ## Start ## 
+
+#### 0. Create dictionary with donor id gender equivalencies
+#############################################################
+header("0. Create dictionary with donor id gender equivalencies")
+
+metadata = open(metadata, 'r')
+genderDict = {}
+
+# Read file line by line
+for line in metadata:
+    line = line.rstrip('\r\n')
+
+    ## Discard header
+    if not line.startswith("#"):
+        
+        fieldsList = line.split("\t")
+
+        donorId = fieldsList[0]
+        gender = fieldsList[5]
+
+        genderDict[donorId] = gender
 
 #### 1. Read input multi-sample VCF and generate a VCF object
 ###############################################################
@@ -94,45 +120,48 @@ for MEIObj in VCFObj.lineList:
     ## Compute MEI allele count, genotyping VAF and update counters to heterozygous and homozygous MEI per donor
     # MEI allele count: number of chromosomes in the population harvouring the MEI
     # Genotyping VAF: Ratio (number_reads_supporting_MEI)/(total_nb_reads_covering_MEI)
+    chrom = MEIObj.chrom
     alleleCount = 0
-    nbGt = 0    
+    nbGt = 0
     nbMissingGt = 0
-    
-#    print "MEI: ", MEIObj.chrom, MEIObj.pos, MEIObj.infoDict["CLASS"]
-
-    nbGt = len(MEIObj.genotypesDict)
 
     for donorId, genotypeField in MEIObj.genotypesDict.iteritems():
 
         genotypeFieldList = genotypeField.split(":")
         genotype = genotypeFieldList[0]
-
-        #print donorId, genotype
+        gender = genderDict[donorId]
 
         ## Update counters and store VAF values
         # a) Homozygous alternative        
         if (genotype == "1/1"): 
+            nbGt += 1
             totalNbGt += 1
             alleleCount += 2
 
         # b) Heterozygous or haploid carrier (for male variants in the X or Y chromosomes outside the PAR region)
         elif (genotype == "0/1") or (genotype == "1"):
+            nbGt += 1
             totalNbGt += 1
             alleleCount += 1
 
         # c) Homozygous reference or haploid not carrier (for male variants in the X or Y chromosomes outside the PAR region)        
         elif (genotype == "0/0") or (genotype == "0"):
+            nbGt += 1
             totalNbGt += 1
 
         # d) Missing genotype (diploid (./.) or haploid (.))    
         else:
-            totalNbGt += 1 
-            totalNbMissingGt += 1 
-            nbMissingGt += 1
+
+            ## Variant outside the Y chromosome or in the Y but in males (not consider variants in the Y for females as they do not have)
+            if (chrom != "Y") or ((chrom == "Y") and (gender == "male")):
+                nbGt += 1
+                totalNbGt += 1 
+                totalNbMissingGt += 1 
+                nbMissingGt += 1
 
     percMissing = float(nbMissingGt)/float(nbGt)*100
 
-    # a) Both filters failed
+    # a) Both filters failed (Allele count eq. 0 and % missing genotypes > 5)
     if (alleleCount == 0) and (percMissing > 5):
         MEIObj.filter = "COUNT;MISSGT"
     
@@ -155,7 +184,6 @@ for MEIObj in VCFObj.lineList:
 percMissingTotal = float(totalNbMissingGt)/float(totalNbGt)*100
 
 print "STATS: ", totalNbGt, totalNbMissingGt, percMissingTotal 
-
 
 #### 3. Write output VCF file with filtered VCF
 header("3. Write output VCF file")
