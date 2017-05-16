@@ -54,7 +54,7 @@ outFile = open(outPath, 'w')
 
          
 ## Write file header in the output file
-row = "#tumor_wgs_icgc_specimen_id" + "\t" + "icgc_donor_id" + "\t" + "totalNbMEI" + "\t" + "nbL1" + "\t" + "nbAlu" + "\t" + "nbSVA" + "\t" + "nbERVK" + "\n"     
+row = "icgc_donor_id" + "\t" + "dcc_project_code" + "\t" + "totalNbMEI" + "\t" + "nbL1" + "\t" + "nbAlu" + "\t" + "nbSVA" + "\t" + "nbERVK" + "\n"     
 
 outFile.write(row)
 
@@ -67,9 +67,10 @@ for line in inputFile:
 
     tumorSpecimenId = line[0]
     icgcDonorId = line[1]
-    vcfPath = line[2]
+    tumorType = line[2]
+    vcfPath = line[3]
 
-    print "Processing: ", tumorSpecimenId, icgcDonorId, vcfPath
+    print "Processing: ", tumorSpecimenId, icgcDonorId, tumorType, vcfPath
 
     # Create VCF object
     VCFObj = formats.VCF()
@@ -118,7 +119,7 @@ for line in inputFile:
                     nbERVK += 1 
 
         ## Write MEI counts into the output file
-        row = tumorSpecimenId + "\t" + icgcDonorId + "\t" + str(totalNbMEI) + "\t" + str(nbL1) + "\t" + str(nbAlu) + "\t" + str(nbSVA) + "\t" + str(nbERVK) + "\n"      
+        row = tumorSpecimenId + "\t" + icgcDonorId + "\t" + tumorType + "\t" + str(totalNbMEI) + "\t" + str(nbL1) + "\t" + str(nbAlu) + "\t" + str(nbSVA) + "\t" + str(nbERVK) + "\n"      
         outFile.write(row)
 
 ## End ##
