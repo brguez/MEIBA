@@ -117,19 +117,24 @@ for line in metadataFile:
         line = line.split('\t')
 
         donorId = line[0]
-        exclusion = line[3]
+        donorExclusion = line[3]
+        ancestry = line[4]
+        projectCode = line[9]
 
-        # Only select those donors that passes all the filters
-        if (exclusion == 'Whitelist'):
-            ancestry = line[4]
-            projectCode = line[9]
-            tumorType = line[10]
+        histologyCount	= line[10]
+        histologyExclusion = line[11]
+        tumorHistology = line[12]
 
-
+        ## Discard excluded donors. 3 possible exclusion reasons:
+        # - TraFiC excluded
+        # - More than 1 possible histology
+        # - Excluded histology cohort
+        if (donorExclusion == 'Whitelist') and (histologyCount == "1") and (histologyExclusion == "included") :
+         
             metadataDict[donorId] = {}
             metadataDict[donorId]['ancestry'] = ancestry
             metadataDict[donorId]['projectCode'] = projectCode
-            metadataDict[donorId]['tumorType'] = tumorType       
+            metadataDict[donorId]['tumorHistology'] = tumorHistology       
 
 metadataDf = pd.DataFrame(metadataDict) 
 metadataDf = metadataDf.T
@@ -177,10 +182,12 @@ for MEIObj in VCFObj.lineList:
         # For each donor and genotype
         for donorId, genotypeField in MEIObj.genotypesDict.iteritems():
 
-            genotypeFieldList = genotypeField.split(":")
-            genotype = genotypeFieldList[0]
-    
-            genotypesDict[MEIid][donorId] = genotype
+            # Discard excluded donor donors:
+            if (donorId in metadataDict):
+
+                genotypeFieldList = genotypeField.split(":")
+                genotype = genotypeFieldList[0]    
+                genotypesDict[MEIid][donorId] = genotype
 
     ## B) MEI in the reference genome 
     elif (MEIObj.ref == "<MEI>"):
@@ -190,10 +197,12 @@ for MEIObj in VCFObj.lineList:
         # For each donor and genotype
         for donorId, genotypeField in MEIObj.genotypesDict.iteritems():
 
-            genotypeFieldList = genotypeField.split(":")
-            genotype = genotypeFieldList[0]
-    
-            genotypesRefDict[MEIid][donorId] = genotype
+            # Discard excluded donor donors:
+            if (donorId in metadataDict):
+
+                genotypeFieldList = genotypeField.split(":")
+                genotype = genotypeFieldList[0]
+                genotypesRefDict[MEIid][donorId] = genotype
 
     ## C) Raise error...  
     else:
