@@ -11,6 +11,7 @@ parser = argparse.ArgumentParser(description= "Takes a set of tables containing 
 parser.add_argument('mainMetadata', help='Main file containing metadata information')
 parser.add_argument('multitumor', help='File with representative tumor samples for multitumor donors')
 parser.add_argument('histology', help='File with donor histology information')
+parser.add_argument('excludedTumorTypes', help='File with the list of excluded tumor subtypes')
 parser.add_argument('ancestry', help='File with donor ancestry information')
 parser.add_argument('traficBlackList', help='File with trafic blacklisted samples')
 parser.add_argument('clinical', help='File with donor clinical information (gender, age at diagnosis...)')
@@ -20,6 +21,7 @@ args = parser.parse_args()
 mainMetadataPath = args.mainMetadata
 multitumorPath = args.multitumor
 histologyPath = args.histology
+excludedTumorTypesPath = args.excludedTumorTypes
 ancestryPath = args.ancestry
 traficBlackListPath = args.traficBlackList
 clinicalPath = args.clinical
@@ -33,6 +35,7 @@ print "***** ", scriptName, " configuration *****"
 print "mainMetadataPath: ", mainMetadataPath
 print "multitumorPath: ", multitumorPath
 print "histologyPath: ", histologyPath
+print "excludedTumorTypesPath: ", excludedTumorTypesPath
 print "ancestryPath: ", ancestryPath
 print "traficBlackList: ", traficBlackListPath
 print "clinical: ", clinicalPath
@@ -95,6 +98,21 @@ for line in histology:
         histologyDict[donorUniqueId]["abbreviation"] = histologyAbbrv
         histologyDict[donorUniqueId]["tier1"] = histologyTier1
         histologyDict[donorUniqueId]["tier2"] = histologyTier2
+
+### 3) Read file with with the list of excluded tumor subtypes
+excludedTumorTypes = open(excludedTumorTypesPath, 'r')
+excludedTumorTypesList = []
+
+# Read file line by line
+for line in excludedTumorTypes:
+    line = line.rstrip('\r\n')
+
+    ## Discard header
+    if not line.startswith("#"):
+        
+        fieldsList = line.split("\t")
+        excludedTumorType = fieldsList[0]
+        excludedTumorTypesList.append(excludedTumorType)
 
 
 ### 3) Read file with representative donor's ancestry 
@@ -167,7 +185,7 @@ outFilePath = outDir + "/" + fileName
 outFile = open( outFilePath, "w" )
 
 # Write header:
-row = "#submitted_donor_id" + "\t" + "icgc_donor_id" + "\t" + "wgs_exclusion_white_gray" + "\t" + "wgs_exclusion_trafic" + "\t" + "ancestry_primary" + "\t" + "donor_sex" + "\t" + "donor_age_at_diagnosis" + "\t" + "donor_survival_time" + "\t" + "donor_interval_of_last_followup" + "\t" + "dcc_project_code" + "\t" + "histology_abbreviation"	 + "\t" + "histology_tier1" + "\t" +	 "histology_tier2" + "\t" + "normal_wgs_icgc_specimen_id" + "\t" + "normal_wgs_icgc_sample_id" + "\t" + "normal_wgs_aliquot_id" + "\t" + "tumor_wgs_specimen_count"	+ "\t" + "tumor_wgs_icgc_specimen_id" + "\t" + "tumor_wgs_icgc_sample_id" + "\t" + "tumor_wgs_aliquot_id" + "\t" + "tumor_wgs_representative_aliquot_id" + "\t" + "normal_wgs_has_matched_rna_seq" + "\t" + "tumor_wgs_has_matched_rna_seq" + "\t" + 	"normal_rna_seq_icgc_specimen_id" + "\t" + "normal_rna_seq_icgc_sample_id" + "\t" + "tumor_rna_seq_specimen_count" + "\t" + "tumor_rna_seq_icgc_specimen_id" + "\t" + "tumor_rna_seq_icgc_sample_id" + "\n" 
+row = "#submitted_donor_id" + "\t" + "icgc_donor_id" + "\t" + "wgs_exclusion_white_gray" + "\t" + "wgs_exclusion_trafic" + "\t" + "ancestry_primary" + "\t" + "donor_sex" + "\t" + "donor_age_at_diagnosis" + "\t" + "donor_survival_time" + "\t" + "donor_interval_of_last_followup" + "\t" + "dcc_project_code" + "\t" + "histology_count" + "\t" + "histology_exclusion_status" + "\t" + "histology_abbreviation"	 + "\t" + "histology_tier1" + "\t" +	 "histology_tier2" + "\t" + "normal_wgs_icgc_specimen_id" + "\t" + "normal_wgs_icgc_sample_id" + "\t" + "normal_wgs_aliquot_id" + "\t" + "tumor_wgs_specimen_count" + "\t" + "tumor_wgs_icgc_specimen_id" + "\t" + "tumor_wgs_icgc_sample_id" + "\t" + "tumor_wgs_aliquot_id" + "\t" + "tumor_wgs_representative_aliquot_id" + "\t" + "normal_wgs_has_matched_rna_seq" + "\t" + "tumor_wgs_has_matched_rna_seq" + "\t" + 	"normal_rna_seq_icgc_specimen_id" + "\t" + "normal_rna_seq_icgc_sample_id" + "\t" + "tumor_rna_seq_specimen_count" + "\t" + "tumor_rna_seq_icgc_specimen_id" + "\t" + "tumor_rna_seq_icgc_sample_id" + "\n" 
 
 outFile.write(row)
 
@@ -201,13 +219,14 @@ for line in mainMetadata:
         tumor_rna_seq_icgc_specimen_id = fieldsList[16]	
         tumor_rna_seq_icgc_sample_id = fieldsList[17]	
 
-
         donorUniqueId = dcc_project_code + "::" + submitted_donor_id
         
         ## Histology        
         histology_abbreviation = histologyDict[donorUniqueId]["abbreviation"] 
+        histology_count = len(histology_abbreviation.split(','))
         histology_tier1 = histologyDict[donorUniqueId]["tier1"] 
-        histology_tier2 = histologyDict[donorUniqueId]["tier2"]    
+        histology_tier2 = histologyDict[donorUniqueId]["tier2"]   
+        histology_exclusion_status = 'excluded' if histology_abbreviation in excludedTumorTypesList else 'included'
 
         ## Clinical
         donor_sex = clinicalDict[donorUniqueId]["sex"] 
@@ -244,7 +263,7 @@ for line in mainMetadata:
 
 
         ### Write metadata row into the output file
-        row = submitted_donor_id + "\t" + icgc_donor_id + "\t" + wgs_exclusion_white_gray + "\t" + wgs_exclusion_trafic + "\t" + ancestry_primary + "\t" + donor_sex + "\t" + donor_age_at_diagnosis + "\t" + donor_survival_time + "\t" + donor_interval_of_last_followup + "\t" + dcc_project_code + "\t" + histology_abbreviation	 + "\t" + histology_tier1 + "\t" +	 histology_tier2 + "\t" + normal_wgs_icgc_specimen_id + "\t" + normal_wgs_icgc_sample_id + "\t" + normal_wgs_aliquot_id + "\t" + tumor_wgs_specimen_count	 + "\t" + tumor_wgs_icgc_specimen_id + "\t" + tumor_wgs_icgc_sample_id + "\t" + tumor_wgs_aliquot_id + "\t" + tumor_wgs_representative_aliquot_id + "\t" + normal_wgs_has_matched_rna_seq + "\t" + tumor_wgs_has_matched_rna_seq + "\t" + normal_rna_seq_icgc_specimen_id + "\t" + normal_rna_seq_icgc_sample_id + "\t" + tumor_rna_seq_specimen_count + "\t" + tumor_rna_seq_icgc_specimen_id + "\t" + tumor_rna_seq_icgc_sample_id + "\n" 
+        row = submitted_donor_id + "\t" + icgc_donor_id + "\t" + wgs_exclusion_white_gray + "\t" + wgs_exclusion_trafic + "\t" + ancestry_primary + "\t" + donor_sex + "\t" + donor_age_at_diagnosis + "\t" + donor_survival_time + "\t" + donor_interval_of_last_followup + "\t" + dcc_project_code + "\t" + str(histology_count) + "\t" + histology_exclusion_status + "\t" + histology_abbreviation	 + "\t" + histology_tier1 + "\t" +	 histology_tier2 + "\t" + normal_wgs_icgc_specimen_id + "\t" + normal_wgs_icgc_sample_id + "\t" + normal_wgs_aliquot_id + "\t" + tumor_wgs_specimen_count	 + "\t" + tumor_wgs_icgc_specimen_id + "\t" + tumor_wgs_icgc_sample_id + "\t" + tumor_wgs_aliquot_id + "\t" + tumor_wgs_representative_aliquot_id + "\t" + normal_wgs_has_matched_rna_seq + "\t" + tumor_wgs_has_matched_rna_seq + "\t" + normal_rna_seq_icgc_specimen_id + "\t" + normal_rna_seq_icgc_sample_id + "\t" + tumor_rna_seq_specimen_count + "\t" + tumor_rna_seq_icgc_specimen_id + "\t" + tumor_rna_seq_icgc_sample_id + "\n" 
 
         outFile.write(row)
 
