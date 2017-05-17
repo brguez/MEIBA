@@ -117,13 +117,13 @@ for line in metadataFile:
         line = line.split('\t')
 
         donorId = line[0]
-        exclusion = line[2]
+        exclusion = line[3]
 
         # Only select those donors that passes all the filters
         if (exclusion == 'Whitelist'):
             ancestry = line[4]
-            projectCode = line[5]
-            tumorType = line[6]
+            projectCode = line[9]
+            tumorType = line[10]
 
 
             metadataDict[donorId] = {}
