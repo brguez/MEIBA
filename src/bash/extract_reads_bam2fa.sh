@@ -8,30 +8,17 @@
 
 # Usage
 #########
+# bash extract_reads_bam2fa insertions.tsv sample.bam /path/to/outdir
 
 # Input
 ########
 # 1) TraFiC output file (TSV) containing insertion infos
 # 2) BAM read alignments
+# 3) output directory
 
 # Output
 #########
 # 1) FASTA file containing reads referenced in TraFiC insertions file.
-
-#### Script steps:
-
-## 4) Compress output to BAM
-#samtools view -S1 $outDir/targetReads.sam > $outDir/targetReads.bam
-
-# Input: $outDir/targetReads.sam
-# Output: $outDir/targetReads.bam
-
-## 5) Convert BAM to fasta
-# I think no option is needed..
-#samtools fasta [options] $outDir/targetReads.bam
-
-# Input: $outDir/targetReads.bam
-# Output: $outDir/targetReads.fasta
 
 scriptname=$(basename $0)
 

@@ -69,7 +69,7 @@ authors
 function usageDoc
 {
 cat <<help
-	
+
 **** TEIBA version $version ****
 
 Execute TEIBA on one dataset (sample).
@@ -79,7 +79,7 @@ Execute TEIBA on one dataset (sample).
 
 *** MANDATORY
     -i|--insertions     <TSV>              TraFiC mobile element insertion (MEI) candidate calls for a given sample.
-    -f|--fasta          <FASTA>            Fasta containing MEI insertions supporting reads.
+    -b|--bam            <BAM>              BAM file containing MEI insertions supporting reads.
     -g|--genome         <FASTA>            Reference Genome in fasta format (RG). Make sure the same RG version is used than for running TraFiC.
                                            Also, make sure the same chromosome naming conventions are used.
     -d|--repeats-db     <BED>              Database of repetitive sequences according to RepeatMasker in BED format.
@@ -89,14 +89,14 @@ Execute TEIBA on one dataset (sample).
 *** [OPTIONS] can be:
 * General:
     -o|--output-dir     <PATH>             Output directory. Default current working directory.
-    --tmp-dir		<PATH>		   Temporary directory. Default /tmp.	
+    --tmp-dir		<PATH>		   Temporary directory. Default /tmp.
     --no-cleanup	                   Keep intermediate files.
     -h|--help			           Display usage information
 
 
 * Filters:
     --filters           <(FILTER_1)>, ... ,<(FILTER_N)>	List of filters to be applied out of 4 possible filtering criteria: SCORE, REP, DUP and GERMLINE.
-                                                        Default='SCORE,DUP'     
+                                                        Default='SCORE,DUP'
     --score-L1-TD0      <INTEGER>                       Minimum assembly score for solo L1 insertions. Default 2.
     --score-L1-TD1      <INTEGER>                       Minimum assembly score for L1 partnered transductions. Default 2.
     --score-L1-TD2      <INTEGER>                       Minimum assembly score for L1 orphan transductions. Default 2.
@@ -105,7 +105,7 @@ Execute TEIBA on one dataset (sample).
     --score-ERVK        <INTEGER>                       Minimum assembly score for ERVK insertions. Default 2.
     --score-PSD         <INTEGER>                       Minimum assembly score for processed-pseudogene (PSD) insertions. Default 2.
 
-* Files:	
+* Files:
     --germline-VCF      <VCF>                           VCF with germline MEI calls for a given donor. If provided, input insertions are considered to be somatic.
                                                         Necesary for GERMLINE filtering.
 help
@@ -116,7 +116,7 @@ help
 ################################
 function getoptions {
 
-ARGS=`getopt -o "i:f:g:d:o:h" -l "insertions:,fasta:,genome:,repeats-db:,sample-id:,file-name:,output-dir:,tmp-dir:,no-cleanup,help,filters:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,germline-VCF:" \
+ARGS=`getopt -o "i:b:g:d:o:h" -l "insertions:,bam:,genome:,repeats-db:,sample-id:,file-name:,output-dir:,tmp-dir:,no-cleanup,help,filters:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,germline-VCF:" \
       -n "$0" -- "$@"`
 
 #Bad arguments
@@ -132,7 +132,7 @@ while true;
 do
 
     case "$1" in
-       	
+
         ## MANDATORY ARGUMENTS
         -i|--insertions)
             if [ -n "$2" ];
@@ -140,11 +140,11 @@ do
                 insertions=$2
             fi
             shift 2;;
-            
-        -f|--fasta)
+
+        -b|--bam)
             if [ -n "$2" ];
             then
-                fasta=$2
+                bam=$2
             fi
             shift 2;;
 
@@ -154,14 +154,14 @@ do
                 genome=$2
             fi
             shift 2;;
-    
+
         -d|--repeats-db)
             if [ -n "$2" ];
             then
                 repeatsDb=$2
             fi
             shift 2;;
- 
+
         --sample-id)
             if [ -n "$2" ];
             then
@@ -194,8 +194,8 @@ do
 
         --no-cleanup)
             cleanup="FALSE";
-            shift;;   	
-      
+            shift;;
+
         -h|--help)
             usagedoc;
             exit 1
@@ -257,8 +257,8 @@ do
                 scorePSD=$2
             fi
             shift 2;;
-        
-        # Files:	
+
+        # Files:
         --germline-VCF)
             if [ -n "$2" ];
             then
@@ -269,7 +269,7 @@ do
         # Exit loop when finish
         --)
             shift
-            break;;  
+            break;;
   esac
 done
 }
@@ -338,7 +338,7 @@ function extractRegion {
 function cleanupFunc {
 
     ## Cleanup enabled
-    if [[ "$cleanup" == "TRUE" ]]; then 
+    if [[ "$cleanup" == "TRUE" ]]; then
         log "Finish execution. Performing cleanup before exit" "FINISH"
 
         if [[ -d $fastaDir ]]; then rm -r $fastaDir; fi
@@ -348,9 +348,10 @@ function cleanupFunc {
         if [[ -d $bkpAnalysisDir  ]]; then rm -r $bkpAnalysisDir; fi
         if [[ -d $annotDir  ]]; then rm -r $annotDir; fi
         if [[ -d $filterDir  ]]; then rm -r $filterDir; fi
+        if [[ -f $readsFasta ]]; then rm $readsFasta; fi
     else
         log "Finish execution. Don't remove intermediate files as cleanup not enabled" "FINISH"
-    fi    
+    fi
 }
 
 
@@ -403,7 +404,7 @@ fi
 
 ## Check that everything is ok:
 if [[ ! -s $insertions ]]; then log "TraFiC MEI calls file does not exist or is empty. Mandatory argument -i|--insertions" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -s $fasta ]]; then log "MEI supporting reads fasta file does not exist or is empty. Mandatory argument -f|--fasta" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -s $bam ]]; then log "MEI supporting reads BAM file does not exist or is empty. Mandatory argument -b|--bam" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -s $genome ]]; then log "The reference genome fasta file does not not exist or is empty. Mandatory argument -g|--genome" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -s $repeatsDb ]]; then log "The RepeatMasker repeats database does not exist or is empty. Mandatory argument -d|--repeats-db" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ $sampleId == "" ]]; then log "Sample id does not provided. Mandatory argument --sample-id" "ERROR" >&2; usageDoc; exit -1; fi
@@ -415,134 +416,134 @@ if [[ $fileName == "" ]]; then log "Output file name does not provided. Mandator
 
 #### General
 ## Output directory
-if [[ "$outDir" == "" ]]; 
-then 
+if [[ "$outDir" == "" ]];
+then
 	outDir=${SGE_O_WORKDIR-$PWD};
 else
-	if [[ ! -e "$outDir" ]]; 
+	if [[ ! -e "$outDir" ]];
 	then
 		log "Your output directory does not exist. Option -o|--output-dir\n" "ERROR" >&2;
-		usageDoc; 
-		exit -1; 
-	fi	
+		usageDoc;
+		exit -1;
+	fi
 fi
 
 # Temporary directory
-if [[ "$TMPDIR" == "" ]]; 
-then 
-	TMPDIR='/tmp'; 
-else	
-	if [[ ! -e "$TMPDIR" ]]; 
+if [[ "$TMPDIR" == "" ]];
+then
+	TMPDIR='/tmp';
+else
+	if [[ ! -e "$TMPDIR" ]];
 	then
 		log "Your temporary directory does not exist. Option --tmp-dir\n" "ERROR" >&2;
-		usagedoc; 
-		exit -1; 
+		usagedoc;
+		exit -1;
 	fi
 fi
 
 ## Clean up
-if [[ "$cleanup" != "FALSE" ]]; 
-then 
-    cleanup='TRUE'; 
-fi	
+if [[ "$cleanup" != "FALSE" ]];
+then
+    cleanup='TRUE';
+fi
 
 
 #### Filters:
 
 ## List of filters to be applied
 if [[ "$filterList" == "" ]];
-then 
+then
 	filterList='SCORE,DUP';
 fi
 
 ## Minimum assembly score for solo L1 insertions
 if [[ "$scoreL1_TD0" == "" ]];
-then 
+then
     scoreL1_TD0=2;
 else
-	if [[ ! "$scoreL1_TD0" =~ ^[0-9]+$ ]]; 
+	if [[ ! "$scoreL1_TD0" =~ ^[0-9]+$ ]];
     then
 	    log "Please specify a proper minimum assembly score for solo L1 insertions. Option --score-L1-TD0\n" "ERROR" >&2;
-        usageDoc; 
-        exit -1; 
+        usageDoc;
+        exit -1;
     fi
 fi
 
 ## Minimum assembly score for L1 partnered transductions
 if [[ "$scoreL1_TD1" == "" ]];
-then 
+then
     scoreL1_TD1=2;
 else
-	if [[ ! "$scoreL1_TD1" =~ ^[0-9]+$ ]]; 
+	if [[ ! "$scoreL1_TD1" =~ ^[0-9]+$ ]];
     then
 	    log "Please specify a proper minimum assembly score for L1 partnered transductions. Option --score-L1-TD1\n" "ERROR" >&2;
-        usageDoc; 
-        exit -1; 
+        usageDoc;
+        exit -1;
     fi
 fi
 
 ## Minimum assembly score for L1 orphan transductions
 if [[ "$scoreL1_TD2" == "" ]];
-then 
+then
     scoreL1_TD2=2;
 else
-	if [[ ! "$scoreL1_TD2" =~ ^[0-9]+$ ]]; 
+	if [[ ! "$scoreL1_TD2" =~ ^[0-9]+$ ]];
     then
 	    log "Please specify a proper minimum assembly score for L1 orphan transduction. Option --score-L1-TD2\n" "ERROR" >&2;
-        usageDoc; 
-        exit -1; 
+        usageDoc;
+        exit -1;
     fi
 fi
 
 ## Minimum assembly score for Alu insertions
 if [[ "$scoreAlu" == "" ]];
-then 
+then
     scoreAlu=2;
 else
-	if [[ ! "$scoreAlu" =~ ^[0-9]+$ ]]; 
+	if [[ ! "$scoreAlu" =~ ^[0-9]+$ ]];
     then
 	    log "Please specify a proper minimum assembly score for Alu insertions. Option --score-Alu\n" "ERROR" >&2;
-        usageDoc; 
-        exit -1; 
+        usageDoc;
+        exit -1;
     fi
 fi
 
 ## Minimum assembly score for SVA insertions
 if [[ "$scoreSVA" == "" ]];
-then 
+then
     scoreSVA=2;
 else
-	if [[ ! "$scoreSVA" =~ ^[0-9]+$ ]]; 
+	if [[ ! "$scoreSVA" =~ ^[0-9]+$ ]];
     then
 	    log "Please specify a proper minimum assembly score for SVA insertions. Option --score-SVA\n" "ERROR" >&2;
-        usageDoc; 
-        exit -1; 
+        usageDoc;
+        exit -1;
     fi
 fi
 
 ## Minimum assembly score for ERVK insertions
 if [[ "$scoreERVK" == "" ]];
-then 
+then
     scoreERVK=2;
 else
-	if [[ ! "$scoreERVK" =~ ^[0-9]+$ ]]; 
+	if [[ ! "$scoreERVK" =~ ^[0-9]+$ ]];
     then
 	    log "Please specify a proper minimum assembly score for ERVK insertions. Option --score-ERVK\n" "ERROR" >&2;
-        usageDoc; 
-        exit -1; 
+        usageDoc;
+        exit -1;
     fi
 fi
 
 ## Minimum assembly score for pseudogene insertions
 if [[ "$scorePSD" == "" ]];
-then 
+then
     scorePSD=2;
 else
-	if [[ ! "$scorePSD" =~ ^[0-9]+$ ]]; 
+	if [[ ! "$scorePSD" =~ ^[0-9]+$ ]];
     then
 	    log "Please specify a proper minimum assembly score for PSD insertions. Option --score-PSD\n" "ERROR" >&2;
-        usageDoc; 
-        exit -1; 
+        usageDoc;
+        exit -1;
     fi
 fi
 
@@ -576,9 +577,10 @@ bkpAnalysisDir=$outDir/BkpAnalysis
 annotDir=$outDir/Annot
 filterDir=$outDir/Filter
 srcRegDir=$outDir/SrcRegions
+readsFasta=$outDir/targetReads.fasta
 
-# The temporary directory will be exported as an environmental variable since it will 
-# be used by every TEIBA's scripts 
+# The temporary directory will be exported as an environmental variable since it will
+# be used by every TEIBA's scripts
 export TMPDIR=$TMPDIR
 
 ## make sure the pipeline removes intermediate files even if it fails
@@ -587,6 +589,7 @@ trap cleanupFunc EXIT
 # 5. Scripts/references
 ########################
 # scripts
+BAM2FASTA=$bashDir/extract_reads_bam2fa.sh
 EMPTYVCF=$pyDir/makeEmptyVCF.py
 CLUSTERS2FASTA=$pyDir/clusters2fasta.py
 ALIGN_CONTIGS=$bashDir/alignContigs2reference.sh
@@ -603,7 +606,7 @@ consensusAlu=$refDir/Alu_consensus.fa
 consensusSVA=$refDir/SVA_consensus.fa
 consensusERVK=$refDir/ERVK_consensus.fa
 
-## DISPLAY PIPELINE CONFIGURATION  
+## DISPLAY PIPELINE CONFIGURATION
 ##################################
 
 printf "\n"
@@ -614,7 +617,7 @@ printf "\n\n"
 printf "  %-34s %s\n\n" "TEIBA Version $version"
 printf "  %-34s %s\n" "***** MANDATORY ARGUMENTS *****"
 printf "  %-34s %s\n" "insertions:" "$insertions"
-printf "  %-34s %s\n" "fasta:" "$fasta"
+printf "  %-34s %s\n" "bam:" "$bam"
 printf "  %-34s %s\n" "genome:" "$genome"
 printf "  %-34s %s\n" "repeatsDb:" "$repeatsDb"
 printf "  %-34s %s\n" "sample-id:" "$sampleId"
@@ -740,6 +743,23 @@ done
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
+# 3) Extract reads from BAM alignments
+#######################################
+# Read pair IDs referenced in $insertions are used as filter criteria.
+#######################################################################
+# Output: $outDir/targetReads.fasta
+# NOTE: reads in output file are not sorted
+
+## Execute the step
+step="BAM2FASTA"
+startTime=$(date +%s)
+printHeader "Get reads from input BAM"
+log "Extracting reads belonging to insertion clusters from input BAM" $step
+
+$BAM2FASTA $insertions $bam $outDir
+
+endTime=$(date +%s)
+printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
 ##################
 # II) CORE STEPS #
@@ -768,7 +788,7 @@ step="CLUSTERS2FASTA"
 startTime=$(date +%s)
 printHeader "Prepare fasta for assembly"
 log "Producing per MEI two fasta for insertion bkp assembly" $step
-run "python $CLUSTERS2FASTA $insertions $fasta $genome --outDir $fastaDir 1> $logsDir/1_clusters2fasta.out 2> $logsDir/1_clusters2fasta.err" "$ECHO"
+run "python $CLUSTERS2FASTA $insertions $readsFasta $genome --outDir $fastaDir 1> $logsDir/1_clusters2fasta.out 2> $logsDir/1_clusters2fasta.err" "$ECHO"
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
@@ -1034,7 +1054,7 @@ then
     then
         command="$FILTER $annotVCF $fileName $filterList --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err"
     else
-        command="$FILTER $annotVCF $fileName $filterList --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --germline-VCF $germlineVCF --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err"           
+        command="$FILTER $annotVCF $fileName $filterList --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --germline-VCF $germlineVCF --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err"
     fi
 
     run "$command" "$ECHO"
