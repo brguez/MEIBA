@@ -70,23 +70,36 @@ print
 #### 0. Read metadata file
 ##########################
 # Initialize a dictionary with the following structure:
-# - dict: key(donorId) -> projectCode
+# - dict: key(donorId) -> tumorType
 
 header("1. Read metadata file")
 
 donorMetadataFile = open(donorMetadata, 'r')
-donorIdProjectCodeDict = {}
+donorIdTumorTypeDict = {}
 
 for line in donorMetadataFile:
 
-    line = line.rstrip('\r\n')
-
+    # Skip header
     if not line.startswith("#"):
+
+        line = line.rstrip('\n')
         line = line.split('\t')
 
         donorId = line[0]
-        tumorType = line[5].split("-")[0]
-        donorIdProjectCodeDict[donorId] = tumorType
+        donorExclusion = line[3]
+
+        histologyCount	= line[10]
+        histologyExclusion = line[11]
+        tumorHistology = line[12]
+
+        ## Discard excluded donors for tumor types analysis (initial: 2813, after_excluding: 2743). 4 possible exclusion reasons:
+        # - TraFiC excluded (22)
+        # - Unknown histology (30)
+        # - More than 1 possible histology (10)
+        # - Excluded histology cohort (32)
+        if (donorExclusion == 'Whitelist') and (tumorHistology != "UNK") and (histologyCount == "1") and (histologyExclusion == "included") :
+
+            donorIdTumorTypeDict[donorId] = tumorHistology
 
 
 #### 1. Compute the total number of transductions per source element in each tumor type
@@ -94,53 +107,39 @@ for line in donorMetadataFile:
 
 header("1. Compute the total number of transductions per source element in each tumor type")
 
-nbTransductionsPerTumorTypeDict = {}
+transductionsCountDf = pd.read_csv(transductionsCountFile, header=0, index_col=0, sep='\t')
+donorIdList = donorIdTumorTypeDict.keys()
 
-## Make donor Ids list
-transductionsCountFile = open(transductionsCountFile, 'r')
-donorIdList = transductionsCountFile.readline().rstrip().split("\t")
-donorIdList = donorIdList[1:] # remove first list element
+transductionsCountFilteredDf = transductionsCountDf.loc[:, donorIdList]
 
 ## Generate dictionary with the following format:
-# - dict: key(sourceElementId) -> dict2: key(projectCode) -> total_number_transductions
-for line in transductionsCountFile:
+# - dict: key(sourceElementId) -> dict2: key(tumorType) -> total_number_transductions
+nbTdPerTumorTypeDict = {}
 
-    activityList = line.rstrip().split("\t")
-    sourceElementId = activityList.pop(0)
-    
-    ## Initialize dictionary for source element
-    nbTransductionsPerTumorTypeDict[sourceElementId] = {}
+for sourceElementId, tdPerDonorSeries in transductionsCountFilteredDf.iterrows():
 
-    # Initialize total number of source element transductions per project code to 0 values:
-    for projectCode in donorIdProjectCodeDict.values():
-        nbTransductionsPerTumorTypeDict[sourceElementId][projectCode] = 0
-
-    ## For each donor source element activity
-    for donorIndex, donorId in enumerate(donorIdList):
-
-        srcElementActivity = int(activityList[donorIndex])
-
-        # a) Project code available
-        if donorId in donorIdProjectCodeDict:
-            
-            projectCode = donorIdProjectCodeDict[donorId]
+    nbTdPerTumorTypeDict[sourceElementId] = {}
         
-            nbTransductionsPerTumorTypeDict[sourceElementId][projectCode] += srcElementActivity
+    for donorId, nbTd in tdPerDonorSeries.iteritems():
+
+        tumorType = donorIdTumorTypeDict[donorId]
         
-        # b) Project code do not available
+        if tumorType not in nbTdPerTumorTypeDict[sourceElementId]:
+            nbTdPerTumorTypeDict[sourceElementId][tumorType] = nbTd    
+
         else:
-            print "[ERROR] No project code available for current donorId"  
+            nbTdPerTumorTypeDict[sourceElementId][tumorType] += nbTd
 
 
 ## Create pandas dataframe from dictionary
-dfTransductionsCount = pd.DataFrame(nbTransductionsPerTumorTypeDict) 
+nbTdPerTumorTypeDf = pd.DataFrame(nbTdPerTumorTypeDict) 
 
 ## transpose dictionary to have source elements as rows and tumor types as columns
-dfTransductionsCount=dfTransductionsCount.T 
+nbTdPerTumorTypeDf = nbTdPerTumorTypeDf.T 
 
 # Save output into tsv
 outFilePath = outDir + '/germline_srcElements_tdPerTumorType.tsv'
-dfTransductionsCount.to_csv(outFilePath, sep='\t') 
+nbTdPerTumorTypeDf.to_csv(outFilePath, sep='\t') 
 
 
 #### 2. Compute the contribution (%) of each source element to the total number of
@@ -154,35 +153,35 @@ header("2. Compute the contribution (%) of each source element to the total numb
 
 #### 2.1 Select those tumor types with at least 1 transduction
 ## Compute the total number of transductions per tumor type
-projectCodeNbTransductionsSerie = dfTransductionsCount.sum(axis=0)
+totalNbTdPerTumorTypeSerie = nbTdPerTumorTypeDf.sum(axis=0)
 
 ## Filter serie generated in the previous step to select only those tumor types with at least 1 transduction
-projectCodeNbTransductionsFilteredSerie = projectCodeNbTransductionsSerie[projectCodeNbTransductionsSerie >= 1]
+totalNbTdPerTumorTypeFilteredSerie = totalNbTdPerTumorTypeSerie[totalNbTdPerTumorTypeSerie >= 1]
 
 ## Filter dataframe generated in 1) to select only those tumor types with at least 1 transduction
-projectCodesList = list(projectCodeNbTransductionsFilteredSerie.index)
-dfTransductionsCountFiltered = dfTransductionsCount[projectCodesList] 
+tumorTypesList = list(totalNbTdPerTumorTypeFilteredSerie.index)
+nbTdPerTumorTypeFilteredDf = nbTdPerTumorTypeDf[tumorTypesList] 
 
 #### 2.2 Compute the source element contribution (in %) for the selected tumor types to the total number of transductions
-srcElementIds = dfTransductionsCountFiltered.index
-projecCodes = dfTransductionsCountFiltered.columns
+srcElementIds = nbTdPerTumorTypeFilteredDf.index
+tumorTypes = nbTdPerTumorTypeFilteredDf.columns
 
-dfSrcElementContribution = pd.DataFrame(index=srcElementIds, columns=projecCodes)
+srcElementContributionDf = pd.DataFrame(index=srcElementIds, columns=tumorTypes)
 
 # Iterate over row index labels (source element ids)
 for srcElementId in srcElementIds:
 
-    # Iterate over column index labels (project codes)
-    for projectCode in projecCodes:
+    # Iterate over column index labels (tumor types)
+    for tumorType in tumorTypes:
     
-        transductionCountSrcElement = dfTransductionsCountFiltered.loc[srcElementId, projectCode]
-        transductionCountTumorType = projectCodeNbTransductionsFilteredSerie.loc[projectCode]
-        transductionPercTumorType = float(transductionCountSrcElement)/float(transductionCountTumorType) * 100
+        nbTdSrcElement = nbTdPerTumorTypeFilteredDf.loc[srcElementId, tumorType]
+        nbTdTumorType = totalNbTdPerTumorTypeFilteredSerie.loc[tumorType]
+        tdPercTumorType = float(nbTdSrcElement)/float(nbTdTumorType) * 100
 
         ## Add source element contribution to dataframe
-        dfSrcElementContribution.loc[srcElementId, projectCode] = transductionPercTumorType
+        srcElementContributionDf.loc[srcElementId, tumorType] = tdPercTumorType
 
-#print "test: ", dfSrcElementContribution.sum(axis=0)
+#print "test: ", srcElementContributionDf.sum(axis=0)
 # Ok, all 100% as expected. 
 
 
@@ -195,35 +194,34 @@ header("3. Compute the contribution (%) of each source element to the total numb
 
 #### 3.1 Incorporate the total number of transductions in PCAWG into the serie with the number of transductions per tumor type
 ## Compute the total number of transductions in the PCAWG cohort
-totalNbTransductionsPCAWG = projectCodeNbTransductionsSerie.sum(axis=0)
-
-print "total_nbTd_PCAWG: ", totalNbTransductionsPCAWG
+totalNbTdPCAWG = transductionsCountDf.values.sum()
 
 ## Add the total number of transductions in PCAWG to the tumor type serie
-projectCodeNbTransductionsFilteredSerie["PCAWG"] = totalNbTransductionsPCAWG
+totalNbTdPerTumorTypeFilteredSerie["PCAWG"] = totalNbTdPCAWG
 
 ## Sort serie in descending order:
-projectCodeNbTransductionsSortedSerie = projectCodeNbTransductionsFilteredSerie.sort_values(ascending=False)
+totalNbTdPerTumorTypeSortedSerie = totalNbTdPerTumorTypeFilteredSerie.sort_values(ascending=False)
 
-#### 3.2 Incorporate the source element contribution to the tumor type dataframe
+#### 3.2 Incorporate the PCAWG source element contribution to the tumor type contribution dataframe
 ## Compute the total number of transductions per source element in PCAWG cohort
-srcElementNbTransductionsSerie = dfTransductionsCount.sum(axis=1)
+nbTdPCAWGSerie = transductionsCountDf.sum(axis=1)
+
 
 ## Compute source element contribution to the total number of transductions in PCAWG
-contribution = lambda x: (float(x)/totalNbTransductionsPCAWG)*100
+contribution = lambda x: (float(x)/totalNbTdPCAWG)*100
 
-srcElementsTotalContributionSerie = srcElementNbTransductionsSerie.apply(contribution)
+srcElementContributionPCAWGSerie = nbTdPCAWGSerie.apply(contribution)
 
 ## Add total PCAWG contribution to the dataframe with source element contribution across tumor types
-dfSrcElementContribution["PCAWG"] = srcElementsTotalContributionSerie
+srcElementContributionDf["PCAWG"] = srcElementContributionPCAWGSerie
 
 #### 3.3 Generate tsv with the total number of transductions per source element in PCAWG
 ## Sort source elements
-srcElementNbTransductionsSerieSorted = srcElementNbTransductionsSerie.sort_values(ascending=False) # order the source elements in decreasing order. 
+nbTdPCAWGSortedSerie = nbTdPCAWGSerie.sort_values(ascending=False) # order the source elements in decreasing order. 
 
 ## Generate tsv
 outFilePath = outDir + '/germline_srcElements_tdPCAWG.tsv'
-srcElementNbTransductionsSerieSorted.to_csv(outFilePath, sep='\t')
+nbTdPCAWGSortedSerie.to_csv(outFilePath, sep='\t')
 
 
 #### 4. Sort and filter source element contribution dataframes
@@ -233,39 +231,42 @@ header("4. Sort and filter source element contribution dataframes")
 
 #### 4.1 Sort dataframe
 ## Sort source elements (rows) in descending order of transductions contribution to PCAWG 
-dfSrcElementContributionSorted = dfSrcElementContribution.sort_values('PCAWG', ascending=False)
+srcElementContributionSortedDf = srcElementContributionDf.sort_values('PCAWG', ascending=False)
 
-## Sort project codes (columns) in descending order of total number of transductions
-colOrder = projectCodeNbTransductionsSortedSerie.index.tolist()
-dfSrcElementContributionSorted = dfSrcElementContributionSorted[colOrder]
+#print "srcElementContributionSortedDf: ", srcElementContributionSortedDf
+
+## Sort tumor types (columns) in descending order of total number of transductions
+colOrder = totalNbTdPerTumorTypeSortedSerie.index.tolist()
+srcElementContributionSortedDf = srcElementContributionSortedDf[colOrder]
+
+#print "srcElementContributionSortedDf: ", srcElementContributionSortedDf
 
 #### 4.2 Filter dataframe
 ## Filter out those source elements contributing less than 1% to the total number of transductions in PCAWG
-dfSrcElementContributionFiltered = dfSrcElementContributionSorted.loc[dfSrcElementContributionSorted['PCAWG'] >= 1]
+srcElementContributionFilteredDf = srcElementContributionSortedDf.loc[srcElementContributionSortedDf['PCAWG'] >= 1]
 
 ## Group those elements contributing less than 1% in the category 'Other'
-dfSrcElementContributionOther = dfSrcElementContributionSorted.loc[dfSrcElementContributionSorted['PCAWG'] < 1]
+srcElementOtherContributionDf = srcElementContributionSortedDf.loc[srcElementContributionSortedDf['PCAWG'] < 1]
 
-nbSrcElementsOther = len(dfSrcElementContributionOther.index)
+nbSrcElementsOther = len(srcElementOtherContributionDf.index)
 
-otherContributionSerie = dfSrcElementContributionOther.sum(axis=0)
+otherContributionSerie = srcElementOtherContributionDf.sum(axis=0)
 
 ## Make final dataframe and add the other category as an additional row
 rowName = "Other(" + str(nbSrcElementsOther)  + ")" 
 
-dfSrcElementContributionFinal = dfSrcElementContributionFiltered
-dfSrcElementContributionFinal.loc[rowName] = otherContributionSerie
+srcElementContributionFinalDf = srcElementContributionFilteredDf
+srcElementContributionFinalDf.loc[rowName] = otherContributionSerie
 
 #### 4.3 Save both unfiltered and filtered dataframes into a tsv
 
 ## Unfiltered dataframe
 outFilePath = outDir + '/germline_srcElements_contribution.tsv'
-dfSrcElementContributionSorted.to_csv(outFilePath, sep='\t') 
+srcElementContributionSortedDf.to_csv(outFilePath, sep='\t') 
 
 ## Filtered dataframe
 outFilePath = outDir + '/germline_srcElements_contribution.filtered.tsv'
-dfSrcElementContributionFinal.to_csv(outFilePath, sep='\t') 
-
+srcElementContributionFinalDf.to_csv(outFilePath, sep='\t') 
 
 #### 5. Make plots
 #######################
@@ -278,10 +279,10 @@ sns.set_style("whitegrid")
 #### 5.1 Prepare Data
 
 ## transpose dataframe to have source elements as columns and tumor types as rows
-dfSrcElementContributionFinal = dfSrcElementContributionFinal.T 
+srcElementContributionFinalDf = srcElementContributionFinalDf.T 
 
 ## Convert dataframe values into floats 
-dfSrcElementContributionFinal = dfSrcElementContributionFinal.apply(lambda x: pd.to_numeric(x))
+srcElementContributionFinalDf = srcElementContributionFinalDf.apply(lambda x: pd.to_numeric(x))
 
 #### 5.2 Make heatmaps
 
@@ -289,7 +290,7 @@ dfSrcElementContributionFinal = dfSrcElementContributionFinal.apply(lambda x: pd
 #fig = plt.figure(figsize=(17,7))
 fig = plt.figure(figsize=(20,10))
 fig.suptitle('')
-ax1 = sns.heatmap(dfSrcElementContributionFinal, vmin=0, vmax=50, annot=True, fmt=".1f", linewidths=.5, cmap=plt.cm.Oranges, annot_kws={"size": 8}, square=True)
+ax1 = sns.heatmap(srcElementContributionFinalDf, vmin=0, vmax=50, annot=True, fmt=".1f", linewidths=.5, cmap=plt.cm.Oranges, annot_kws={"size": 8}, square=True)
 
 ax1.set_xlabel('')
 ax1.set_ylabel('')
@@ -303,13 +304,13 @@ for item in ax1.get_xticklabels():
     item.set_rotation(90)
 
 ## Save figure 
-fileName = outDir + "/germline_srcElements_contribution_tumorTypes_heatmap.pdf"
+fileName = outDir + "/Pictures/germline_srcElements_contribution_tumorTypes_heatmap.pdf"
 plt.savefig(fileName)
 
 
 ### B) Source element contribution in the PCAWG cohort
 colList = [ "PCAWG" ] 
-totalSrcElementContributionSeries = dfSrcElementContributionFinal.loc[colList, :]
+totalSrcElementContributionSeries = srcElementContributionFinalDf.loc[colList, :]
 
 fig = plt.figure(figsize=(8,4))
 fig.suptitle('')
@@ -328,7 +329,7 @@ for item in ax2.get_xticklabels():
     item.set_rotation(90)
 
 ## Save figure 
-fileName = outDir + "/germline_srcElements_contribution_heatmap.pdf"
+fileName = outDir + "/Pictures/germline_srcElements_contribution_heatmap.pdf"
 plt.savefig(fileName)
 
 #### End
