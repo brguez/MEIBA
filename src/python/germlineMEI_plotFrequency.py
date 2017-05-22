@@ -76,8 +76,6 @@ print
 ##########################
 alleleCountsDf = pd.read_csv(alleleCounts, header=0, index_col=0, sep='\t')
 alleleFreqsDf = pd.read_csv(alleleFreqs, header=0, index_col=0, sep='\t')
-print "alleleFreqsDf: ", alleleFreqsDf
-
 
 #### 2. Make plots:
 ###################
