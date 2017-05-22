@@ -259,7 +259,7 @@ for line in metadata:
             novelFlag = ''
 
         QUAL = '.'    
-        FILTER = '.' 
+        FILTER = 'PASS' 
         INFO	 = 'SVTYPE=<MEI>;' + 'CLASS=' + category + ';BKPB=' + str(bkpB) + ';CIPOS=0' + ';STRAND=' + orientation + ';SRCID=' + cytobandId + polymorphicFlag + novelFlag
         FORMAT = 'RCP:RCN' 
         GT = '.:.'
