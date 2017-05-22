@@ -70,6 +70,7 @@ print
 
 #### 1. Load input table:
 ##########################
+header("1. Load input table")
 loadDf = pd.read_csv(inputFile, header=0, index_col=0, sep='\t')
 
 #### 2. Make plots:
@@ -77,6 +78,8 @@ loadDf = pd.read_csv(inputFile, header=0, index_col=0, sep='\t')
 header("2. Make plots")
 
 #### 2.1 Number of elements per donor and ancestry
+header("2.1 Number of elements per donor and ancestry")
+
 ## Remove donors with unkown ancestry:
 loadFilteredDf = loadDf[loadDf['ancestry'] != "UNK"]
 
@@ -87,10 +90,7 @@ orderList = sorted(set(loadFilteredDf['ancestry'].tolist()))
 fig = plt.figure(figsize=(5,6))
 
 # Create the violin plot
-ax = sns.violinplot(x='ancestry', y='nbMEI', data=loadFilteredDf, palette="muted", order=orderList)
-
-# y limit
-#sns.plt.ylim(0,21)
+ax = sns.violinplot(x='ancestry', y='nbMEI', data=loadFilteredDf, palette="muted", order=orderList, cut=0, scale="width")
 
 ## Modify axis labels
 ax.set(xlabel='', ylabel='# Events')
@@ -110,8 +110,9 @@ outFile = outDir + '/' + fileName + ".ancestries.pdf"
 fig.savefig(outFile)
 
 
-
 #### 2.2 Number of elements per donor and project code
+header("2.2 Number of elements per donor and project code")
+
 ## Order project codes in alphabetically order
 orderList = sorted(set(loadDf['projectCode'].tolist()))
 
@@ -120,14 +121,11 @@ orderList = sorted(set(loadDf['projectCode'].tolist()))
 fig = plt.figure(figsize=(18,6))
 
 # Create the violin plot
-ax = sns.violinplot(x='projectCode', y='nbMEI', data=loadDf, palette="muted", order=orderList)
-
-# y limit
-#sns.plt.ylim(0,21)
+ax = sns.violinplot(x='projectCode', y='nbMEI', data=loadDf, palette="muted", order=orderList, cut=0, scale="width")
 
 ## Modify axis labels
 ax.set(xlabel='', ylabel='# Events')
-plt.xticks(rotation=60)
+plt.xticks(rotation=90)
 
 # Remove top and right axes
 ax.get_xaxis().tick_bottom()
@@ -143,24 +141,25 @@ outFile = outDir + '/' + fileName + ".projectCodes.pdf"
 fig.savefig(outFile)
 
 
-
 #### 2.3 Number of elements per donor and histology tumor type
+header("2.3 Number of elements per donor and histology tumor type")
+
+## Remove donors with unkown tumor histology:
+loadFilteredDf = loadDf[loadDf['tumorHistology'] != "UNK"]
+
 ## Order histology tumour types in alphabetically order
-orderList = sorted(set(loadDf['tumorType'].tolist()))
+orderList = sorted(set(loadFilteredDf['tumorHistology'].tolist()))
 
 ### Plotting
 
-fig = plt.figure(figsize=(16,5))
+fig = plt.figure(figsize=(20,5))
 
 # Create the violin plot
-ax = sns.violinplot(x='tumorType', y='nbMEI', data=loadDf, palette="muted", order=orderList)
-
-# y limit
-#sns.plt.ylim(0,21)
+ax = sns.violinplot(x='tumorHistology', y='nbMEI', data=loadFilteredDf, palette="muted", order=orderList, cut=0, scale="width")
 
 ## Modify axis labels
 ax.set(xlabel='', ylabel='# Events')
-plt.xticks(rotation=60)
+plt.xticks(rotation=90)
 
 # Remove top and right axes
 ax.get_xaxis().tick_bottom()
