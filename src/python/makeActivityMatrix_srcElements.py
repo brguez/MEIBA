@@ -72,7 +72,7 @@ for line in donorMetadataFile:
         line = line.rstrip('\n')
         line = line.split("\t")
         donorId = line[0]
-        exclusionStatus = line[2]
+        exclusionStatus = line[3]
 
         if (exclusionStatus == "Whitelist"):
 
