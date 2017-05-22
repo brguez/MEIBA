@@ -148,8 +148,8 @@ donorIdList = VCFObj.read_VCF_multiSample(inputVCF)
 
 
 #### 2. Build dictionaries with donor genotypes
-########################################################################
-# Split variants into two different dictionaries depending on if they are absent or not in the reference genome. 
+################################################
+# Split filtered variants into two different dictionaries depending on if they are absent or not in the reference genome. 
 # Nested dictionary format:
 # key1 (MEIid) -> value (dict2)
 #                   key2 (donorId)     ->   value (genotype)      
@@ -162,52 +162,55 @@ genotypesRefDict = {} # genotypes for variants in the reference genome
 ## For each MEI
 for MEIObj in VCFObj.lineList:
 
-    ## MEI identifier
-    # A) MEI corresponds to a germline source element -> use source element identifier
-    if ('SRCID' in MEIObj.infoDict):
+    ## Select only those MEI that passes all the filters
+    if (MEIObj.filter == "PASS"):
 
-        MEIid = MEIObj.infoDict['SRCID']
+        ## MEI identifier
+        # A) MEI corresponds to a germline source element -> use source element identifier
+        if ('SRCID' in MEIObj.infoDict):
 
-    # B) MEI does not correspond a source element -> create coordinates based identifier
-    else:
+            MEIid = MEIObj.infoDict['SRCID']
 
-        MEIid = MEIObj.infoDict["CLASS"] + '_' + MEIObj.chrom + '_' + str(MEIObj.pos)
+        # B) MEI does not correspond a source element -> create coordinates based identifier
+        else:
 
-    ## Split variants in two different dictionaries:
-    # A) MEI absent in reference genome
-    if (MEIObj.alt == "<MEI>"):
+            MEIid = MEIObj.infoDict["CLASS"] + '_' + MEIObj.chrom + '_' + str(MEIObj.pos)
 
-        genotypesDict[MEIid] = {}
+        ## Split variants in two different dictionaries:
+        # A) MEI absent in reference genome
+        if (MEIObj.alt == "<MEI>"):
+
+            genotypesDict[MEIid] = {}
      
-        # For each donor and genotype
-        for donorId, genotypeField in MEIObj.genotypesDict.iteritems():
+            # For each donor and genotype
+            for donorId, genotypeField in MEIObj.genotypesDict.iteritems():
 
-            # Discard excluded donor donors:
-            if (donorId in metadataDict):
+                # Discard excluded donor donors:
+                if (donorId in metadataDict):
 
-                genotypeFieldList = genotypeField.split(":")
-                genotype = genotypeFieldList[0]    
-                genotypesDict[MEIid][donorId] = genotype
+                    genotypeFieldList = genotypeField.split(":")
+                    genotype = genotypeFieldList[0]    
+                    genotypesDict[MEIid][donorId] = genotype
 
-    ## B) MEI in the reference genome 
-    elif (MEIObj.ref == "<MEI>"):
+        ## B) MEI in the reference genome 
+        elif (MEIObj.ref == "<MEI>"):
 
-        genotypesRefDict[MEIid] = {}
+            genotypesRefDict[MEIid] = {}
      
-        # For each donor and genotype
-        for donorId, genotypeField in MEIObj.genotypesDict.iteritems():
+            # For each donor and genotype
+            for donorId, genotypeField in MEIObj.genotypesDict.iteritems():
 
-            # Discard excluded donor donors:
-            if (donorId in metadataDict):
+                # Discard excluded donor donors:
+                if (donorId in metadataDict):
 
-                genotypeFieldList = genotypeField.split(":")
-                genotype = genotypeFieldList[0]
-                genotypesRefDict[MEIid][donorId] = genotype
+                    genotypeFieldList = genotypeField.split(":")
+                    genotype = genotypeFieldList[0]
+                    genotypesRefDict[MEIid][donorId] = genotype
 
-    ## C) Raise error...  
-    else:
-        msg="Incorrectly formated VCF line"
-        info(msg)
+        ## C) Raise error...  
+        else:
+            msg="Incorrectly formated VCF line"
+            info(msg)
  
 
 #### 3. Convert dictionaries into dataframes specifying 
@@ -217,25 +220,55 @@ for MEIObj in VCFObj.lineList:
 
 header("3. Convert dictionaries into dataframes specifying donor status")
 
-### A) Variant absent in reference genome
+### 3.1 Variant absent in reference genome
+# a) No absent variants 
+if not genotypesDict:
+    boolAbsent = False
 
-genotypesDf = pd.DataFrame(genotypesDict) 
-genotypesDf = genotypesDf.T
-genotypesBinaryDf = genotypesDf.applymap(gt2binary)
+# b) There are absent variants
+else:
+    boolAbsent = True
+    genotypesDf = pd.DataFrame(genotypesDict) 
+    genotypesDf = genotypesDf.T
+    genotypesAbsBinaryDf = genotypesDf.applymap(gt2binary)
 
-### B) Variant in the reference genome 
-genotypesRefDf = pd.DataFrame(genotypesRefDict) 
-genotypesRefDf = genotypesRefDf.T
-genotypesRefBinaryDf = genotypesRefDf.applymap(gt2binary_ref)
+### 3.2 Variant in the reference genome 
+# a) No variants in the reference genome
+if not genotypesRefDict:
+    boolRef = False
 
-#### 4. Compute the number of different variants each donor carries
-#####################################################################
+# b) There are variants in the reference genome
+else:
+    boolRef = True
+    genotypesRefDf = pd.DataFrame(genotypesRefDict) 
+    genotypesRefDf = genotypesRefDf.T
+    genotypesRefBinaryDf = genotypesRefDf.applymap(gt2binary_ref)
+    
 
-header("4. Compute the number of different variants each donor carries")
+#### 4. Compute the number of different insertions passing the filters each donor carries
+##########################################################################################
 
-## Concatenate dataframes
-dataframeList = [genotypesBinaryDf, genotypesRefBinaryDf]
-genotypesAllBinaryDf = pd.concat(dataframeList)
+header("4. Compute the number of different insertions passing the filters each donor carries")
+
+# a) There are insetions both absent and in the reference genome
+if (boolAbsent) and (boolRef):
+
+    # Concatenate dataframes
+    dataframeList = [genotypesAbsBinaryDf, genotypesRefBinaryDf]
+    genotypesAllBinaryDf = pd.concat(dataframeList)
+
+# b) There are only insertions absent in the reference genome
+elif (boolAbsent):
+    genotypesAllBinaryDf = genotypesAbsBinaryDf
+
+# c) There are only insertions in the reference genome
+elif (boolRef):
+    genotypesAllBinaryDf = genotypesRefBinaryDf
+
+# d) There are not insertions passing the filters in the VCF
+else:
+    info("There are not insertions passing the filters in the VCF. Exit")
+    exit(0)
 
 ## Compute the total number of MEI per donor 
 nbMEIperDonorSeries = genotypesAllBinaryDf.sum(axis=0)
@@ -246,7 +279,6 @@ outputDf = metadataDf.assign(nbMEI=nbMEIperDonorSeries.values)
 ##############################
 
 header("5. Save into output file")
-
 outFilePath = outDir + '/' + fileName + '.tsv'
 outputDf.to_csv(outFilePath, sep='\t') 
 
