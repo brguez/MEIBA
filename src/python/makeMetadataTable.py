@@ -185,7 +185,7 @@ outFilePath = outDir + "/" + fileName
 outFile = open( outFilePath, "w" )
 
 # Write header:
-row = "#submitted_donor_id" + "\t" + "icgc_donor_id" + "\t" + "wgs_exclusion_white_gray" + "\t" + "wgs_exclusion_trafic" + "\t" + "ancestry_primary" + "\t" + "donor_sex" + "\t" + "donor_age_at_diagnosis" + "\t" + "donor_survival_time" + "\t" + "donor_interval_of_last_followup" + "\t" + "dcc_project_code" + "\t" + "histology_count" + "\t" + "histology_exclusion_status" + "\t" + "histology_abbreviation"	 + "\t" + "histology_tier1" + "\t" +	 "histology_tier2" + "\t" + "normal_wgs_icgc_specimen_id" + "\t" + "normal_wgs_icgc_sample_id" + "\t" + "normal_wgs_aliquot_id" + "\t" + "tumor_wgs_specimen_count" + "\t" + "tumor_wgs_icgc_specimen_id" + "\t" + "tumor_wgs_icgc_sample_id" + "\t" + "tumor_wgs_aliquot_id" + "\t" + "tumor_wgs_representative_aliquot_id" + "\t" + "normal_wgs_has_matched_rna_seq" + "\t" + "tumor_wgs_has_matched_rna_seq" + "\t" + 	"normal_rna_seq_icgc_specimen_id" + "\t" + "normal_rna_seq_icgc_sample_id" + "\t" + "tumor_rna_seq_specimen_count" + "\t" + "tumor_rna_seq_icgc_specimen_id" + "\t" + "tumor_rna_seq_icgc_sample_id" + "\n" 
+row = "#submitted_donor_id" + "\t" + "icgc_donor_id" + "\t" + "wgs_exclusion_white_gray" + "\t" + "wgs_exclusion_trafic" + "\t" + "ancestry_primary" + "\t" + "donor_sex" + "\t" + "donor_age_at_diagnosis" + "\t" + "donor_survival_time" + "\t" + "donor_interval_of_last_followup" + "\t" + "dcc_project_code" + "\t" + "histology_count" + "\t" + "histology_exclusion_status" + "\t" + "histology_abbreviation"	 + "\t" + "histology_tier1" + "\t" +	 "histology_tier2" + "\t" + "normal_wgs_icgc_specimen_id" + "\t" + "normal_wgs_icgc_sample_id" + "\t" + "normal_wgs_aliquot_id" + "\t" + "tumor_wgs_specimen_count" + "\t" + "tumor_wgs_icgc_specimen_id" + "\t" + "tumor_wgs_icgc_sample_id" + "\t" + "tumor_wgs_aliquot_id" + "\t" + "tumor_wgs_representative_aliquot_id" + "\t" + "normal_wgs_has_matched_rna_seq" + "\t" + "tumor_wgs_has_matched_rna_seq" + "\t" + 	"normal_rna_seq_icgc_specimen_id" + "\t" + "normal_rna_seq_icgc_sample_id" + "\t" + "tumor_rna_seq_specimen_count" + "\t" + "tumor_rna_seq_icgc_specimen_id" + "\t" + "tumor_rna_seq_icgc_sample_id" + "\t" + "tumor_rna_seq_aliquot_id" + "\n" 
 
 outFile.write(row)
 
@@ -218,6 +218,7 @@ for line in mainMetadata:
         tumor_rna_seq_specimen_count = fieldsList[15]	
         tumor_rna_seq_icgc_specimen_id = fieldsList[16]	
         tumor_rna_seq_icgc_sample_id = fieldsList[17]	
+        tumor_rna_seq_aliquot_id = fieldsList[18]
 
         donorUniqueId = dcc_project_code + "::" + submitted_donor_id
         
@@ -263,7 +264,7 @@ for line in mainMetadata:
 
 
         ### Write metadata row into the output file
-        row = submitted_donor_id + "\t" + icgc_donor_id + "\t" + wgs_exclusion_white_gray + "\t" + wgs_exclusion_trafic + "\t" + ancestry_primary + "\t" + donor_sex + "\t" + donor_age_at_diagnosis + "\t" + donor_survival_time + "\t" + donor_interval_of_last_followup + "\t" + dcc_project_code + "\t" + str(histology_count) + "\t" + histology_exclusion_status + "\t" + histology_abbreviation	 + "\t" + histology_tier1 + "\t" +	 histology_tier2 + "\t" + normal_wgs_icgc_specimen_id + "\t" + normal_wgs_icgc_sample_id + "\t" + normal_wgs_aliquot_id + "\t" + tumor_wgs_specimen_count	 + "\t" + tumor_wgs_icgc_specimen_id + "\t" + tumor_wgs_icgc_sample_id + "\t" + tumor_wgs_aliquot_id + "\t" + tumor_wgs_representative_aliquot_id + "\t" + normal_wgs_has_matched_rna_seq + "\t" + tumor_wgs_has_matched_rna_seq + "\t" + normal_rna_seq_icgc_specimen_id + "\t" + normal_rna_seq_icgc_sample_id + "\t" + tumor_rna_seq_specimen_count + "\t" + tumor_rna_seq_icgc_specimen_id + "\t" + tumor_rna_seq_icgc_sample_id + "\n" 
+        row = submitted_donor_id + "\t" + icgc_donor_id + "\t" + wgs_exclusion_white_gray + "\t" + wgs_exclusion_trafic + "\t" + ancestry_primary + "\t" + donor_sex + "\t" + donor_age_at_diagnosis + "\t" + donor_survival_time + "\t" + donor_interval_of_last_followup + "\t" + dcc_project_code + "\t" + str(histology_count) + "\t" + histology_exclusion_status + "\t" + histology_abbreviation	 + "\t" + histology_tier1 + "\t" +	 histology_tier2 + "\t" + normal_wgs_icgc_specimen_id + "\t" + normal_wgs_icgc_sample_id + "\t" + normal_wgs_aliquot_id + "\t" + tumor_wgs_specimen_count	 + "\t" + tumor_wgs_icgc_specimen_id + "\t" + tumor_wgs_icgc_sample_id + "\t" + tumor_wgs_aliquot_id + "\t" + tumor_wgs_representative_aliquot_id + "\t" + normal_wgs_has_matched_rna_seq + "\t" + tumor_wgs_has_matched_rna_seq + "\t" + normal_rna_seq_icgc_specimen_id + "\t" + normal_rna_seq_icgc_sample_id + "\t" + tumor_rna_seq_specimen_count + "\t" + tumor_rna_seq_icgc_specimen_id + "\t" + tumor_rna_seq_icgc_sample_id + "\t" + tumor_rna_seq_aliquot_id + "\n" 
 
         outFile.write(row)
 
