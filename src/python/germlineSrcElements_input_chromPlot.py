@@ -88,13 +88,18 @@ activityDf = pd.read_csv(activity, header=0, index_col=0, sep='\t')
 #############################################
 header("2. Collect relevant info in a dataframe")
 
-colNames = ["chrom", "bkpA"]
-finalDf = metadataDf.loc[:, colNames]
-finalDf["alleleFreq"] = frequencyDf["PCAWG"]
-finalDf["activityRate"] = activityDf["activityRate"]
+## Initialize  dataframe
+srcElementIds = metadataDf.index
+finalDf = pd.DataFrame(index=srcElementIds)
+
+## Add info
+finalDf["CHR"] = metadataDf["chrom"]
+finalDf["MapInfo"] = metadataDf["bkpA"]
+finalDf["FreqInfo"] = frequencyDf["PCAWG"]
+finalDf["ActInfo"] = activityDf["activityRate"]
 
 ## Reorder columns:
-colNames = ["chrom", "bkpA", "alleleFreq", "activityRate"]
+colNames = ["CHR", "MapInfo", "FreqInfo", "ActInfo"]
 finalOrderedDf = finalDf.loc[:, colNames]
 
 ### 3. Print output file 
