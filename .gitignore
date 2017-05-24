@@ -1,4 +1,5 @@
 .gitignore
+apps
 html
 releases
 test
