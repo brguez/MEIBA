@@ -107,7 +107,7 @@ for line in inputFile:
        
                 polyA = MEIObj.infoDict['POLYA'] if 'POLYA' in MEIObj.infoDict else 'UNK' 
                 region = MEIObj.infoDict['REGION'] 
-                gene = MEIObj.infoDict['GENE'] if 'GENE' in MEIObj.infoDict else 'UNK' 
+                gene = MEIObj.infoDict['GENE'] if 'GENE' in MEIObj.infoDict else 'NA' 
                 
 
                 # a) Solo insertions
