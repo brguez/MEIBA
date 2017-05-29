@@ -99,14 +99,14 @@ my.prepareGenomePlot = function (chrompos = NULL, cols = "grey50", paintCytoband
 
 
 # 2) Plot ideograms
-output.file = "/Users/brodriguez/Research/Projects/Pancancer/Germline/Analysis/TEIBA_0.5.7/SourceElements/ChromPlot/Pictures/source_elements_chromosomes_plot.pdf"  
+output.file = "/Users/brodriguez/Research/Projects/Pancancer/Germline/Analysis/TEIBA_0.5.7/SourceElements/MainFigure/PanelA/Pictures/source_elements_chromosomes_plot.pdf"  
 pdf(output.file, 10, 8)  # open PDF
 par(mgp=c(2.5,1,0))
 
 library(quantsmooth)
 #data = data.frame(CHR=c(CHR.A), MapInfo=c(POS.A), FreqInfo=c(FREQ.A), ActInfo=c(ACT.A))
 # add CHR.C, etc. if needed
-data = read.table("/Users/brodriguez/Research/Projects/Pancancer/Germline/Analysis/TEIBA_0.5.7/SourceElements/ChromPlot/germline_source_elements_input_chromPlot.tsv", header=T, sep="\t")
+data = read.table("/Users/brodriguez/Research/Projects/Pancancer/Germline/Analysis/TEIBA_0.5.7/SourceElements/MainFigure/PanelA/germline_source_elements_input_chromPlot.tsv", header=T, sep="\t")
 
 
 # 3)
