@@ -64,6 +64,7 @@ if __name__ == "__main__":
 
     # 1) collect event meta data for all samples
     num_samples = 0
+    num_events = 0
     samples_events = {}
     for line in open(args.eventsFile, 'rt'):
         if line.startswith('#'):
@@ -76,11 +77,12 @@ if __name__ == "__main__":
               samples_events[id_sample] = []
               num_samples += 1
           samples_events[id_sample] += [(chrom, start, end)]
+          num_events += 1
 
-    log("Found deletion events for %d samples" % num_samples)
+    log("Found %d deletion events for %d samples" % (num_events, num_samples))
 
     # 2) parse sample files, outputting TEIBA input info for previously registered events
-    #for key in sorted(samples_events):
+    num_events_missed = 0
     for study, donor, sample in sorted(samples_events):
         #log("%s_%s_%s" % (study, donor, sample))
         # create output folder
@@ -120,9 +122,12 @@ if __name__ == "__main__":
         id_sample = (study, donor, sample)
         with open(os.path.join(outdir, "L1-del.txt"), 'wt') as outfile:
             for chrom, beg, end in samples_events[id_sample]:
-                print("# %s, %s, %s, %s, %s, %s #" % (study, donor, sample, chrom, beg, end))
-                if not ( (chrom,end in clust_p_end) and (chrom,beg in clust_m_beg) ):
+                #print("# %s, %s, %s, %s, %s, %s #" % (study, donor, sample, chrom, beg, end))
+                if not ( ((chrom,beg) in clust_p_end) and ((chrom,end) in clust_m_beg) ):
                     log("Missing cluster info for deletion", "WARN")
+                    num_events_missed += 1
                     continue
-                outline = out_line_fmt % clust_p_end[chrom,end] % clust_m_beg[chrom,beg]
+                outline = out_line_fmt % sum((clust_p_end[chrom,beg], clust_m_beg[chrom,end]), ())
                 print(outline, file=outfile)
+
+    log("Skipped events: %d (of %d)" % (num_events_missed, num_events))
