@@ -198,10 +198,10 @@ for line in clusterPaths:
                                                           
                 insertionList.append(insertionId)  
                 insertionType = tdInfoDict[insertionId]["insertionType"]
-
+                
                 # A) Solo insertion
                 if (insertionType == "td0"):
-
+                    
                     insertionType = "TD0"
                     cytobandId = "NA" 
                     sourceType = "NA"
@@ -213,16 +213,16 @@ for line in clusterPaths:
                     tdEnd = "NA"
                     tdRnaLen = "NA"
                     tdLen = "NA"
-
+                
                 # B) Partnered transduction
                 elif (insertionType == "td1"):
-                
+                                                                                                   
                     insertionType = "TD1" 
                     chromSource = tdInfoDict[insertionId]["chromSource"] 
                     begSource = tdInfoDict[insertionId]["begSource"] 
                     endSource = tdInfoDict[insertionId]["endSource"] 
                     strandSource = tdInfoDict[insertionId]["strandSource"] 
-         
+                             
                     #### Determine if germline source element gave rise to the transduction:
                     ## By default consider the source element as somatic
                     cytobandId = "NA"
@@ -257,16 +257,16 @@ for line in clusterPaths:
                                 begSource, endSource = coords.split("-")
                    
                                 break
-        
+                                                                    
                     ## Determine transduction beginning and end coordinates depending on source element orientation
                     # a) Source element in forward
                     if (strandSource == "plus"):
- 
+                     
                         strandSource = "+"
                         tdBeg = endSource
                         tdEnd = tdInfoDict[insertionId]["tdEnd"]
-                        tdRnaLen = str(abs(int(tdInfoDict[insertionId]["tdRnaLen"])))
-                        tdLen = str(abs(int(tdInfoDict[insertionId]["tdLen"])))        
+                        tdRnaLen = str(int(tdEnd) - int(tdBeg))
+                        tdLen = tdRnaLen     
         
                     # b) Source element in reverse
                     elif (strandSource == "minus"):
@@ -274,8 +274,8 @@ for line in clusterPaths:
                         strandSource = "-"
                         tdBeg = tdInfoDict[insertionId]["tdBeg"]
                         tdEnd = begSource
-                        tdRnaLen = str(abs(int(tdInfoDict[insertionId]["tdRnaLen"])))
-                        tdLen = str(abs(int(tdInfoDict[insertionId]["tdLen"])))
+                        tdRnaLen = str(int(tdEnd) - int(tdBeg))
+                        tdLen = tdRnaLen
         
                     # c) Unknown orientation  
                     else:
@@ -284,7 +284,7 @@ for line in clusterPaths:
                         tdEnd = tdInfoDict[insertionId]["tdEnd"]
                         tdRnaLen = "NA"
                         tdLen = "NA"
-        
+                        
                 # C) Orphan transduction:
                 else:                
         
@@ -350,7 +350,7 @@ for line in clusterPaths:
                     else:
                 
                         tdRnaLen = "NA"
-                        tdLen = "NA"
+                        tdLen = str(abs(int(tdInfoDict[insertionId]["tdLen"]))) 
                                         
                 ## Set as NA pseudogene specific fields:
                 psdGene = "NA"
