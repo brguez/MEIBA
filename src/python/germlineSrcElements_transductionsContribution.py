@@ -287,10 +287,9 @@ srcElementContributionFinalDf = srcElementContributionFinalDf.apply(lambda x: pd
 #### 5.2 Make heatmaps
 
 ### A) Source element contribution across tumor types
-#fig = plt.figure(figsize=(17,7))
 fig = plt.figure(figsize=(20,10))
 fig.suptitle('')
-ax1 = sns.heatmap(srcElementContributionFinalDf, vmin=0, vmax=50, annot=True, fmt=".1f", linewidths=.5, cmap=plt.cm.Oranges, annot_kws={"size": 8}, square=True)
+ax1 = sns.heatmap(srcElementContributionFinalDf, vmin=0, vmax=50, annot=True, fmt=".1f", linewidths=.5, cmap=plt.cm.Oranges, cbar=True, annot_kws={"size": 8}, square=True)
 
 ax1.set_xlabel('')
 ax1.set_ylabel('')
@@ -301,7 +300,7 @@ for item in ax1.get_yticklabels():
     item.set_rotation(0)
 
 for item in ax1.get_xticklabels():
-    item.set_rotation(90)
+    item.set_rotation(45)
 
 ## Save figure 
 fileName = outDir + "/Pictures/germline_srcElements_contribution_tumorTypes_heatmap.pdf"
@@ -315,7 +314,7 @@ totalSrcElementContributionSeries = srcElementContributionFinalDf.loc[colList, :
 fig = plt.figure(figsize=(8,4))
 fig.suptitle('')
 
-ax2 = sns.heatmap(totalSrcElementContributionSeries, vmin=0, vmax=10, annot=True, fmt=".1f", linewidths=.5, cmap=plt.cm.Oranges, annot_kws={"size": 8}, square=True)
+ax2 = sns.heatmap(totalSrcElementContributionSeries, vmin=0, vmax=10, annot=True, fmt=".1f", linewidths=.5, cmap=plt.cm.Oranges, cbar=True, annot_kws={"size": 8}, square=True)
 
 ax2.set_xlabel('')
 ax2.set_ylabel('')
@@ -326,7 +325,7 @@ for item in ax2.get_yticklabels():
     item.set_rotation(0)
 
 for item in ax2.get_xticklabels():
-    item.set_rotation(90)
+    item.set_rotation(45)
 
 ## Save figure 
 fileName = outDir + "/Pictures/germline_srcElements_contribution_heatmap.pdf"

@@ -125,11 +125,12 @@ for line in metadataFile:
         histologyExclusion = line[11]
         tumorHistology = line[12]
 
-        ## Discard excluded donors. 3 possible exclusion reasons:
-        # - TraFiC excluded
-        # - More than 1 possible histology
-        # - Excluded histology cohort
-        if (donorExclusion == 'Whitelist') and (histologyCount == "1") and (histologyExclusion == "included") :
+        ## Discard excluded donors for tumor types analysis (initial: 2813, after_excluding: 2743). 4 possible exclusion reasons:
+        # - TraFiC excluded (22)
+        # - Unknown histology (30)
+        # - More than 1 possible histology (10)
+        # - Excluded histology cohort (32)
+        if (donorExclusion == 'Whitelist') and (tumorHistology != "UNK") and (histologyCount == "1") and (histologyExclusion == "included") :
          
             metadataDict[donorId] = {}
             metadataDict[donorId]['ancestry'] = ancestry

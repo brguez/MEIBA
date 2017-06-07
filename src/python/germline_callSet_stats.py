@@ -208,10 +208,6 @@ sizesDict["Alu"] = []
 sizesDict["L1"] = []
 sizesDict["SVA"] = []
 
-sizesDelDict = {}
-sizesDelDict["Alu"] = []
-sizesDelDict["L1"] = []
-sizesDelDict["SVA"] = []
 
 ## For each PCAWG MEI 
 for MEIObj in VCFObj.lineList:
@@ -221,10 +217,6 @@ for MEIObj in VCFObj.lineList:
         MEIclass = MEIObj.infoDict["CLASS"]
         MEILen = int(MEIObj.infoDict["LEN"])
         sizesDict[MEIclass].append(MEILen)
-        
-        ## Select 5' deleted variants:
-        if (MEIObj.infoDict["STRUCT"] == "DEL"):
-            sizesDelDict[MEIclass].append(MEILen)
    
 medianSizeDict = {}
     
@@ -234,58 +226,31 @@ for MEIclass in sizesDict:
 
     print "Median_size: ", MEIclass, int(round(medianSize))
 
-
-medianSizeDelDict = {}
-    
-for MEIclass in sizesDelDict:
-    medianSize = np.median(sizesDelDict[MEIclass])
-    medianSizeDelDict[MEIclass] = medianSize
-
-    print "Median_size_del: ", MEIclass, int(round(medianSize))
-
-
-
 # 4. Median kbp per donor
 ###############################
 ## How many kilobase-pairs are affected by the respective variant type per person (median)? 
 # I will assume that kilobase-pairs affected would be the same as how many base pairs are different with respect to the reference genome due to a given variant. 
 
-### I see two possible criteria to compute this:
-## 1) Consider both the TSD and the MEI length
+### Criteria for computing this:
+
 # For a given MEI. The number of bases affected would be: MEI_length + abs(TSD_length) (it could be duplication or deletion)
 # The number of kbp affected in a given donor would be: (MEI_length_1 + TSD_length_1)+(MEI_length_2 + TSD_length_2)+...+(MEI_length_N + TSD_length_N)/1000
-# Limitation: we do not have the MEI_length for every MEI (missing for ERVK and for those elements 5' inverted...). What should we do in these cases? infra-estimate not counting the length for these cases? use a consesus length for the element?
 
-## 2) Consider only the TSD length (I will use this criteria since I think it is more )
-# For a given MEI. The number of bases affected would be: abs(TSD_length) (it could be duplication or deletion)
-# The number of kbp affected in a given donor would be: (TSD_length_1)+(TSD_length_2)+...+(TSD_length_N)/1000
-# Limitation: we are infra-estimating the kilobase-pairs affected...
-
-## Note that applies both for 1) and 2). If individual have two copies of the variant multiply by 2 the number of bases affected. 
+# If one individual have two copies of the variant multiply by 2 the number of bases affected. 
 
 header("4. Median kbp per donor")
 
 # Initialize empty dictionaries:
 nbKbpPerDonorDict = {}
-
 nbKbpPerDonorDict["Alu"] = {}
 nbKbpPerDonorDict["L1"] = {}
 nbKbpPerDonorDict["SVA"] = {}
-
-nbKbpPerDonorDict2 = {}
-nbKbpPerDonorDict2["Alu"] = {}
-nbKbpPerDonorDict2["L1"] = {}
-nbKbpPerDonorDict2["SVA"] = {}
 
 for donorId in donorIdList:
 
     nbKbpPerDonorDict["Alu"][donorId] = 0
     nbKbpPerDonorDict["L1"][donorId] = 0
     nbKbpPerDonorDict["SVA"][donorId] = 0
-
-    nbKbpPerDonorDict2["Alu"][donorId] = 0
-    nbKbpPerDonorDict2["L1"][donorId] = 0
-    nbKbpPerDonorDict2["SVA"][donorId] = 0
 
 ## For each MEI
 for MEIObj in VCFObj.lineList:
@@ -295,9 +260,8 @@ for MEIObj in VCFObj.lineList:
         
         MEIClass = MEIObj.infoDict["CLASS"]
         TSlen = abs(float(MEIObj.infoDict["TSLEN"]))
-        MEIlen = float(MEIObj.infoDict["LEN"] if "LEN" in MEIObj.infoDict else float(medianSizeDelDict[MEIClass])) 
+        MEIlen = float(MEIObj.infoDict["LEN"]) 
     
-
         ## For each donor
         for donorId, genotypeField in MEIObj.genotypesDict.iteritems():
     
@@ -307,36 +271,24 @@ for MEIObj in VCFObj.lineList:
             ## Determine number of kbp affected by the current variant
             # a) Homozygous alternative        
             if (genotype == "1/1"): 
-                #nbKbpMEI = 2*TSlen/1000
-                #nbKbpMEI2 = (2*(TSlen+MEIlen))/1000
-                nbKbpMEI = TSlen/1000
-                nbKbpMEI2 = (TSlen+MEIlen)/1000
+                nbKbpMEI = (2*(TSlen+MEIlen))/1000
                 
             # b) Heterozygous or haploid carrier (for male variants in the X or Y chromosomes outside the PAR region)
             elif (genotype == "0/1") or (genotype == "1"):
-                nbKbpMEI = TSlen/1000
-                nbKbpMEI2 = (TSlen+MEIlen)/1000
+                nbKbpMEI = (TSlen+MEIlen)/1000
 
             # c) Donor do not carrying the variant or missing genotype
             else:
                 nbKbpMEI = float(0)
-                nbKbpMEI2 = float(0)
         
             ## Update the counters incorporating the number of kbp affected by the current variant
             nbKbpPerDonorDict[MEIClass][donorId] += nbKbpMEI
-            nbKbpPerDonorDict2[MEIClass][donorId] += nbKbpMEI2
 
 for MEIclass in nbKbpPerDonorDict:
 
     median = np.median(nbKbpPerDonorDict[MEIclass].values())
         
     print "nbKbp_median: ", MEIclass, median
-
-for MEIclass in nbKbpPerDonorDict2:
-
-    median = np.median(nbKbpPerDonorDict2[MEIclass].values())
-        
-    print "nbKbp_median2: ", MEIclass, median
 
 
 ##### 5. Sensitivity estimate 
