@@ -29,6 +29,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from scipy import stats
 import seaborn as sns
+import numpy as np
 
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
@@ -122,6 +123,7 @@ exprAllLungSamples = exprFilteredLungSCCDf["CCND1"].values
 
 print "exprAllLungSamples: ", exprAllLungSamples
 
+print "median_expr: ", np.median(exprAllLungSamples)
 
 ## Make statistical test
 ###########################
@@ -136,7 +138,8 @@ fig = plt.figure(figsize=(4,5))
 #fig.suptitle(title, fontsize=14)
 
 ax = sns.boxplot(y="CCND1",data=exprFilteredLungSCCDf, width=0.5, showfliers=False)
-ax = sns.stripplot(y="CCND1", data=exprFilteredLungSCCDf, jitter=True, color=".3")
+ax = sns.stripplot(y="CCND1", data=exprFilteredLungSCCDf, jitter=1, color=".3")
+#ax = sns.swarmplot(y="CCND1", data=exprFilteredLungSCCDf, color=".3")
 ax.plot(exprTargetSample, 'or', markeredgecolor='black', markeredgewidth='1', markersize='5')
 
 ax.set_ylabel('CCND1 (FPKM)')

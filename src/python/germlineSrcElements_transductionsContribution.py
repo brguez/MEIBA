@@ -242,21 +242,52 @@ srcElementContributionSortedDf = srcElementContributionSortedDf[colOrder]
 #print "srcElementContributionSortedDf: ", srcElementContributionSortedDf
 
 #### 4.2 Filter dataframe
+### A) Group source elements contributing less than 1% into the category Other
 ## Filter out those source elements contributing less than 1% to the total number of transductions in PCAWG
 srcElementContributionFilteredDf = srcElementContributionSortedDf.loc[srcElementContributionSortedDf['PCAWG'] >= 1]
 
-## Group those elements contributing less than 1% in the category 'Other'
+## Group those elements contributing less than 1% into the category 'Other'
 srcElementOtherContributionDf = srcElementContributionSortedDf.loc[srcElementContributionSortedDf['PCAWG'] < 1]
 
 nbSrcElementsOther = len(srcElementOtherContributionDf.index)
 
 otherContributionSerie = srcElementOtherContributionDf.sum(axis=0)
 
-## Make final dataframe and add the other category as an additional row
+## Make dataframe with the other category as an additional row
 rowName = "Other(" + str(nbSrcElementsOther)  + ")" 
 
 srcElementContributionFinalDf = srcElementContributionFilteredDf
 srcElementContributionFinalDf.loc[rowName] = otherContributionSerie
+
+
+### A) Group tumor types with less than 100 transductions into the category Other
+## Filter out those tumor types with less that 100 transductions 
+totalNbTdPerTumorTypeSortedFinalSerie = totalNbTdPerTumorTypeSortedSerie[totalNbTdPerTumorTypeSortedSerie >= 100]
+
+tumorTypeList = totalNbTdPerTumorTypeSortedFinalSerie.index.values.tolist()
+tumorTypeList.pop(0)
+
+nbTdPerTumorTypeFilteredDf = nbTdPerTumorTypeDf.drop(tumorTypeList, axis=1)
+
+## Group those tumor types with less that 100 transductions into the category 'Other'
+totalNbTdPerTumorTypeSortedFinalSerie["Other"] = totalNbTdPerTumorTypeSortedSerie[totalNbTdPerTumorTypeSortedSerie < 100].sum()
+
+print "totalNbTdPerTumorTypeSortedFinalSerie: ", totalNbTdPerTumorTypeSortedFinalSerie
+
+## Compute the total number of transductions per source element in the 'Other' category
+nbTdOtherSerie = nbTdPerTumorTypeFilteredDf.sum(axis=1)
+
+## Compute source element contribution to the total number of transductions in 'Other'
+contribution = lambda x: (float(x)/totalNbTdPerTumorTypeSortedFinalSerie["Other"])*100
+
+srcElementContributionOtherSerie = nbTdOtherSerie.apply(contribution)
+
+print "srcElementContributionOtherSerie: ", srcElementContributionOtherSerie.sort_values(ascending=False)
+
+## print into file
+outFilePath = outDir + '/germline_srcElements_contribution.other.tsv'
+srcElementContributionOtherSerie.to_csv(outFilePath, sep='\t') 
+
 
 #### 4.3 Save both unfiltered and filtered dataframes into a tsv
 
@@ -330,6 +361,35 @@ for item in ax2.get_xticklabels():
 ## Save figure 
 fileName = outDir + "/Pictures/germline_srcElements_contribution_heatmap.pdf"
 plt.savefig(fileName)
+
+### C) Heatmap with total number of transductions per tumor type
+
+fig = plt.figure(figsize=(10,10))
+fig.suptitle('')
+
+totalNbTdPerTumorTypeSortedDf = totalNbTdPerTumorTypeSortedFinalSerie.to_frame(name="# transductions")
+
+print "totalNbTdPerTumorTypeSortedDf: ", totalNbTdPerTumorTypeSortedDf
+
+ax3 = sns.heatmap(totalNbTdPerTumorTypeSortedDf, vmin=0, vmax=500, annot=True, fmt='.0f', linewidths=.5, cmap=plt.cm.Blues, cbar=True, annot_kws={"size": 8}, square=True)
+
+ax3.set_xlabel('')
+ax3.set_ylabel('')
+ax3.xaxis.tick_top()
+
+# turn the axis labels
+for item in ax3.get_yticklabels():
+    item.set_rotation(0)
+
+for item in ax3.get_xticklabels():
+    item.set_rotation(45)
+
+## Save figure 
+fileName = outDir + "/Pictures/totalNbTd_per_tumortype_heatmap.pdf"
+plt.savefig(fileName)
+
+
+
 
 #### End
 header("FINISH!!")

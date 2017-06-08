@@ -42,7 +42,7 @@ class cohort():
             line = line.split("\t")
 
             donorId = line[0]
-            projectCode = line[1].split("-")[0]
+            projectCode = line[1]
             VCFfile = line[2]
 
             #print "tiooo: ", donorId, projectCode, VCFfile
@@ -191,9 +191,9 @@ categoryCountsDataframe =  pd.DataFrame(categoryCountsDict)
 print "categoryCountsDataframe: ", categoryCountsDataframe
 
 ## Filter out those tumor types with 0 donors with high retrotransposition activity. 
-tumorTypesBoolSerie =  categoryCountsDataframe.loc['High'] >= 1
-
-categoryCountsFinalDataframe = categoryCountsDataframe[tumorTypesBoolSerie.index[tumorTypesBoolSerie]]
+categoryCountsFinalDataframe = categoryCountsDataframe
+#tumorTypesBoolSerie =  categoryCountsDataframe.loc['High'] >= 1 # Enable this for selecting a subset of tumor types
+#categoryCountsFinalDataframe = categoryCountsDataframe[tumorTypesBoolSerie.index[tumorTypesBoolSerie]]
 
 print "categoryCountsFinalDataframe: ", categoryCountsFinalDataframe
 
@@ -246,7 +246,7 @@ for category in categories:
 
 # Order dataframe columns (tumor types) first according to "High" and then to "None" category
 transposedDf = categoryPercDataframe.transpose()
-sortedDf = transposedDf.sort_values(['High', 'Moderate'], ascending=[True, True])
+sortedDf = transposedDf.sort_values(['High', 'Moderate', 'Low', 'None'], ascending=[True, True, True, False])
 categoryPercSortedDataframe = sortedDf.transpose()
 
 print "categoryPercSortedDataframe: ", categoryPercSortedDataframe
@@ -273,8 +273,8 @@ print "donorCountsSortedSeries: ", donorCountsSortedSeries
 ypos = np.arange(1, len(percHighList) + 1)    # the y locations for the groups
 
 height = 0.75      # the width of the bars: can also be len(x) sequence
-fig = plt.figure(figsize=(5,3))
-#fig = plt.figure(figsize=(7,7))
+#fig = plt.figure(figsize=(5,3))
+fig = plt.figure(figsize=(5,7))
 ax = fig.add_subplot(111)
 ax.yaxis.set_label_position("right")
 plt.ylabel('Number of samples', fontsize=10, labelpad=35)
