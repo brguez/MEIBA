@@ -45,23 +45,25 @@ authors
 # 13. insertion_type (TD0, TD1, TD2 or PSD)
 
 ### L1 transductions specific fields (TD1 and TD2). "NA" for TD0 and PSD
-# 14. chrom_source_element
-# 15. beg_source_element
-# 16. end_source_element
-# 17. orientation_source_element
-# 18. transduction_beg
-# 19. transduction_end
-# 20. transduction_rna_length
-# 21. transduction_length
+# 14. cytobandId	
+# 15. sourceType (GERMLINE or SOMATIC)
+# 16. chrom_source_element
+# 17. beg_source_element
+# 18. end_source_element
+# 19. orientation_source_element
+# 20. transduction_beg
+# 21. transduction_end
+# 22. transduction_rna_length
+# 23. transduction_length
 
 ### Processed pseudogene specific fields (PSD). "NA" for TD0, TD1 and TD2
-# 22. psd_gene
-# 23. chrom_exonA_cluster
-# 24. beg_exonA_cluster
-# 25. end_exonA_cluster
-# 26. chrom_exonB_cluster
-# 27. beg_exonB_cluster
-# 28. end_exonB_cluster
+# 24. psd_gene
+# 25. chrom_exonA_cluster
+# 26. beg_exonA_cluster
+# 27. end_exonA_cluster
+# 28. chrom_exonB_cluster
+# 29. beg_exonB_cluster
+# 30. end_exonB_cluster
 
 
 # Function 1. Print usage information
@@ -95,8 +97,8 @@ Execute TEIBA on one dataset (sample).
 
 
 * Filters:
-    --filters           <(FILTER_1)>, ... ,<(FILTER_N)>	List of filters to be applied out of 4 possible filtering criteria: SCORE, REP, DUP and GERMLINE.
-                                                        Default='SCORE,DUP'
+    --filters           <(FILTER_1)>, ... ,<(FILTER_N)>	List of filters to be applied out of 5 possible filtering criteria: SCORE, REP, DUP, FPSOURCE and GERMLINE.
+                                                        Default='SCORE,DUP,FPSOURCE'
     --score-L1-TD0      <INTEGER>                       Minimum assembly score for solo L1 insertions. Default 2.
     --score-L1-TD1      <INTEGER>                       Minimum assembly score for L1 partnered transductions. Default 2.
     --score-L1-TD2      <INTEGER>                       Minimum assembly score for L1 orphan transductions. Default 2.
@@ -359,7 +361,7 @@ function cleanupFunc {
 ############################
 
 # TEIBA version
-version=0.5.5
+version=0.6.2
 
 # Enable extended pattern matching
 shopt -s extglob
@@ -453,7 +455,7 @@ fi
 ## List of filters to be applied
 if [[ "$filterList" == "" ]];
 then
-	filterList='SCORE,DUP';
+	filterList='SCORE,DUP,FPSOURCE';
 fi
 
 ## Minimum assembly score for solo L1 insertions
