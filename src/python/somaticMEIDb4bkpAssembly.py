@@ -346,11 +346,11 @@ for line in donorMetadata:
         fieldsList = line.split("\t")
 
         submitted_donor_id = fieldsList[0]	
-        wgs_exclusion_white_gray = fieldsList[1]  	
-        wgs_exclusion_trafic = fieldsList[2]   	  	
-        dcc_project_code = fieldsList[5]
+        wgs_exclusion_white_gray = fieldsList[2]  	
+        wgs_exclusion_trafic = fieldsList[3]   	  	
+        dcc_project_code = fieldsList[9]
  
-        tumor_wgs_aliquot_ids = fieldsList[11]
+        tumor_wgs_aliquot_ids = fieldsList[21]
         
         # Discard TraFiC excluded donors         
         if (wgs_exclusion_trafic != "Excluded"):
