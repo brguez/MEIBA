@@ -29,7 +29,7 @@ input_fn_minus = "%s.clusters_menos_ALL.txt" # insert: sample_id
 
 # output lines follow this scheme:
 # see description in main pipeline script "TEIBA.sh" for documentation of fields
-out_line_fmt = "%s" + ("\t%s" * 11) + "\tTD0" + ("\tNA" * 17)
+out_line_fmt = "%s" + ("\t%s" * 11) + "\tTD0" + ("\tNA" * 17) + "\tDEL"
 
 def log(msg, event_type="INFO"):
     outfile = sys.stdout
