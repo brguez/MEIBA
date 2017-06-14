@@ -100,6 +100,7 @@ BEGIN{
 
         ### Insertion type
         tdType = $13
+        rgInfo = $31 # insertion mediated rearrangement info
 
         ### Transduction info
         # A) Solo insertion
@@ -158,12 +159,13 @@ BEGIN{
         sourceElementInfoDict[insertionId] = sourceElementInfo
         transductionInfoDict[insertionId] = transductionInfo
         pseudogeneInfoDict[insertionId] = pseudogeneInfo
+        rgInfoDict[insertionId] = rgInfo
     }
 }
 {
     insertionId = $1;
 
     # Gather info from dictionaries and print output:
-    row = insertionId"\t"readPairsPlusDict[insertionId]"\t"readPairsMinusDict[insertionId]"\t"sourceElementInfoDict[insertionId]"\t"transductionInfoDict[insertionId]"\t"pseudogeneInfoDict[insertionId];
+    row = insertionId"\t"readPairsPlusDict[insertionId]"\t"readPairsMinusDict[insertionId]"\t"sourceElementInfoDict[insertionId]"\t"transductionInfoDict[insertionId]"\t"pseudogeneInfoDict[insertionId]"\t"rgInfoDict[insertionId];
     print row;
 }

@@ -65,6 +65,8 @@ authors
 # 29. beg_exonB_cluster
 # 30. end_exonB_cluster
 
+### L-mediated genomic rearrangement specific fields. "NA" for standard L1, Alu, SVA, ERVK and PSD insertions
+# 31. gr_type (DEL, DUP or TRANS)
 
 # Function 1. Print usage information
 #######################################
@@ -85,19 +87,22 @@ Execute TEIBA on one dataset (sample).
     -g|--genome         <FASTA>            Reference Genome in fasta format (RG). Make sure the same RG version is used than for running TraFiC.
                                            Also, make sure the same chromosome naming conventions are used.
     -d|--repeats-db     <BED>              Database of repetitive sequences according to RepeatMasker in BED format.
-    --sample-id	        <STRING>           Sample identifier to be incorporated in the SL field of the output VCF. In PCAWG we use the normal_wgs_aliquot_id or tumor_wgs_aliquot_id.
+    --sample-id	        <STRING>           Sample identifier to be incorporated in the SL field of the output VCF. 
+                                           In PCAWG is used the normal_wgs_aliquot_id or tumor_wgs_aliquot_id.
     --file-name	        <STRING>           Output VCF name. In PCAWG we use the submitted_donor_id.
 
 *** [OPTIONS] can be:
 * General:
     -o|--output-dir     <PATH>             Output directory. Default current working directory.
     --tmp-dir		<PATH>		   Temporary directory. Default /tmp.
+    --no-annotation	                   Skip MEI annotation step.
     --no-cleanup	                   Keep intermediate files.
     -h|--help			           Display usage information
 
 
 * Filters:
-    --filters           <(FILTER_1)>, ... ,<(FILTER_N)>	List of filters to be applied out of 5 possible filtering criteria: SCORE, REP, DUP, FPSOURCE and GERMLINE.
+    --filters           <(FILTER_1)>, ... ,<(FILTER_N)>	List of filters to be applied out of 6 possible filtering criteria: 
+                                                        NONE, SCORE, REP, DUP, FPSOURCE and GERMLINE. 'NONE' will disable any filtering.
                                                         Default='SCORE,DUP,FPSOURCE'
     --score-L1-TD0      <INTEGER>                       Minimum assembly score for solo L1 insertions. Default 2.
     --score-L1-TD1      <INTEGER>                       Minimum assembly score for L1 partnered transductions. Default 2.
@@ -118,7 +123,7 @@ help
 ################################
 function getoptions {
 
-ARGS=`getopt -o "i:b:g:d:o:h" -l "insertions:,bam:,genome:,repeats-db:,sample-id:,file-name:,output-dir:,tmp-dir:,no-cleanup,help,filters:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,germline-VCF:" \
+ARGS=`getopt -o "i:b:g:d:o:h" -l "insertions:,bam:,genome:,repeats-db:,sample-id:,file-name:,output-dir:,tmp-dir:,no-annotation,no-cleanup,help,filters:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,score-GR:,germline-VCF:" \
       -n "$0" -- "$@"`
 
 #Bad arguments
@@ -194,6 +199,10 @@ do
       	  fi
       	  shift 2;;
 
+        --no-annotation)
+            annot="FALSE";
+            shift;;
+
         --no-cleanup)
             cleanup="FALSE";
             shift;;
@@ -257,6 +266,13 @@ do
             if [ -n "$2" ];
             then
                 scorePSD=$2
+            fi
+            shift 2;;
+
+        --score-GR)
+            if [ -n "$2" ];
+            then
+                scoreGR=$2
             fi
             shift 2;;
 
@@ -361,7 +377,7 @@ function cleanupFunc {
 ############################
 
 # TEIBA version
-version=0.6.2
+version=0.6.5
 
 # Enable extended pattern matching
 shopt -s extglob
@@ -441,6 +457,12 @@ else
 		usagedoc;
 		exit -1;
 	fi
+fi
+
+## Annotation
+if [[ "$annot" != "FALSE" ]];
+then
+    annot="TRUE";
 fi
 
 ## Clean up
@@ -549,6 +571,21 @@ else
     fi
 fi
 
+## Minimum assembly score for L1-mediated rearrangements
+if [[ "$scoreGR" == "" ]];
+then
+    scoreGR=2;
+else
+	if [[ ! "$scoreGR" =~ ^[0-9]+$ ]];
+    then
+	    log "Please specify a proper minimum assembly score for L1-mediated rearrangements. Option --score-GR\n" "ERROR" >&2;
+        usageDoc;
+        exit -1;
+    fi
+fi
+
+
+
 #### Files:
 
 ## VCF with germline MEI calls for filtering out GERMLINE insertions miscalled as SOMATIC
@@ -629,8 +666,8 @@ printf "  %-34s %s\n" "***** OPTIONAL ARGUMENTS *****"
 printf "  %-34s %s\n" "*** General ***"
 printf "  %-34s %s\n" "output-dir:" "$outDir"
 printf "  %-34s %s\n" "tmp-dir:" "$TMPDIR"
+printf "  %-34s %s\n" "MEI-annotation:" "$annot"
 printf "  %-34s %s\n\n" "cleanup:" "$cleanup"
-
 
 printf "  %-34s %s\n" "*** Filters ***"
 printf "  %-34s %s\n" "filters:" "$filterList"
@@ -640,7 +677,8 @@ printf "  %-34s %s\n" "score-L1-TD2:" "$scoreL1_TD2"
 printf "  %-34s %s\n" "score-Alu:" "$scoreAlu"
 printf "  %-34s %s\n" "score-SVA:" "$scoreSVA"
 printf "  %-34s %s\n" "score-ERVK:" "$scoreERVK"
-printf "  %-34s %s\n\n" "score-PSD:" "$scorePSD"
+printf "  %-34s %s\n" "score-PSD:" "$scorePSD"
+printf "  %-34s %s\n\n" "score-GR:" "$scoreGR"
 
 printf "  %-34s %s\n" "*** Files ***"
 printf "  %-34s %s\n\n" "germline-VCF:" "$germlineVCF"
@@ -955,14 +993,14 @@ if [[ "$cleanup" == "TRUE" ]]; then rm $insertionList ; fi
 paths2bkpAnalysis=$outDir/paths2bkpAnalysis.txt
 echo -n "" > $paths2bkpAnalysis
 
-cat $insertionListInfo | while read insertionId readPairsPlus readPairsMinus sourceElementInfo transductionInfo pseudogeneInfo;
+cat $insertionListInfo | while read insertionId readPairsPlus readPairsMinus sourceElementInfo transductionInfo pseudogeneInfo rgInfo;
 do
     contigPlusPath=${contigsDir}/${insertionId}:+.contigs.fa
     contigMinusPath=${contigsDir}/${insertionId}:-.contigs.fa
     blatPlusPath=${blatDir}/${insertionId}:+.psl
     blatMinusPath=${blatDir}/${insertionId}:-.psl
 
-    printf ${insertionId}"\t"${contigPlusPath}","${contigMinusPath}"\t"${blatPlusPath}","${blatMinusPath}"\t"${readPairsPlus}"\t"${readPairsMinus}"\t"${sourceElementInfo}"\t"${transductionInfo}"\t"${pseudogeneInfo}"\n" >> $paths2bkpAnalysis
+    printf ${insertionId}"\t"${contigPlusPath}","${contigMinusPath}"\t"${blatPlusPath}","${blatMinusPath}"\t"${readPairsPlus}"\t"${readPairsMinus}"\t"${sourceElementInfo}"\t"${transductionInfo}"\t"${pseudogeneInfo}"\t"${rgInfo}"\n" >> $paths2bkpAnalysis
 done
 
 
@@ -974,11 +1012,13 @@ if [[ "$cleanup" == "TRUE" ]]; then rm $insertionListInfo ; fi
 # - $bkpAnalysisDir/$fileName.vcf
 rawVCF=$bkpAnalysisDir/$fileName.vcf
 
+printHeader "Performing MEI breakpoint analysis"
+
 if [ ! -s $rawVCF ];
 then
     step="BKP-ANALYSIS"
     startTime=$(date +%s)
-    printHeader "Performing MEI breakpoint analysis"
+
     log "Identifying insertion breakpoints, TSD, MEI length, orientation and structure" $step
     run "python $BKP_ANALYSIS $paths2bkpAnalysis $sampleId $fileName $genome --outDir $bkpAnalysisDir 1>> $logsDir/4_bkpAnalysis.out 2>> $logsDir/4_bkpAnalysis.err" "$ECHO"
 
@@ -1008,12 +1048,18 @@ annotVCF=$annotDir/$fileName.annotated.vcf
 ## Make MEI annotation directory:
 if [[ ! -d $annotDir ]]; then mkdir $annotDir; fi
 
+## If annot disabled copy the previously generated VCF as annot output VCF. 
+# Then, annotation step will be skipped as file already exits 
+if [[ "$annot" == "FALSE" ]]; then cp $rawVCF $annotVCF; fi
+
+printHeader "Performing MEI breakpoint annotation"
+
 ### Execute the step
 if [ ! -s $annotVCF ];
 then
     step="ANNOTATION"
     startTime=$(date +%s)
-    printHeader "Performing MEI breakpoint annotation"
+
     log "Annotating MEI" $step
     run "bash $ANNOTATOR $rawVCF $repeatsDb $driverDb $germlineMEIdb $fileName $annotDir 1>> $logsDir/5_annotation.out 2>> $logsDir/5_annotation.err" "$ECHO"
 
@@ -1045,11 +1091,12 @@ if [[ ! -d $filterDir ]]; then mkdir $filterDir; fi
 ### Execute the step
 # NOTE: for germline variants use a minimum score of 5...
 
+printHeader "Performing MEI filtering"
+
 if [ ! -s $filteredVCF ];
 then
     step="FILTER"
     startTime=$(date +%s)
-    printHeader "Performing MEI filtering"
     log "Filtering MEI" $step
 
     if [[ "$germlineVCF" == "NOT_PROVIDED" ]]
