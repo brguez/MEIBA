@@ -121,6 +121,12 @@ if __name__ == "__main__":
         # combine cluster info for registered deletions
         id_sample = (study, donor, sample)
         with open(os.path.join(outdir, "L1-del.txt"), 'wt') as outfile:
+            
+            ## Print header
+            header = "#chromPlus" + "\t" + "begPlus" + "\t" + "endPlus" + "\t" + "nbReadsPlus" + "\t" + "classPlus" + "\t" + "readListPlus" + "\t" + "chromMinus" + "\t" + "begMinus" + "\t" + "endMinus" + "\t" + "nbReadsMinus" + "\t" + "classMinus" + "\t" + "readListMinus" + "\t" + "insertionType" + "\t" + "cytobandId" + "\t" + "sourceType" + "\t" + "chromSource" + "\t" + "begSource" + "\t" + "endSource" + "\t" + "strandSource" + "\t" + "tdBeg" + "\t" + "tdEnd" + "\t" + "tdRnaLen" + "\t" + "tdLen" + "\t" + "psdGene" + "\t" + "chromExonA" + "\t" + "begExonA" + "\t" + "endExonA" + "\t" + "chromExonB" + "\t" + "begExonB" + "\t" + "endExonB" + "\t" + "grType" +"\n"
+            outfile.write(header)
+            
+            ## Print L1-mediated deletions. One per row
             for chrom, beg, end in samples_events[id_sample]:
                 #print("# %s, %s, %s, %s, %s, %s #" % (study, donor, sample, chrom, beg, end))
                 if not ( ((chrom,beg) in clust_p_end) and ((chrom,end) in clust_m_beg) ):
