@@ -2,7 +2,7 @@
 #coding: utf-8
 
 # Description:
-#   Parse TraFiC output, extract TD0 event meta data from "+"- and "-" cluster
+#   Parse TraFiC output, extract TD* event meta data from "+"- and "-" cluster
 #   CSV files.
 # Input:
 #   1) eventsFile:  TAB-separated file containing at least 7 fields:
@@ -10,13 +10,21 @@
 #   2) samplesPath: Directory containing cluster meta info for samples.
 #                   Expected structure:
 #                     data/L1-DEL/samples/
-#                     ├── BLCA-US_096b4f32-10c1-4737-a0dd-cae04c54ee33
-#                     │   ├── 301d6ce3-4099-4c1d-8e50-c04b7ce91450.clusters_mas_ALL.txt
-#                     │   └── 301d6ce3-4099-4c1d-8e50-c04b7ce91450.clusters_menos_ALL.txt
-#                     [...]
+#                     └── ESAD-UK
+#                         ├── OCCAMS-AH-011
+#                         │   ├── dd7d623b-b9af-4147-9aa6-e09793691f10.clusters_mas.filteredNormalcihg19.txt
+#                         │   ├── dd7d623b-b9af-4147-9aa6-e09793691f10.clusters_menos.filteredNormalcihg19.txt
+#                         │   ├── dd7d623b-b9af-4147-9aa6-e09793691f10.indepclusters.deftd2.DEL.mas.ok.txt
+#                         │   ├── dd7d623b-b9af-4147-9aa6-e09793691f10.indepclusters.deftd2.DEL.menos.ok.txt
+#                         [...]
 #  3) outDir: Directory to write output to.
 #             The following directory structure will be created:
-#
+#               outputDir/
+#               ├── ESAD-UK
+#               │   ├── OCCAMS-AH-011
+#               │   │   └── dd7d623b-b9af-4147-9aa6-e09793691f10
+#               │   │       └── L1-del.txt
+#               [...]
 
 from __future__ import print_function
 import argparse
@@ -24,12 +32,14 @@ import os
 import sys
 
 # input files are expexcted to follow this naming convention:
-input_fn_plus  = "%s.clusters_mas_ALL.txt"   # insert: sample_id
-input_fn_minus = "%s.clusters_menos_ALL.txt" # insert: sample_id
+input_fn_norm_p = "%s.clusters_mas.filteredNormalcihg19.txt"   # insert: sample_id
+input_fn_norm_m = "%s.clusters_menos.filteredNormalcihg19.txt" # insert: sample_id
+input_fn_del_p  = "%s.indepclusters.deftd2.DEL.mas.ok.txt"     # insert: sample_id
+input_fn_del_m  = "%s.indepclusters.deftd2.DEL.menos.ok.txt"   # insert: sample_id
 
 # output lines follow this scheme:
 # see description in main pipeline script "TEIBA.sh" for documentation of fields
-out_line_fmt = "%s" + ("\t%s" * 11) + "\tTD0" + ("\tNA" * 15)
+out_line_fmt = "%s" + ("\t%s" * 12) + ("\tNA" * 15)
 
 def log(msg, event_type="INFO"):
     outfile = sys.stdout
@@ -94,40 +104,75 @@ if __name__ == "__main__":
             sys.exit(1)
 
         # make sure sample files exist
-        fn_plus = os.path.join(args.samplesPath, "%s_%s" % (study, donor), input_fn_plus % sample)
-        fn_minus = os.path.join(args.samplesPath, "%s_%s" % (study, donor), input_fn_minus % sample)
-        if not os.path.isfile(fn_plus):
-            log("Missing input file: '%s'" % fn_plus, "WARN")
+        fn_norm_p = os.path.join(args.samplesPath, study, donor, input_fn_norm_p % sample)
+        fn_norm_m = os.path.join(args.samplesPath, study, donor, input_fn_norm_m % sample)
+        fn_del_p = os.path.join(args.samplesPath, study, donor, input_fn_del_p % sample)
+        fn_del_m = os.path.join(args.samplesPath, study, donor, input_fn_del_m % sample)
+        if not os.path.isfile(fn_norm_p):
+            log("Missing input file: '%s'" % fn_norm_p, "WARN")
             continue
-        if not os.path.isfile(fn_minus):
-            log("Missing input file: '%s'" % fn_minus, "WARN")
+        if not os.path.isfile(fn_norm_m):
+            log("Missing input file: '%s'" % fn_norm_m, "WARN")
+            continue
+        if not os.path.isfile(fn_del_p):
+            log("Missing input file: '%s'" % fn_del_p, "WARN")
+            continue
+        if not os.path.isfile(fn_del_m):
+            log("Missing input file: '%s'" % fn_del_m, "WARN")
             continue
 
-        # parse sample files
-        clust_p_end = {}
+        # parse sample input files
+        #   columns: chrom, beg, end, num, class, reads, ...
+        clust_norm_p_end = {}
         #print("## %s, %s, %s ##" % (study, donor, sample))
-        for line in open(fn_plus, 'rt'):
+        for line in open(fn_norm_p, 'rt'):
             #print("+#%s#" % line)
             row = line.strip().split()
             chrom, beg, end, num, klass, reads = row[:6]
-            clust_p_end[(chrom, end)] = (chrom, beg, end, num, klass, reads)
-        clust_m_beg = {}
-        for line in open(fn_minus, 'rt'):
+            clust_norm_p_end[(chrom, end)] = (chrom, beg, end, num, klass, reads)
+        clust_norm_m_beg = {}
+        for line in open(fn_norm_m, 'rt'):
             #print("-#%s#" % line)
             row = line.strip().split()
             chrom, beg, end, num, klass, reads = row[:6]
-            clust_m_beg[(chrom, beg)] = (chrom, beg, end, num, klass, reads)
+            clust_norm_m_beg[(chrom, beg)] = (chrom, beg, end, num, klass, reads)
+        clust_del_p_end = {}
+        for line in open(fn_del_p, 'rt'):
+            #print("+#%s#" % line)
+            row = line.strip().split()
+            chrom, beg, end, num, klass, reads = row[:6]
+            clust_del_p_end[(chrom, end)] = (chrom, beg, end, num, klass, reads)
+        clust_del_m_beg = {}
+        for line in open(fn_del_m, 'rt'):
+            #print("-#%s#" % line)
+            row = line.strip().split()
+            chrom, beg, end, num, klass, reads = row[:6]
+            clust_del_m_beg[(chrom, beg)] = (chrom, beg, end, num, klass, reads)
 
         # combine cluster info for registered deletions
         id_sample = (study, donor, sample)
         with open(os.path.join(outdir, "L1-del.txt"), 'wt') as outfile:
             for chrom, beg, end in samples_events[id_sample]:
+                td_type = "NA"
+                # determine transduction type (TD0: solo, TD1: partnered, TD2: orphan)
+                if ((chrom,beg) in clust_norm_p_end) and ((chrom,end) in clust_norm_m_beg):
+                    td_type = "TD0"
+                    outline = out_line_fmt % sum((clust_norm_p_end[chrom,beg], clust_norm_m_beg[chrom,end], (td_type,)), ())
+                elif ((chrom,beg) in clust_del_p_end) and ((chrom,end) in clust_del_m_beg):
+                    td_type = "TD2"
+                    outline = out_line_fmt % sum((clust_del_p_end[chrom,beg], clust_del_m_beg[chrom,end], (td_type,)), ())
+                elif ((chrom,beg) in clust_norm_p_end) and ((chrom,end) in clust_del_m_beg):
+                    td_type = "TD1"
+                    outline = out_line_fmt % sum((clust_norm_p_end[chrom,beg], clust_del_m_beg[chrom,end], (td_type,)), ())
+                elif ((chrom,beg) in clust_del_p_end) and ((chrom,end) in clust_norm_m_beg):
+                    td_type = "TD1"
+                    outline = out_line_fmt % sum((clust_del_p_end[chrom,beg], clust_norm_m_beg[chrom,end], (td_type,)), ())
                 #print("# %s, %s, %s, %s, %s, %s #" % (study, donor, sample, chrom, beg, end))
-                if not ( ((chrom,beg) in clust_p_end) and ((chrom,end) in clust_m_beg) ):
+                if td_type == "NA":
                     log("Missing cluster info for deletion", "WARN")
                     num_events_missed += 1
                     continue
-                outline = out_line_fmt % sum((clust_p_end[chrom,beg], clust_m_beg[chrom,end]), ())
+
                 print(outline, file=outfile)
 
     log("Skipped events: %d (of %d)" % (num_events_missed, num_events))
