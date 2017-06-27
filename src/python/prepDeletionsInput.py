@@ -3,6 +3,7 @@
 
 # Description:
 #   Parse TraFiC output, extract TD* event meta data from "+"- and "-" cluster
+
 #   CSV files.
 # Input:
 #   1) eventsFile:  TAB-separated file containing at least 7 fields:
@@ -26,6 +27,7 @@
 #               │   │       └── L1-del.txt
 #               [...]
 
+
 from __future__ import print_function
 import argparse
 import os
@@ -40,6 +42,7 @@ input_fn_del_m  = "%s.indepclusters.deftd2.DEL.menos.ok.txt"   # insert: sample_
 # output lines follow this scheme:
 # see description in main pipeline script "TEIBA.sh" for documentation of fields
 out_line_fmt = "%s" + ("\t%s" * 12) + ("\tNA" * 15)
+
 
 def log(msg, event_type="INFO"):
     outfile = sys.stdout
@@ -149,6 +152,7 @@ if __name__ == "__main__":
             chrom, beg, end, num, klass, reads = row[:6]
             clust_del_m_beg[(chrom, beg)] = (chrom, beg, end, num, klass, reads)
 
+
         # combine cluster info for registered deletions
         id_sample = (study, donor, sample)
         with open(os.path.join(outdir, "L1-del.txt"), 'wt') as outfile:
@@ -172,6 +176,7 @@ if __name__ == "__main__":
                     log("Missing cluster info for deletion", "WARN")
                     num_events_missed += 1
                     continue
+
 
                 print(outline, file=outfile)
 

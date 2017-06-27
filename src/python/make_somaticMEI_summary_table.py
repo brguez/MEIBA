@@ -54,7 +54,7 @@ outFile = open(outPath, 'w')
 
          
 ## Write file header in the output file
-row = "#tumor_wgs_icgc_specimen_id" + "\t" + "icgc_donor_id" + "\t" + 'chrom' + '\t' + 'pos' + '\t' + 'class' + '\t' + 'type' + '\t' + 'score' + '\t' + 'cipos' + '\t' + 'length'  + '\t' + 'structure' + '\t' + 'strand' + '\t' + 'tsLen' + '\t' + 'tsSeq' + '\t' + 'polyA' + '\t' + 'region' + '\t' + 'gene' + '\t' + 'srcElementCoord' + '\t' + 'srcElementType' + '\t' + 'srcElementId' + '\t' + 'tdLen' + '\t' + 'tdLenRna' + '\n'
+row = "#tumor_wgs_icgc_specimen_id" + "\t" + "icgc_donor_id" + "\t" + 'chrom' + '\t' + 'pos' + '\t' + 'class' + '\t' + 'type' + '\t' + 'score' + '\t' + 'cipos' + '\t' + 'length'  + '\t' + 'structure' + '\t' + 'strand' + '\t' + 'tsLen' + '\t' + 'tsSeq' + '\t' + 'polyA' + '\t' + 'region' + '\t' + 'gene' + '\t' + 'role' + '\t' + 'srcElementCoord' + '\t' + 'srcElementType' + '\t' + 'srcElementId' + '\t' + 'tdLen' + '\t' + 'tdLenRna' + '\n'
     
 outFile.write(row)
 
@@ -108,7 +108,7 @@ for line in inputFile:
                 polyA = MEIObj.infoDict['POLYA'] if 'POLYA' in MEIObj.infoDict else 'UNK' 
                 region = MEIObj.infoDict['REGION'] 
                 gene = MEIObj.infoDict['GENE'] if 'GENE' in MEIObj.infoDict else 'NA' 
-                
+                role = MEIObj.infoDict['ROLE'] if 'ROLE' in MEIObj.infoDict else 'NA'
 
                 # a) Solo insertions
                 if (rtType == "TD0"):
@@ -127,7 +127,7 @@ for line in inputFile:
                     tdLenRna = MEIObj.infoDict['TDLENR'] if 'TDLENR' in MEIObj.infoDict else 'UNK' 
 
                 ## Write MEI into the output file
-                row = tumorSpecimenId + '\t' + icgcDonorId + '\t' + chrom + '\t' + str(pos) + '\t' + rtClass + '\t' + rtType + '\t' + score + '\t' + cipos + '\t' + length  + '\t' + structure + '\t' + strand + '\t' + tsLen + '\t' + tsSeq + '\t' + polyA + '\t' + region + '\t' + gene + '\t' + srcElementCoord + '\t' + srcElementType + '\t' + srcElementId + '\t' + tdLen + '\t' + tdLenRna + '\n'
+                row = tumorSpecimenId + '\t' + icgcDonorId + '\t' + chrom + '\t' + str(pos) + '\t' + rtClass + '\t' + rtType + '\t' + score + '\t' + cipos + '\t' + length  + '\t' + structure + '\t' + strand + '\t' + tsLen + '\t' + tsSeq + '\t' + polyA + '\t' + region + '\t' + gene + '\t' + role + '\t' + srcElementCoord + '\t' + srcElementType + '\t' + srcElementId + '\t' + tdLen + '\t' + tdLenRna + '\n'
                 outFile.write(row)
  
 

@@ -172,6 +172,9 @@ info("4. Generate tsv with the somatic source elements activity")
 outFilePath = outDir + '/somatic_' +  outFileName +'.tsv'
 outFile = open(outFilePath, 'w')
 
+header = "\t" + 'nbSamples' + "\t" + 'maxActicity' + "\t" + 'sampleListStr' + "\t" + 'activityListStr' + "\n"
+outFile.write(header)
+
 # For each somatic source element
 for srcId in somaticSrcActivityDict:
     sampleList = somaticSrcActivityDict[srcId].keys()

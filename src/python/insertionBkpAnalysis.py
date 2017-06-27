@@ -238,7 +238,7 @@ class VCF():
 ##INFO=<ID=SCORE,Number=1,Type=Integer,Description="Insertion score (5: 5' and 3' breakpoints (bkp) assembled, 4: 3'bkp assembled, 3: 5'bkp assembled, 2: no bkp assembled, 1: inconsistent (contradictory orientation, bkp or TSD))">
 ##INFO=<ID=MANUAL,Number=0,Type=Flag,Description="MEI manually verified and curated through BAM inspection (Only used for PSD)">
 ##INFO=<ID=BKPB,Number=1,Type=Integer,Description="MEI right-most breakpoint position (bkp B). Left-most breakpoint position (bkp A) represented in the POS field">
-##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoints">
+##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoint">
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
 ##INFO=<ID=STRUCT,Number=1,Type=String,Description="Mobile element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
 ##INFO=<ID=LEN,Number=1,Type=Integer,Description="Mobile element length">
@@ -252,7 +252,8 @@ class VCF():
 ##INFO=<ID=TDLEN,Number=1,Type=Integer,Description="Transduced region length">
 ##INFO=<ID=TDLENR,Number=1,Type=Integer,Description="Transduced region length at RNA level">
 ##INFO=<ID=SRCGENE,Number=1,Type=String,Description="Source gene of the processed pseudogene insertion">
-##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1KGENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), TRAFIC: TraFic in-house database)">
+##INFO=<ID=GR,Number=1,Type=String,Description="L1-mediated genomic rearrangement (DEL: deletion, DUP: duplication or TRANS: translocation)">
+##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1KGENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), PCAWG: PCAWG database)">
 ##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the mobile element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
 ##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
 ##INFO=<ID=ROLE,Number=1,Type=String,Description="Role in cancer (oncogene, TSG: tumor suppressor gene, oncogene/TSG: both roles)">
@@ -265,10 +266,13 @@ class VCF():
 ##INFO=<ID=RP,Number=.,Type=String,Description="Reads from the tumour sample and positive cluster that support this insertion">
 ##INFO=<ID=RN,Number=.,Type=String,Description="Reads from the tumour sample and negative cluster that support this insertion">
 ##FILTER=<ID=SCORE,Description="Insertion with an score < threshold">
+##FILTER=<ID=FPSOURCE,Description="Transduction mediated by a false somatic source element">
 ##FILTER=<ID=REP,Description="Insertion overlapping a satellite region or a repetitive element of the same class">
 ##FILTER=<ID=DUP,Description="Duplicated MEI call">
 ##FILTER=<ID=GERMLINE,Description="Germline MEI miscalled as somatic">
 ##FILTER=<ID=TD,Description="L1 transduction incorrectly identified as a processed pseudogene insertion">
+##FILTER=<ID=COUNT,Description="Allele count < threshold">
+##FILTER=<ID=MISSGT,Description="Genotype missing-ness rate > threshold ">
 ##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting reads">
 ##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
 ##FORMAT=<ID=SL,Number=1,Type=String,Description="List of samples where the variant was found (specially relevant for multi-tumor donors)">
@@ -347,7 +351,7 @@ class VCFline():
         """
 
         ## Create list containing the order of info fields
-        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "MANUAL", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "SRCID", "SRCTYPE", "SRC", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "RP", "RN" ]
+        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "MANUAL", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "SRCID", "SRCTYPE", "SRC", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GR", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "RP", "RN" ]
 
         ## Build dictionary with info tags as keys
         infoDict = {}
@@ -370,6 +374,7 @@ class VCFline():
         infoDict["TDLEN"] = insertionObj.tdLen
         infoDict["TDLENR"] = insertionObj.tdLenRna
         infoDict["SRCGENE"] = insertionObj.srcgene
+        infoDict["GR"] = insertionObj.grInfo
         infoDict["CONTIGA"] = insertionObj.informativeContigBkpA
         infoDict["CONTIGB"] = insertionObj.informativeContigBkpB
         infoDict["RP"] = insertionObj.clusterPlusObj.readPairIds
@@ -408,7 +413,7 @@ class insertion():
     - imprecise_bkp
     """
 
-    def __init__(self, family, tdType, coordinates, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo, pseudogeneInfo, sampleId):
+    def __init__(self, family, tdType, coordinates, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo, pseudogeneInfo, grInfo, sampleId):
         """
             Initialize insertion object.
 
@@ -425,7 +430,8 @@ class insertion():
             10) srcElement. Source element information in the format: cytobandId"_"srcElementType"_"chromSource"_"begSource"_"endSource"_"orientationSource. 
             11) transductionInfo. Transduction information in the format: chromSource"_"transductBeg"_"transductEnd"_"transductRnaLen"_"transductLen.
             12) pseudogeneInfo. Pseudogene information in the format: srcgene":"chrExonA"_"begExonA"-"endExonA":"chrExonB"_"begExonB"-"endExonB
-            13) sampleId. Sample identifier to be incorporated in the SL field of the output VCF. In PCAWG we use the normal_wgs_aliquot_id or tumor_wgs_aliquot_id.
+            13) grInfo. Insertion associated genomic rearrangement (DEL, DUP, TRANS or NA) 
+            14) sampleId. Sample identifier to be incorporated in the SL field of the output VCF. In PCAWG we use the normal_wgs_aliquot_id or tumor_wgs_aliquot_id.
             
             Output:
             - Insertion object variables initialized
@@ -435,6 +441,7 @@ class insertion():
         self.coordinates = coordinates
         self.clusterPlusObj = self.create_cluster("+", contigsPlusPath, blatPlusPath, readPairsPlus)
         self.clusterMinusObj = self.create_cluster("-", contigsMinusPath, blatMinusPath, readPairsMinus)
+        self.grInfo = grInfo
         self.sampleId = sampleId
 
         # A) Solo insertion (TD0). Not applicable
@@ -598,9 +605,23 @@ class insertion():
 
             info("no-informative-contigs:")
 
-            # No informative contigs, imprecise breakpoint
+            # No informative contigs
             self.score = '2'
-            self.bkpA = self.imprecise_bkp(self.coordinates)
+    
+            # A) L1-mediated deletion. Use deletion beg and end rough coordinates
+            if (self.grInfo == "DEL"):
+                insertionCoordList = self.coordinates.split("_")
+                chrom = str(insertionCoordList[0])
+                beg = int(insertionCoordList[1])
+                end = int(insertionCoordList[2])
+
+                self.bkpA = [chrom, beg, "NA"]
+                self.bkpB = [chrom, end, "NA"]
+                self.targetSiteSize = beg - end
+
+            # B) Insertion do not associated with a deletion. Imprecise bkp
+            else:
+                self.bkpA = self.imprecise_bkp(self.coordinates)
 
         ## C) Insertion with at least one contig spanning one of the insertion breakpoints
         else:
@@ -644,21 +665,25 @@ class insertion():
 
                 CI = int(abs(bkpPos5primePlus - bkpPos5primeMinus)) / 2
                 bkp5prime = [ informative5primeContigObj.informativeDict["bkp"][0], bkpPos5prime, CI]
+                informative5prime = "both"
 
             # b) 5' informative contig in + cluster
             elif (bestInformative5primeContigPlusObj != "UNK"):
                 informative5primeContigObj = bestInformative5primeContigPlusObj
                 bkp5prime = informative5primeContigObj.informativeDict["bkp"] + [0]
+                informative5prime = "plus"
 
             # c) 5' informative contig in - cluster
             elif (bestInformative5primeContigMinusObj != "UNK"):
                 informative5primeContigObj = bestInformative5primeContigMinusObj
                 bkp5prime = informative5primeContigObj.informativeDict["bkp"] + [0]
+                informative5prime = "minus"
 
             # d) none 5' informative contig
             else:
                 informative5primeContigObj = "UNK"
                 bkp5prime = ["UNK", "UNK", "UNK"]
+                informative5prime = "none"
 
             ## 2. Determine 3' informative contig and insertion breakpoint
             # a) 3' informative contigs in + and - clusters:
@@ -680,6 +705,7 @@ class insertion():
 
                 CI = int(abs(bkpPos3primePlus - bkpPos3primeMinus)) / 2
                 bkp3prime = [ informative3primeContigObj.informativeDict["bkp"][0], bkpPos3prime, CI]
+                informative3prime = "both"
 
                 ## Poly-A
                 self.polyA = informative3primeContigObj.informativeDict["info"]
@@ -689,18 +715,21 @@ class insertion():
                 informative3primeContigObj = bestInformative3primeContigPlusObj
                 bkp3prime = informative3primeContigObj.informativeDict["bkp"] + [0]
                 self.polyA = informative3primeContigObj.informativeDict["info"]
+                informative3prime = "plus"
 
             # c) 3' informative contig in - cluster
             elif (bestInformative3primeContigMinusObj != "UNK"):
                 informative3primeContigObj = bestInformative3primeContigMinusObj
                 bkp3prime = informative3primeContigObj.informativeDict["bkp"] + [0]
                 self.polyA = informative3primeContigObj.informativeDict["info"]
+                informative3prime = "minus"
 
             # d) none 3' informative contig
             else:
                 informative3primeContigObj = "UNK"
                 bkp3prime = ["UNK", "UNK", "UNK"]
                 polyA = "UNK"
+                informative3prime = "none"
 
             # ERVK-like events do not have poly-A signal
             if self.TEClass == "ERVK":
@@ -738,7 +767,7 @@ class insertion():
                 info("5' and 3' informative contigs:")
                 self.score = '5'
 
-                # Find Target site Duplication
+                # Find Target site duplication or deletion
                 self.targetSiteSize, self.targetSiteSeq = self.target_site(informative5primeContigObj, informative3primeContigObj)
 
                 # Inconsistent TSD:
@@ -791,23 +820,75 @@ class insertion():
             bkpCoord5prime  = bkp5prime[1]
             bkpCoord3prime  = bkp3prime[1]
 
-            print "hola: ", bkpCoord5prime, bkpCoord3prime
-            # a) 5' bkp characterized
+            # A) 5' bkp characterized
             if (bkpCoord3prime == "UNK"):
 
-                print "tiooo: ", informative5primeContigObj
-                self.informativeContigIdBkpA = informative5primeContigObj.ID
-                self.bkpA = bkp5prime
-                self.informativeContigBkpA = informative5primeContigObj.seq
+                # a) L1-mediated deletion. Use deletion beg and end rough coordinates
+                if (self.grInfo == "DEL"):
+                    insertionCoordList = self.coordinates.split("_")
+                    chrom = str(insertionCoordList[0])
+                    
+                    if (informative5prime == "plus"):
+                        self.informativeContigIdBkpA = informative5primeContigObj.ID
+                        self.bkpA = bkp5prime
+                        self.informativeContigBkpA = informative5primeContigObj.seq
+                        beg = bkp5prime[1]
+                        end = int(insertionCoordList[2])
+                        self.bkpB = [chrom, end, "NA"]
+                    
+                    else:
+                        self.informativeContigIdBkpB = informative5primeContigObj.ID
+                        self.bkpB = bkp5prime
+                        self.informativeContigBkpB = informative5primeContigObj.seq
+                        beg = int(insertionCoordList[1])
+                        end = bkp5prime[1]
 
-            # b) 3' bkp characterized
+                        self.bkpA = [chrom, beg, "NA"]
+
+                    self.targetSiteSize = beg - end
+
+                # b) Insertion do not associated with a deletion.
+                else:
+
+                    self.informativeContigIdBkpA = informative5primeContigObj.ID
+                    self.bkpA = bkp5prime
+                    self.informativeContigBkpA = informative5primeContigObj.seq
+
+            # B) 3' bkp characterized
             elif (bkpCoord5prime == "UNK"):
 
-                self.informativeContigIdBkpA = informative3primeContigObj.ID
-                self.bkpA = bkp3prime
-                self.informativeContigBkpA = informative3primeContigObj.seq
+                # a) L1-mediated deletion. Use deletion beg and end rough coordinates
+                if (self.grInfo == "DEL"):
+                    insertionCoordList = self.coordinates.split("_")
+                    chrom = str(insertionCoordList[0])
+                    
+                    if (informative3prime == "plus"):
+                        self.informativeContigIdBkpA = informative3primeContigObj.ID
+                        self.bkpA = bkp3prime
+                        self.informativeContigBkpA = informative3primeContigObj.seq
+                        beg = bkp3prime[1]
+                        end = int(insertionCoordList[2])
+                        self.bkpB = [chrom, end, "NA"]
+                    
+                    else:
+                        self.informativeContigIdBkpB = informative3primeContigObj.ID
+                        self.bkpB = bkp3prime
+                        self.informativeContigBkpB = informative3primeContigObj.seq
+                        beg = int(insertionCoordList[1])
+                        end = bkp3prime[1]
 
-            # c) 5' and 3' bkp characterized
+                        self.bkpA = [chrom, beg, "NA"]
+
+                    self.targetSiteSize = beg - end
+
+                # b) Insertion do not associated with a deletion.
+                else:
+
+                    self.informativeContigIdBkpA = informative3primeContigObj.ID
+                    self.bkpA = bkp3prime
+                    self.informativeContigBkpA = informative3primeContigObj.seq
+
+            # C) 5' and 3' bkp characterized
             else:
 
                 # c.a) 5' bkp < 3' bkp
@@ -940,11 +1021,6 @@ class insertion():
             ## Compute length. 
             targetSiteSize = abs(bkpPos5prime - bkpPos3prime) * -1 # Convert into negative length as it is a deletion
             targetSiteSeq = "NA"
-
-            ## Inconsistent TSD if longer than 50 bp (current studies did not find TSD lengths longer than 30bp..)
-            if (abs(targetSiteSize) > 50):
-                targetSiteSize = "inconsistent"
-                targetSiteSeq = "inconsistent"
 
         return (targetSiteSize, targetSiteSeq)
 
@@ -1420,7 +1496,6 @@ class cluster():
         # breakpoint closer to the insertion target region
 
         # 1) informative 5-prime
-
         bestDist = ""
 
         for contigObj in  informative5primeContigObjList:
@@ -1434,7 +1509,6 @@ class cluster():
                 bestDist = dist
 
         # 2) informative 3-prime
-
         bestDist = ""
 
         for contigObj in  informative3primeContigObjList:
@@ -2263,6 +2337,7 @@ if __name__ == "__main__":
         srcElement = line[5]
         transductionInfo = line[6]
         pseudogeneInfo = line[7]
+        grInfo = line[8]            # genomic rearrangement info
 
         # Perform breakpoint analysis for the TE insertion
         header("Tranposable Element Insertion Breakpoint Analysis (TEIBA) for: " + insertionCoord)
@@ -2271,7 +2346,7 @@ if __name__ == "__main__":
         if os.path.isfile(contigsPlusPath) and os.path.isfile(blatPlusPath) and os.path.isfile(contigsMinusPath) and os.path.isfile(blatMinusPath):
 
             ## Create insertion object and identify breakpoints from assembled contigs
-            insertionObj = insertion(TEClass, tdType, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo, pseudogeneInfo, sampleId)
+            insertionObj = insertion(TEClass, tdType, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo, pseudogeneInfo, grInfo, sampleId)
             insertionObj.find_insertionBkp(genomeObj, outDir)
 
             ## Create VCFline object

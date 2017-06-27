@@ -6,20 +6,20 @@
 class MEIcluster():
     """
     """
-    def __init__(self, MEIObj, overhang):
+    def __init__(self, MEIObj, offset):
         """
         Initialize MEI cluster:
 
                        cluster_range
             <------------------------------------>
-            beg [bkpA - CIPOS - overhang]        end [(bkpB or bkpA) - CIPOS - overhang] 
+            beg [bkpA - CIPOS - offset]        end [(bkpB or bkpA) - CIPOS - offset] 
         """
 
         self.chrom = MEIObj.chrom
-        self.beg, self.end = insertionRange(MEIObj, overhang)        
+        self.beg, self.end = insertionRange(MEIObj, offset)        
         self.MEIlist = [ MEIObj ]
 
-    def addMEI(self, MEIObj, overhang):
+    def addMEI(self, MEIObj, offset):
         """
         Add MEI to the cluster and extend cluster end coordinates till the new MEI
         
@@ -31,7 +31,7 @@ class MEIcluster():
                               cluster_new_range
         """
 
-        beg, end = insertionRange(MEIObj, overhang)         
+        beg, end = insertionRange(MEIObj, offset)         
         self.end = end # Extend cluster end
         self.MEIlist.append(MEIObj)
 
@@ -57,19 +57,19 @@ def log(label, string):
     print "[" + label + "]", string
 
 
-def insertionRange(MEIObj, overhang):
+def insertionRange(MEIObj, offset):
     """
     Define MEI range as follows:
                 
                       range
        <------------------------------------>
-       beg [bkpA - CIPOS - overhang]        end [(bkpB or bkpA) - CIPOS - overhang]  
+       beg [bkpA - CIPOS - offset]        end [(bkpB or bkpA) - CIPOS - offset]  
     """
     bkpA = MEIObj.pos
     bkpB = int(MEIObj.infoDict["BKPB"]) if "BKPB" in MEIObj.infoDict else MEIObj.pos 
     CIPOS = int(MEIObj.infoDict["CIPOS"])
-    begRange = bkpA - CIPOS - overhang
-    endRange = bkpB + CIPOS + overhang
+    begRange = bkpA - CIPOS - offset
+    endRange = bkpB + CIPOS + offset
 
     return (begRange, endRange)
 
@@ -572,9 +572,74 @@ def dupFilter(MEIObj, dupList):
     return filterStatus   
 
 
+def falseSomaticSrcFilter(VCFlineObj, somaticMEIDict):
+    """    
+    Filter out false positive transductions. These are transductions mediated by a putative somatic MEI that has not been reported as TD0 in the sample. 
+    """
+    
+    filterStatus = 'FPSOURCE'
+    MEItype = VCFlineObj.infoDict["TYPE"]
+        
+    ## A) Insertion is a partnered or an orphan transduction mediated by a putative somatic source element:
+    if ((MEItype == "TD1") or (MEItype == "TD2")) and (VCFlineObj.infoDict["SRCTYPE"] == "SOMATIC"):
+        tdMEIObj = VCFlineObj 
+        srcChrom, srcBeg, srcEnd  = tdMEIObj.infoDict["SRC"].split("_")   
+
+        # There are L1 insertions in the same chromosome as the putative somatic source element:
+        if (tdMEIObj.infoDict["CLASS"] in somaticMEIDict) and (srcChrom in somaticMEIDict[tdMEIObj.infoDict["CLASS"]]):
+        
+            # Select all the insertions in the same chromosome where the putative somatic source element is located 
+            MEIObjList = somaticMEIDict[tdMEIObj.infoDict["CLASS"]][srcChrom]
+ 
+            ## Search if putative source element is in the TD0 list
+            for MEIObj in MEIObjList:
+                    
+                ## TD0 insertion. Determine if the insertion corresponds to the transduction source element:
+                if (MEIObj.infoDict["TYPE"] == "TD0"):
+                    soloMEIObj = MEIObj
+
+                    ## Define transduction putative source element insertion range for search for overlap
+                    begSrcRange = int(srcBeg) - 5000
+                    endSrcRange = int(srcEnd) + 5000
+            
+                    msg = "begSrcRange,endSrcRange: " + " " + str(begSrcRange) + " " + str(endSrcRange)
+                    log("FPSOURCE", msg)  
+    
+                    ## Define TD0 insertion range for searching for overlap:   
+                    begSoloRange, endSoloRange = insertionRange(soloMEIObj, 5000)     
+                    
+                    msg = "begSoloRange,endSoloRange: " + " " + str(begSoloRange) + " " + str(endSoloRange)
+    
+                    ## Check if both ranges overlap meaning that the TD0 would correspond to the transduction source element
+                    isSourceElement = overlap(begSrcRange, endSrcRange, begSoloRange, endSoloRange) 
+                
+                    ## a) TD0 corresponds to the source element mediating the transduction 
+                    if isSourceElement == True:
+                        msg = "overlap: " + " " + str(begSrcRange) + " " + str(endSrcRange) + " " + str(begSoloRange) + " " + str(endSoloRange)
+                        log("FPSOURCE", msg)  
+                        filterStatus = 'PASS'
+
+                        break
+
+                    ## b) TD0 does not correspond to the source element mediating the transduction
+                    else:
+                        msg = "not-overlap: " + " " + str(begSrcRange) + " " + str(endSrcRange) + " " + str(begSoloRange) + " " + str(endSoloRange)
+                        log("FPSOURCE", msg)  
+            
+                    
+                print "**************" 
+            
+    ## B) Insertion is not partnered or an orphan transduction mediated by a putative somatic source element.
+    # So, automatically pass the filter
+    else:
+        filterStatus = 'PASS'
+
+    return filterStatus
+
+
 def germlineFilter(somaticMEIObj, germlineMEIDict):
     """    
-
+    Filter out germline MEI miscalled as somatic. Check if insertion called as somatic is in a database of germline MEI. 
     """
 
     filterStatus = 'PASS'
@@ -598,8 +663,7 @@ def germlineFilter(somaticMEIObj, germlineMEIDict):
             
                 msg = "begSomaticRange,endSomaticRange: " + " " + str(begSomaticRange) + " " + str(endSomaticRange)
                 log("GERMLINE", msg)  
-                msg = "----------------------------"
-                log("GERMLINE", msg)  
+                msg = "----------------------------" 
 
                 ## For each germline MEI 
                 for germlineMEIObj in germlineMEIDict[somaticMEIObj.infoDict["CLASS"]][somaticMEIObj.chrom]:
@@ -635,10 +699,10 @@ import os.path
 from operator import attrgetter
 
 ## Get user's input ##
-parser = argparse.ArgumentParser(description= """""")
-parser.add_argument('VCF', help='...')
-parser.add_argument('donorId', help='...')
-parser.add_argument('filters', help='List of filters to be applied out of 4 possible filtering criteria: SCORE, REP, DUP and GERMLINE.')
+parser = argparse.ArgumentParser(description= "Applies a set of filters to a VCF file and set filter field as PASS or as a list with all the filters a given MEI failed to pass")
+parser.add_argument('VCF', help='VCF file to be filtered')
+parser.add_argument('donorId', help='Donor Id')
+parser.add_argument('filters', help='List of filters to be applied out of 5 possible filtering criteria: SCORE, REP, DUP, FPSOURCE and GERMLINE.')
 parser.add_argument('--score-L1-TD0', default=2, dest='scoreL1_TD0', type=int, help='Minimum assembly score for solo L1 insertions. Default 2.' )
 parser.add_argument('--score-L1-TD1', default=2, dest='scoreL1_TD1', type=int, help='Minimum assembly score for L1 partnered transductions. Default 2.' )
 parser.add_argument('--score-L1-TD2', default=2, dest='scoreL1_TD2', type=int, help='Minimum assembly score for L1 orphan transductions. Default 2.' )
@@ -687,7 +751,6 @@ print
 print "***** Executing ", scriptName, ".... *****"
 print
 
-
 ## Start ## 
 
 outFilePath = outDir + '/' + donorId + ".filtered.vcf"
@@ -728,7 +791,13 @@ if "DUP" in filterList:
 
     print "number_duplicates: ", len(dupList), dupList
 
-#### 3. Filter somatic MEI
+
+#### 3. Organize somatic MEI into a dictionary. 
+# False positive somatic source element filtering flag provided
+if "FPSOURCE" in filterList:
+    somaticMEIDict = organizeMEI(VCFObj.lineList)
+
+#### 4. Filter somatic MEI
 # Iterate over each somatic MEI in the VCF
 for VCFlineObj in VCFObj.lineList:
 
@@ -738,9 +807,8 @@ for VCFlineObj in VCFObj.lineList:
 
     msg ="Filter " + insertionType + ":" + RTclass + ":" + VCFlineObj.chrom + "_" + str(VCFlineObj.pos)
     subHeader(msg) 
-        
-
-    ### 3.1  Score filter:
+       
+    ### 4.1  Score filter:
     if "SCORE" in filterList:
         
         score = int(VCFlineObj.infoDict["SCORE"])
@@ -749,7 +817,6 @@ for VCFlineObj in VCFObj.lineList:
         log("SCORE", msg)
 
         ### Select the appropiate score threshold according to the insertion type
-
         # a) solo L1 insertion
         if (RTclass == "L1") and (insertionType == "TD0"):
         
@@ -812,7 +879,7 @@ for VCFlineObj in VCFObj.lineList:
         log("SCORE", msg)    
     
 
-    ### 3.2 Repeats filter:
+    ### 4.2 Repeats filter:
     if "REP" in filterList:
         
         msg = "Apply repeats filter"
@@ -841,7 +908,7 @@ for VCFlineObj in VCFObj.lineList:
         log("REPEATS", msg)  
 
 
-    ### 3.3 Duplicated insertions filter
+    ### 4.3 Duplicated insertions filter
     if "DUP" in filterList:
     
         msg = "Apply duplicated insertions filter"
@@ -857,7 +924,23 @@ for VCFlineObj in VCFObj.lineList:
         log("DUP", msg) 
 
 
-    ### 3.4 Germline insertions miscalled as somatic filter
+
+    ### 4.4 False positive somatic source element filter   
+    if "FPSOURCE" in filterList:
+        msg = "False positive somatic source element filter"
+        log("FPSOURCE", msg)
+    
+        filterStatus = falseSomaticSrcFilter(VCFlineObj, somaticMEIDict)
+
+        # Insertion does not pass the filter
+        if (filterStatus != 'PASS'):
+            failedFiltersList.append(filterStatus)
+
+        msg = "Filtering status: " + str(failedFiltersList)
+        log("FPSOURCE", msg) 
+
+
+    ### 4.5 Germline insertions miscalled as somatic filter
     if "GERMLINE" in filterList:
 
         msg = "Apply germline filter"

@@ -29,10 +29,13 @@ from operator import itemgetter, attrgetter, methodcaller
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('inputPath', help='Tabular text file containing one row per sample with the following consecutive fields: tumorSpecimenId   icgcDonorId vcfPath')
+parser.add_argument('fileName', help='Output file name')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.')
 
 args = parser.parse_args()
 inputPath = args.inputPath
+fileName = args.fileName
+
 outDir = args.outDir
 
 scriptName = os.path.basename(sys.argv[0])
@@ -41,6 +44,7 @@ scriptName = os.path.basename(sys.argv[0])
 print
 print "***** ", scriptName, " configuration *****"
 print "inputPath: ", inputPath
+print "fileName: ", fileName
 print "outDir: ", outDir
 print
 print "***** Executing ", scriptName, ".... *****"
@@ -48,13 +52,12 @@ print
 
 ## PROCESS VCF FILES
 #####################
-outPath = outDir + '/PCAWG_somaticRetrotransposonCounts_perSpecimen_0.5.7.tsv'
+outPath = outDir + '/' + fileName + '.tsv'
 
 outFile = open(outPath, 'w')
 
-         
 ## Write file header in the output file
-row = "icgc_donor_id" + "\t" + "dcc_project_code" + "\t" + "totalNbMEI" + "\t" + "nbL1" + "\t" + "nbAlu" + "\t" + "nbSVA" + "\t" + "nbERVK" + "\n"     
+row = "donorId" + "\t" + "tumorHistology" + "\t" + "totalNbMEI" + "\t" + "nbL1" + "\t" + "nbTd" + "\t" + "nbAlu" + "\t" + "nbSVA" + "\t" + "nbERVK" + "\n"     
 
 outFile.write(row)
 
@@ -67,10 +70,10 @@ for line in inputFile:
 
     tumorSpecimenId = line[0]
     icgcDonorId = line[1]
-    tumorType = line[2]
+    tumorHistology = line[2]
     vcfPath = line[3]
 
-    print "Processing: ", tumorSpecimenId, icgcDonorId, tumorType, vcfPath
+    print "Processing: ", tumorSpecimenId, icgcDonorId, tumorHistology, vcfPath
 
     # Create VCF object
     VCFObj = formats.VCF()
@@ -106,6 +109,8 @@ for line in inputFile:
                 if (MEIClass == "L1"):
                     nbL1 += 1
 
+                    
+
                 ## b) Alu
                 elif (MEIClass == "Alu"):
                     nbAlu += 1
@@ -119,7 +124,7 @@ for line in inputFile:
                     nbERVK += 1 
 
         ## Write MEI counts into the output file
-        row = tumorSpecimenId + "\t" + icgcDonorId + "\t" + tumorType + "\t" + str(totalNbMEI) + "\t" + str(nbL1) + "\t" + str(nbAlu) + "\t" + str(nbSVA) + "\t" + str(nbERVK) + "\n"      
+        row = tumorSpecimenId + "\t" + icgcDonorId + "\t" + tumorHistology + "\t" + str(totalNbMEI) + "\t" + str(nbL1) + "\t" + str(nbAlu) + "\t" + str(nbSVA) + "\t" + str(nbERVK) + "\n"      
         outFile.write(row)
 
 ## End ##
