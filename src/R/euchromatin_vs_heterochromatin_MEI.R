@@ -1,7 +1,7 @@
 # Inigo Martincorena - 24.11.2016
 # Relative density of transpositions in different colours of chromatin
 
-infile = "/Users/brodriguez/Research/Projects/Pancancer/Somatic/Analysis/TEIBA_0.5.7/GenomicDistribution/pos_class_somatic_MEI.txt"
+infile = "/Users/brodriguez/Research/Projects/Pancancer/Somatic/Analysis/TEIBA_0.5.7/GenomicDistribution/pos_class_germline_MEI.txt"
 
 # Libraries
 library("GenomicRanges")

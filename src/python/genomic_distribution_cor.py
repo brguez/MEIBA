@@ -115,105 +115,55 @@ print
 ##########################
 inputDf = pd.read_csv(inputFile, header=0, sep='\t')
 
-print "HOLA: ", inputDf
+print "inputDf: ", inputDf
 
+
+#### 2. Number L1 insertions and median replication time correlation
+#####################################################################
 fig = plt.figure(figsize=(6,6))
 ax1 = fig.add_subplot(1, 1, 1)
 plot = sns.jointplot("nbL1", "medianRT", data=inputDf, xlim=(0,30), kind="kde", space=0, dropna=True, cmap="Blues", stat_func=spearmanr)
+#sns.regplot("nbL1", "medianRT", data=inputDf, ax=plot.ax_joint, scatter=False)
 
 ## Save figure
 outPath = outDir + '/nbL1_medianRT_correlation.pdf'
 plt.savefig(outPath)
 
+#### 3. Number L1 insertions and median expression correlation
+###############################################################
+
+## Remove bins with NA values for gene expression (no bins with NA expression actually)
+filteredDf = inputDf.dropna(subset=["medianExpr"]) 
+
+## Add pseudocount to expression values (to avoid expr of 0) 
+pseudocount = 10
+filteredDf["medianExpr"] += pseudocount
+
+## Apply logarithm to expression values
+filteredDf["medianExpr"] += pseudocount
+
+filteredDf["log10MedianExpr"] = np.log10(filteredDf["medianExpr"])
+
+## Make plot
 fig = plt.figure(figsize=(6,6))
 ax2 = fig.add_subplot(1, 1, 1)
-plot = sns.jointplot("nbL1", "medianExpr", data=inputDf, xlim=(0,30), ylim=(0,700000), shade_lowest=True, kind="kde", space=0, dropna=True, cmap="Blues", stat_func=spearmanr)
+plot = sns.jointplot("nbL1", "log10MedianExpr", data=filteredDf, xlim=(0,30), ylim=(1,7), shade_lowest=True, kind="kde", space=0, dropna=True, cmap="Blues", stat_func=spearmanr)
+#sns.regplot("nbL1", "log10MedianExpr", data=filteredDf, ax=plot.ax_joint, scatter=False)
 
 ## Save figure
 outPath = outDir + '/nbL1_medianExpression_correlation.pdf'
 plt.savefig(outPath)
 
-sys.exit(1)
-signaturesDf = pd.read_csv(signatures, header=0, index_col=0, sep='\t')
-signaturesList = signaturesDf.columns.values.tolist()
+#### 4. Number L1 insertions and gene density correlation
+#####################################################################
+fig = plt.figure(figsize=(6,6))
+ax1 = fig.add_subplot(1, 1, 1)
+plot = sns.jointplot("nbL1", "geneDensity", data=inputDf, xlim=(0,30), kind="kde", space=0, dropna=True, cmap="Blues", stat_func=spearmanr)
+#sns.regplot("nbL1", "medianRT", data=inputDf, ax=plot.ax_joint, scatter=False)
 
-## Add the tumor type and the number of somatic L1 insertions to the signatures dataframe
-signaturesDf.insert(0, 'nbL1', rtCountsDf['nbL1'])
-signaturesDf.insert(0, 'tumorType', rtCountsDf['dcc_project_code'])
-
-## Remove those samples excluded from RT analysis (14 specimens are removed)
-signaturesFilteredDf = signaturesDf.dropna()
-
-
-#### 2. Compute nbL1/signatures correlation for each tumor type
-################################################################
-header("2. Compute nbL1/signatures correlation for each tumor type")
-
-## Make list with tumor types and signatures:
-
-tumorTypesList = set(signaturesFilteredDf['tumorType'].tolist())
-
-coeffDict = {}
-pvalueDict = {}
-
-## For each tumor type
-for tumorType in tumorTypesList:
-    
-    tumorTypeSignaturesDf = signaturesFilteredDf[signaturesFilteredDf['tumorType']  == tumorType]
-    
-    coeffDict[tumorType] = {}
-    pvalueDict[tumorType] = {}
-
-    ## For each signature
-    for signature in signaturesList:
-        
-        nbL1 = tumorTypeSignaturesDf['nbL1'].tolist()
-        exposures = tumorTypeSignaturesDf[signature].tolist()
-       
-        # a) All values equal to 0 either for L1 events or signatures exposure
-        if all(v == 0 for v in nbL1) or all(v == 0 for v in exposures):
-            coefficient = "NA"
-            pvalue = "NA"
-        
-        # b) Not all values equal to 0. 
-        else:
-            fileName = outDir + '/Pictures/' + tumorType + '_' + signature 
-            coefficient, pvalue = scatterCorr(nbL1, exposures, 0.25, fileName)
-
-        ## Save rho and pvalues into dictionary
-        coeffDict[tumorType][signature] = coefficient
-        pvalueDict[tumorType][signature] = pvalue
-
-
-
-## 3. Convert into dataframes and print output
-#### Coefficients
-# Create pandas dataframe from dictionary
-coeffDf = pd.DataFrame(coeffDict) 
-
-# transpose dataframe
-coeffDf = coeffDf.T 
-
-# Reorder signatures
-coeffDf = coeffDf[signaturesList]
-
-# Save output into tsv
-outFilePath = outDir + '/RT_tumortypes_signatures_corr.coefficients.tsv'
-coeffDf.to_csv(outFilePath, sep='\t') 
-
-#### P-values
-# Create pandas dataframe from dictionary
-pvalueDf = pd.DataFrame(pvalueDict) 
-
-# transpose dataframe
-pvalueDf = pvalueDf.T 
-
-# Reorder signatures
-pvalueDf = pvalueDf[signaturesList]
-
-# Save output into tsv
-outFilePath = outDir + '/RT_tumortypes_signatures_corr.pvalues.tsv'
-pvalueDf.to_csv(outFilePath, sep='\t') 
+## Save figure
+outPath = outDir + '/nbL1_geneDensity_correlation.pdf'
+plt.savefig(outPath)
 
 ####
 header("Finished")
