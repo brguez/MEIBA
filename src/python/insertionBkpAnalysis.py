@@ -608,8 +608,8 @@ class insertion():
             # No informative contigs
             self.score = '2'
     
-            # A) L1-mediated deletion. Use deletion beg and end rough coordinates
-            if (self.grInfo == "DEL"):
+            # A) L1-mediated rearrangement. Use rearrangement beg and end rough coordinates
+            if (self.grInfo in ["DEL", "DUP", "TRANS"]):
                 insertionCoordList = self.coordinates.split("_")
                 chrom = str(insertionCoordList[0])
                 beg = int(insertionCoordList[1])
@@ -619,7 +619,7 @@ class insertion():
                 self.bkpB = [chrom, end, "NA"]
                 self.targetSiteSize = beg - end
 
-            # B) Insertion do not associated with a deletion. Imprecise bkp
+            # B) Insertion do not associated with a rearrangement. Imprecise bkp
             else:
                 self.bkpA = self.imprecise_bkp(self.coordinates)
 
@@ -823,8 +823,8 @@ class insertion():
             # A) 5' bkp characterized
             if (bkpCoord3prime == "UNK"):
 
-                # a) L1-mediated deletion. Use deletion beg and end rough coordinates
-                if (self.grInfo == "DEL"):
+                # a) L1-mediated rearrangement. Use rearrangement beg and end rough coordinates
+                if (self.grInfo in ["DEL", "DUP", "TRANS"]):
                     insertionCoordList = self.coordinates.split("_")
                     chrom = str(insertionCoordList[0])
                     
@@ -847,7 +847,7 @@ class insertion():
 
                     self.targetSiteSize = beg - end
 
-                # b) Insertion do not associated with a deletion.
+                # b) Insertion do not associated with a rearrangement.
                 else:
 
                     self.informativeContigIdBkpA = informative5primeContigObj.ID
@@ -857,8 +857,8 @@ class insertion():
             # B) 3' bkp characterized
             elif (bkpCoord5prime == "UNK"):
 
-                # a) L1-mediated deletion. Use deletion beg and end rough coordinates
-                if (self.grInfo == "DEL"):
+                # a) L1-mediated rearrangement. Use rearrangement beg and end rough coordinates
+                if (self.grInfo in ["DEL", "DUP", "TRANS"]):
                     insertionCoordList = self.coordinates.split("_")
                     chrom = str(insertionCoordList[0])
                     
@@ -881,7 +881,7 @@ class insertion():
 
                     self.targetSiteSize = beg - end
 
-                # b) Insertion do not associated with a deletion.
+                # b) Insertion do not associated with a rearrangement.
                 else:
 
                     self.informativeContigIdBkpA = informative3primeContigObj.ID
