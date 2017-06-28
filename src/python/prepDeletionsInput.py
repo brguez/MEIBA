@@ -6,8 +6,8 @@
 
 #   CSV files.
 # Input:
-#   1) eventsFile:  TAB-separated file containing at least 7 fields:
-#                   cancer_id	donor_id	tumor_sample	chr	start	end	length
+#   1) eventsFile:  TAB-separated file containing 6 fields:
+#                   cancer_id	donor_id	    tumor_sample	    chr	start	end
 #   2) samplesPath: Directory containing cluster meta info for samples.
 #                   Expected structure:
 #                     data/L1-DEL/samples/
@@ -163,27 +163,27 @@ def computeTdRnaLen(begSource, endSource, strandSource, tdBeg, tdEnd):
     if (strandSource == "plus"):
                      
         strandSource = "+"
-        tdBeg = endSource
-        tdEnd = tdEnd
-        tdRnaLen = str(int(tdEnd) - int(tdBeg))
+        tdRnaBeg = endSource
+        tdRnaEnd = tdEnd
+        tdRnaLen = str(int(tdRnaEnd) - int(tdRnaBeg))
         
     # b) Source element in reverse
     elif (strandSource == "minus"):
 
         strandSource = "-"
-        tdBeg = tdBeg
-        tdEnd = begSource
-        tdRnaLen = str(int(tdEnd) - int(tdBeg))
+        tdRnaBeg = tdBeg
+        tdRnaEnd = begSource
+        tdRnaLen = str(int(tdRnaEnd) - int(tdRnaBeg))
         
     # c) Unknown orientation  
     else:
 
-        tdBeg = tdBeg
-        tdEnd = tdEnd
+        tdRnaBeg = tdBeg
+        tdRnaEnd = tdEnd
         tdRnaLen = "NA"
 
-    return (strandSource, tdBeg, tdEnd, tdRnaLen)
-
+    return (strandSource, tdRnaBeg, tdRnaEnd, tdRnaLen)
+    
 
 def log(msg, event_type="INFO"):
     outfile = sys.stdout
@@ -237,12 +237,12 @@ if __name__ == "__main__":
             continue
         row = line.strip().split('\t')
         if len(row) >= 7:
-          study, donor, sample, chrom, start, end = row[:6]
+          study, donor, sample, chrom, start, end, rgType = row[:7]
           id_sample = (study, donor, sample)
           if id_sample not in samples_events:
               samples_events[id_sample] = []
               num_samples += 1
-          samples_events[id_sample] += [(chrom, start, end)]
+          samples_events[id_sample] += [(chrom, start, end, rgType)]
           num_events += 1
 
     log("Found %d deletion events for %d samples" % (num_events, num_samples))
@@ -318,12 +318,12 @@ if __name__ == "__main__":
                 chrom, beg, end, num, klass, reads, chromSource, begSource, endSource, strandSource, tdChrom, tdBeg, tdEnd = row[:13]
                 clust_del_m_beg[(chrom, beg)] = (chrom, beg, end, num, klass, reads, chromSource, begSource, endSource, strandSource, tdChrom, tdBeg, tdEnd)
 
-
+    
         # combine cluster info for registered deletions
         #################################################
         id_sample = (study, donor, sample)
         with open(os.path.join(outdir, "L1-del.txt"), 'wt') as outfile:
-            for chrom, beg, end in samples_events[id_sample]:
+            for chrom, beg, end, rgType in samples_events[id_sample]:
                 insertionType = "NA"
 
                 #### determine transduction type (TD0: solo, TD1: partnered, TD2: orphan)
@@ -346,7 +346,7 @@ if __name__ == "__main__":
 
                     tdCoords = tdChrom + ":" + tdBeg + "-" + tdEnd
                     cytobandId, sourceType, begSource, endSource = isGermlineSource(tdCoords, sourceMetadataDict)
-                    strandSource, tdBeg, tdEnd, tdRnaLen = computeTdRnaLen(begSource, endSource, strandSource, tdBeg, tdEnd)
+                    strandSource, tdRnaBeg, tdRnaEnd, tdRnaLen = computeTdRnaLen(begSource, endSource, strandSource, tdBeg, tdEnd)
                     tdLen = str(int(tdEnd) - int(tdBeg)) 
 
 
@@ -378,9 +378,9 @@ if __name__ == "__main__":
                     num_events_missed += 1
                     continue
 
-                outline = chromPlus + "\t" + begPlus + "\t" + endPlus + "\t" + nbReadsPlus + "\t" + classPlus + "\t" + readListPlus + "\t" + chromMinus + "\t" + begMinus + "\t" + endMinus + "\t" + nbReadsMinus + "\t" + classMinus + "\t" + readListMinus + "\t" + insertionType + "\t" + cytobandId + "\t" + sourceType + "\t" + chromSource + "\t" + begSource + "\t" + endSource + "\t" + strandSource + "\t" + tdBeg + "\t" + tdEnd + "\t" + tdRnaLen + "\t" + tdLen + "\t" + psdGene + "\t" + chromExonA + "\t" + begExonA + "\t" + endExonA + "\t" + chromExonB + "\t" + begExonB + "\t" + endExonB + "\t" + "DEL"         
+                outline = chromPlus + "\t" + begPlus + "\t" + endPlus + "\t" + nbReadsPlus + "\t" + classPlus + "\t" + readListPlus + "\t" + chromMinus + "\t" + begMinus + "\t" + endMinus + "\t" + nbReadsMinus + "\t" + classMinus + "\t" + readListMinus + "\t" + insertionType + "\t" + cytobandId + "\t" + sourceType + "\t" + chromSource + "\t" + begSource + "\t" + endSource + "\t" + strandSource + "\t" + tdBeg + "\t" + tdEnd + "\t" + tdRnaLen + "\t" + tdLen + "\t" + psdGene + "\t" + chromExonA + "\t" + begExonA + "\t" + endExonA + "\t" + chromExonB + "\t" + begExonB + "\t" + endExonB + "\t" + rgType       
                 print(outline, file=outfile)
-
+    
     log("Skipped events: %d (of %d)" % (num_events_missed, num_events))
 
 
