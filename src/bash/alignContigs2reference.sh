@@ -165,8 +165,9 @@ echo "1. Make fasta with target dna region for blat alignment" >&1
 
 read family tdType chr beg end cluster <<<$(echo $insertionId | awk '{split($1, info, ":"); family=info[1]; tdType=info[2]; cluster=info[4]; split(info[3], coord, "_"); chr=coord[1]; beg=coord[2]; end=coord[3]; print family, tdType, chr, beg, end, cluster;}')
 
-targetBeg=`expr $beg - $windowSize`
-targetEnd=`expr $end + $windowSize`
+if [ $beg != "UNK" ]; then targetBeg=`expr $beg - $windowSize`; else targetBeg=`expr $end - $windowSize`; fi
+if [ $end != "UNK" ]; then targetEnd=`expr $end + $windowSize`; else targetEnd=`expr $beg + $windowSize`; fi
+    
 if [ "$targetBeg" -lt 0 ]; then targetBeg=0; fi # Set lower-bound to 0 (avoid negative coordinates)
 targetInterval=$chr":"$targetBeg"-"$targetEnd
 

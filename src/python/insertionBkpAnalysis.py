@@ -340,7 +340,9 @@ class VCFline():
         self.filter = "."
         self.info = self.make_info(insertionObj)
         self.format = "RCP:RCN:SL"
-        self.genoType = str(insertionObj.clusterPlusObj.nbPairs) + ":" + str(insertionObj.clusterMinusObj.nbPairs) + ":" + insertionObj.sampleId
+        RP = str(insertionObj.clusterPlusObj.nbPairs if (insertionObj.clusterPlusObj != "NA") else "NA")
+        RN = str(insertionObj.clusterMinusObj.nbPairs if (insertionObj.clusterMinusObj != "NA") else "NA")
+        self.genoType = RP + ":" + RN + ":" + insertionObj.sampleId
 
     def make_info(self, insertionObj):
         """
@@ -377,8 +379,8 @@ class VCFline():
         infoDict["GR"] = insertionObj.grInfo
         infoDict["CONTIGA"] = insertionObj.informativeContigBkpA
         infoDict["CONTIGB"] = insertionObj.informativeContigBkpB
-        infoDict["RP"] = insertionObj.clusterPlusObj.readPairIds
-        infoDict["RN"] = insertionObj.clusterMinusObj.readPairIds
+        infoDict["RP"] = insertionObj.clusterPlusObj.readPairIds if (insertionObj.clusterPlusObj != "NA") else "NA"
+        infoDict["RN"] = insertionObj.clusterMinusObj.readPairIds if (insertionObj.clusterMinusObj != "NA") else "NA"
 
         ## Create info string in the correct order from dictionary
         infoList = []
@@ -439,10 +441,12 @@ class insertion():
         self.TEClass = TEClass
         self.tdType = tdType
         self.coordinates = coordinates
-        self.clusterPlusObj = self.create_cluster("+", contigsPlusPath, blatPlusPath, readPairsPlus)
-        self.clusterMinusObj = self.create_cluster("-", contigsMinusPath, blatMinusPath, readPairsMinus)
+        self.clusterPlusObj = self.create_cluster("+", contigsPlusPath, blatPlusPath, readPairsPlus) if readPairsPlus != 'NA' else 'NA'        
+        self.clusterMinusObj = self.create_cluster("-", contigsMinusPath, blatMinusPath, readPairsMinus) if readPairsMinus != 'NA' else 'NA'    
         self.grInfo = grInfo
         self.sampleId = sampleId
+
+        print "TIOO: ", self.TEClass, self.tdType, self.coordinates, self.clusterPlusObj, self.clusterMinusObj, self.grInfo, self.sampleId
 
         # A) Solo insertion (TD0). Not applicable
         if (self.tdType == "TD0"):
@@ -574,15 +578,24 @@ class insertion():
             5) polyA. Poly-A sequence.
         """
 
-        ## Find informative contig for + cluster 
-        subHeader("Searching informative contigs for + cluster")
+        ### Find informative contig for + cluster if possible 
+        if (self.clusterPlusObj != "NA"):
+            subHeader("Searching informative contigs for + cluster")
+            bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj = self.clusterPlusObj.find_informative_contigs(self.coordinates, self.tdType, self.tdCoord)
 
-        bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj = self.clusterPlusObj.find_informative_contigs(self.coordinates, self.tdType, self.tdCoord)
+        else:
+            subHeader("Not available contigs for + cluster")
+            bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj = ["UNK", "UNK"]
 
-        ## Find informative contig for - cluster
-        subHeader("Searching informative contigs for - cluster")
-
-        bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj = self.clusterMinusObj.find_informative_contigs(self.coordinates, self.tdType, self.tdCoord)
+        
+        ### Find informative contig for - cluster if possible
+        if (self.clusterMinusObj != "NA"):
+            subHeader("Searching informative contigs for - cluster")
+            bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj = self.clusterMinusObj.find_informative_contigs(self.coordinates, self.tdType, self.tdCoord)
+        
+        else:
+            subHeader("Not available contigs for - cluster")
+            bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj = ["UNK", "UNK"]
 
         ### Determine insertion breakpoints, TS and TE orientation from informative contigs 
         subHeader("Determining insertion breakpoint, TS and TE orientation from informative contigs")
@@ -613,11 +626,12 @@ class insertion():
                 insertionCoordList = self.coordinates.split("_")
                 chrom = str(insertionCoordList[0])
                 beg = int(insertionCoordList[1])
-                end = int(insertionCoordList[2])
+                end = insertionCoordList[2]
 
                 self.bkpA = [chrom, beg, "NA"]
                 self.bkpB = [chrom, end, "NA"]
-                self.targetSiteSize = beg - end
+
+                self.targetSiteSize = beg - int(end) if end != "UNK" else "UNK"
 
             # B) Insertion do not associated with a rearrangement. Imprecise bkp
             else:
@@ -2134,9 +2148,10 @@ class blat_alignment():
         """
         coordsList = coords.split("_")
         chrom = coordsList[0]
-        beg = int(coordsList[1]) - windowSize
-        end = int(coordsList[2]) + windowSize
-                
+
+        beg = int(coordsList[1]) - windowSize if coordsList[1] != "UNK" else int(coordsList[2]) - windowSize
+        end = int(coordsList[2]) + windowSize if coordsList[2] != "UNK" else int(coordsList[1]) + windowSize 
+         
         # A) Within target region
         if (chrom == self.tName) and (self.tBeg >= beg) and (self.tEnd <= end):
             insertionRegion = 1
@@ -2327,6 +2342,8 @@ if __name__ == "__main__":
         line = line.rstrip('\n')
         line = line.split("\t")
 
+        print "HOLAAA: ", line
+
         # Get TE insertion info and files
         insertionInfo = line[0]
         TEClass, tdType, insertionCoord = insertionInfo.split(":")
@@ -2342,11 +2359,12 @@ if __name__ == "__main__":
         # Perform breakpoint analysis for the TE insertion
         header("Tranposable Element Insertion Breakpoint Analysis (TEIBA) for: " + insertionCoord)
 
-        # A) All the input files exist
-        if os.path.isfile(contigsPlusPath) and os.path.isfile(blatPlusPath) and os.path.isfile(contigsMinusPath) and os.path.isfile(blatMinusPath):
+        # A) All the input files exist or they are not applicable (NA)
+        if (contigsPlusPath == "NA" or os.path.isfile(contigsPlusPath)) and (blatPlusPath == "NA" or os.path.isfile(blatPlusPath)) and (contigsMinusPath == "NA" or os.path.isfile(contigsMinusPath)) and (blatMinusPath == "NA" or os.path.isfile(blatMinusPath)):
 
             ## Create insertion object and identify breakpoints from assembled contigs
             insertionObj = insertion(TEClass, tdType, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo, pseudogeneInfo, grInfo, sampleId)
+
             insertionObj.find_insertionBkp(genomeObj, outDir)
 
             ## Create VCFline object

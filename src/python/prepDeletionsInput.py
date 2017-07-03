@@ -250,7 +250,7 @@ if __name__ == "__main__":
     # 2) parse sample files, outputting TEIBA input info for previously registered events
     num_events_missed = 0
     for study, donor, sample in sorted(samples_events):
-        #log("%s_%s_%s" % (study, donor, sample))
+        log("%s_%s_%s" % (study, donor, sample))
         # create output folder
         outdir = os.path.join(args.outputDir, study, donor, sample)
         try:
@@ -323,8 +323,15 @@ if __name__ == "__main__":
         #################################################
         id_sample = (study, donor, sample)
         with open(os.path.join(outdir, "L1-del.txt"), 'wt') as outfile:
-            for chrom, beg, end, rgType in samples_events[id_sample]:
-                insertionType = "NA"
+            for chrom, begTmp, endTmp, rgType in samples_events[id_sample]:
+
+                ## Sanity check to make sure begin < end
+                if (begTmp == "UNK") or ((endTmp != "UNK") and (int(begTmp) > int(endTmp))): 
+                    beg = endTmp      
+                    end = begTmp
+                else:
+                    beg = begTmp
+                    end = endTmp                     
 
                 #### TraFiC cluster available for rearrangement beg and end coordinates
                 ## A) Solo insertion. Normal positive and negative cluster
@@ -349,6 +356,8 @@ if __name__ == "__main__":
                     strandSource, tdRnaBeg, tdRnaEnd, tdRnaLen = computeTdRnaLen(begSource, endSource, strandSource, tdBeg, tdEnd)
                     tdLen = str(int(tdEnd) - int(tdBeg)) 
 
+                    psdGene, chromExonA, begExonA, endExonA, chromExonB, begExonB, endExonB = ["NA"] * 7
+
                 ## C) Partnered transduction. Normal positive cluster and transduction-like negative cluster
                 elif ((chrom,beg) in clust_norm_p_end) and ((chrom,end) in clust_del_m_beg):
                     insertionType = "TD1"
@@ -359,6 +368,8 @@ if __name__ == "__main__":
                     cytobandId, sourceType, begSource, endSource = isGermlineSource(tdCoords, sourceMetadataDict)
                     strandSource, tdBeg, tdEnd, tdRnaLen = computeTdRnaLen(begSource, endSource, strandSource, tdBeg, tdEnd)
                     tdLen = tdRnaLen
+
+                    psdGene, chromExonA, begExonA, endExonA, chromExonB, begExonB, endExonB = ["NA"] * 7
 
                 ## D) Partnered transduction. Transduction-like positive cluster and normal negative cluster
                 elif ((chrom,beg) in clust_del_p_end) and ((chrom,end) in clust_norm_m_beg):
@@ -371,6 +382,7 @@ if __name__ == "__main__":
                     strandSource, tdBeg, tdEnd, tdRnaLen = computeTdRnaLen(begSource, endSource, strandSource, tdBeg, tdEnd)
                     tdLen = tdRnaLen
 
+                    psdGene, chromExonA, begExonA, endExonA, chromExonB, begExonB, endExonB = ["NA"] * 7
 
                 #### TraFiC cluster available for rearrangement beg or end coordinates
                 elif ((chrom,beg) in clust_norm_p_end):    
@@ -378,8 +390,6 @@ if __name__ == "__main__":
                     chromPlus, begPlus, endPlus, nbReadsPlus, classPlus, readListPlus = clust_norm_p_end[chrom,beg]
                     chromMinus, begMinus, endMinus, classMinus = [chrom, end, end, classPlus]
                     nbReadsMinus, readListMinus, cytobandId, sourceType, chromSource, begSource, endSource, strandSource, tdBeg, tdEnd, tdRnaLen, tdLen, psdGene, chromExonA, begExonA, endExonA, chromExonB, begExonB, endExonB = ["NA"] *  19
-
-                    print("EIII clust_norm_p_end")    
                 
                 elif ((chrom,end) in clust_norm_m_beg): 
                     insertionType = "TD0"                    
@@ -387,22 +397,35 @@ if __name__ == "__main__":
                     chromPlus, begPlus, endPlus, classPlus = [chrom, beg, beg, classMinus]
 
                     nbReadsPlus, readListPlus, cytobandId, sourceType, chromSource, begSource, endSource, strandSource, tdBeg, tdEnd, tdRnaLen, tdLen, psdGene, chromExonA, begExonA, endExonA, chromExonB, begExonB, endExonB = ["NA"] *  19
-                    print("EIII clust_norm_m_beg")    
-
-                elif ((chrom,end) in clust_del_p_end):
+                
+                elif ((chrom,beg) in clust_del_p_end):
                     insertionType = "TD2"
-                    chromPlus, begPlus, endPlus, nbReadsPlus, classPlus, readListPlus, chromSource, begSource, endSource, strandSource, tdChrom, tdBegPlus, tdEndPlus = clust_del_p_end[chrom,beg]
-                    print("EIII clust_del_p_end")    
+                    chromPlus, begPlus, endPlus, nbReadsPlus, classPlus, readListPlus, chromSource, begSource, endSource, strandSource, tdChrom, tdBeg, tdEnd = clust_del_p_end[chrom,beg]
+                    chromMinus, begMinus, endMinus, classMinus = [chrom, end, end, classPlus]
+                    
+                    tdCoords = tdChrom + ":" + tdBeg + "-" + tdEnd
+                    cytobandId, sourceType, begSource, endSource = isGermlineSource(tdCoords, sourceMetadataDict)
+                    strandSource, tdRnaBeg, tdRnaEnd, tdRnaLen = computeTdRnaLen(begSource, endSource, strandSource, tdBeg, tdEnd)
+                    tdLen = str(int(tdEnd) - int(tdBeg)) 
+
+                    nbReadsMinus, readListMinus, psdGene, chromExonA, begExonA, endExonA, chromExonB, begExonB, endExonB = ["NA"] *  9
 
                 elif ((chrom,end) in clust_del_m_beg):
                     insertionType = "TD2"
-                    chromMinus, begMinus, endMinus, nbReadsMinus, classMinus, readListMinus, chromSource, begSource, endSource, strandSource, tdChrom, tdBegMinus, tdEndMinus = clust_del_m_beg[chrom,end]
+                    chromMinus, begMinus, endMinus, nbReadsMinus, classMinus, readListMinus, chromSource, begSource, endSource, strandSource, tdChrom, tdBeg, tdEnd = clust_del_m_beg[chrom,end]
+                    chromPlus, begPlus, endPlus, classPlus = [chrom, beg, beg, classMinus]
 
-                    print("EIII clust_del_m_beg")    
+                    tdCoords = tdChrom + ":" + tdBeg + "-" + tdEnd
+                    cytobandId, sourceType, begSource, endSource = isGermlineSource(tdCoords, sourceMetadataDict)
+                    strandSource, tdRnaBeg, tdRnaEnd, tdRnaLen = computeTdRnaLen(begSource, endSource, strandSource, tdBeg, tdEnd)
+                    tdLen = str(int(tdEnd) - int(tdBeg)) 
 
+                    nbReadsPlus, readListPlus, psdGene, chromExonA, begExonA, endExonA, chromExonB, begExonB, endExonB = ["NA"] *  9
 
                 #### TraFiC cluster not available for rearrangement beg nor end coordinates
-
+                else:
+                    insertionType = "NA"
+               
                 #print("# %s, %s, %s, %s, %s, %s #" % (study, donor, sample, chrom, beg, end))
                 if insertionType == "NA":
                     log("Missing cluster info for deletion", "WARN")

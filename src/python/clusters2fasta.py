@@ -133,7 +133,7 @@ for line in insertions:
             print >>sys.stderr, "[ERROR] Filtering out an insertion in a chromosome not included in the provided reference genome: ", line
 
         ## B) Insertion with inconsistent number of supporting reads. Number does not match with readId list length
-        elif (int(nbReadsPlus) != len(readPairListPlus)) or (int(nbReadsMinus) != len(readPairListMinus)):
+        elif ((nbReadsPlus != "NA") and (int(nbReadsPlus) != len(readPairListPlus))) or ((nbReadsMinus != "NA") and (int(nbReadsMinus) != len(readPairListMinus))):
             print >>sys.stderr, "[ERROR] Filtering out an insertion with inconsistent number of supporting reads. Number does not match with read identifier list length: ", line
 
         ## C) Insertion with everything ok
@@ -160,19 +160,27 @@ for line in insertions:
             ## b) Not duplicated insertion
             else:
 
-                ## Initialize dictionary keys for + and - clusters: 
-                supportingReadsDict[insertionIdPlus] = {}
-                supportingReadsDict[insertionIdMinus] = {}
+                ### a) + Cluster 
+                if (readPairListPlus[0] != "NA"):
 
-                ## Add the list with mate 1 and mate 2 sequences as value for + and - clusters:
-                # a) + Cluster
-                for pairId in readPairListPlus:
-                    supportingReadsDict[insertionIdPlus][pairId] = fastaDict[pairId]
-    
-                # b) - Cluster
-                for pairId in readPairListMinus:
-                    supportingReadsDict[insertionIdMinus][pairId] = fastaDict[pairId]
+                    ## Initialize dictionary key
+                    supportingReadsDict[insertionIdPlus] = {}
 
+                    ## Add the list with mate 1 and mate 2 sequences as value 
+                    for pairId in readPairListPlus:
+                        supportingReadsDict[insertionIdPlus][pairId] = fastaDict[pairId]
+
+
+
+                ### b) - Cluster
+                if (readPairListMinus[0] != "NA"):
+                    
+                    ## Initialize dictionary key
+                    supportingReadsDict[insertionIdMinus] = {}
+
+                    ## Add the list with mate 1 and mate 2 sequences as value 
+                    for pairId in readPairListMinus:
+                        supportingReadsDict[insertionIdMinus][pairId] = fastaDict[pairId]  
 
     ## Line without the expected number of columns            
     else:

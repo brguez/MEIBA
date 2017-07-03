@@ -995,10 +995,21 @@ echo -n "" > $paths2bkpAnalysis
 
 cat $insertionListInfo | while read insertionId readPairsPlus readPairsMinus sourceElementInfo transductionInfo pseudogeneInfo rgInfo;
 do
+    ## Contig plus
     contigPlusPath=${contigsDir}/${insertionId}:+.contigs.fa
+    if [[ ! -s $contigPlusPath ]]; then contigPlusPath="NA"; fi
+        
+    ## Contig minus
     contigMinusPath=${contigsDir}/${insertionId}:-.contigs.fa
+    if [[ ! -s $contigMinusPath ]]; then contigMinusPath="NA"; fi
+
+    ## Blat plus
     blatPlusPath=${blatDir}/${insertionId}:+.psl
+    if [[ ! -s $blatPlusPath ]]; then blatPlusPath="NA"; fi    
+
+    ## Blat minus
     blatMinusPath=${blatDir}/${insertionId}:-.psl
+    if [[ ! -s $blatMinusPath ]]; then blatMinusPath="NA"; fi    
 
     printf ${insertionId}"\t"${contigPlusPath}","${contigMinusPath}"\t"${blatPlusPath}","${blatMinusPath}"\t"${readPairsPlus}"\t"${readPairsMinus}"\t"${sourceElementInfo}"\t"${transductionInfo}"\t"${pseudogeneInfo}"\t"${rgInfo}"\n" >> $paths2bkpAnalysis
 done
