@@ -247,6 +247,7 @@ if __name__ == "__main__":
 
     log("Found %d deletion events for %d samples" % (num_events, num_samples))
 
+
     # 2) parse sample files, outputting TEIBA input info for previously registered events
     num_events_unk = 0
     for study, donor, sample in sorted(samples_events):
@@ -323,6 +324,12 @@ if __name__ == "__main__":
         #################################################
         id_sample = (study, donor, sample)
         with open(os.path.join(outdir, "L1-del.txt"), 'wt') as outfile:
+    
+            ### Print header into the output file
+            header="#chromPlus\tbegPlus\tendPlus\tnbReadsPlus\tclassPlus\treadListPlus\tchromMinus\tbegMinus\tendMinus\tnbReadsMinus\tclassMinus\treadListMinus\tinsertionType\tcytobandId\tsourceType\tchromSource\tbegSource\tendSource\tstrandSource\ttdBeg\ttdEnd\ttdRnaLen\ttdLen\tpsdGene\tchromExonA\tbegExonA\tendExonA\tchromExonB\tbegExonB\tendExonB\tgrType"
+
+            print(header, file=outfile)
+
             for chrom, beg, end, rgType in samples_events[id_sample]:
 
                 #### TraFiC cluster available for rearrangement beg and end coordinates
