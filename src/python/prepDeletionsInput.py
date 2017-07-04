@@ -248,7 +248,7 @@ if __name__ == "__main__":
     log("Found %d deletion events for %d samples" % (num_events, num_samples))
 
     # 2) parse sample files, outputting TEIBA input info for previously registered events
-    num_events_missed = 0
+    num_events_unk = 0
     for study, donor, sample in sorted(samples_events):
         log("%s_%s_%s" % (study, donor, sample))
         # create output folder
@@ -323,15 +323,7 @@ if __name__ == "__main__":
         #################################################
         id_sample = (study, donor, sample)
         with open(os.path.join(outdir, "L1-del.txt"), 'wt') as outfile:
-            for chrom, begTmp, endTmp, rgType in samples_events[id_sample]:
-
-                ## Sanity check to make sure begin < end
-                if (begTmp == "UNK") or ((endTmp != "UNK") and (int(begTmp) > int(endTmp))): 
-                    beg = endTmp      
-                    end = begTmp
-                else:
-                    beg = begTmp
-                    end = endTmp                     
+            for chrom, beg, end, rgType in samples_events[id_sample]:
 
                 #### TraFiC cluster available for rearrangement beg and end coordinates
                 ## A) Solo insertion. Normal positive and negative cluster
@@ -423,20 +415,32 @@ if __name__ == "__main__":
                     nbReadsPlus, readListPlus, psdGene, chromExonA, begExonA, endExonA, chromExonB, begExonB, endExonB = ["NA"] *  9
 
                 #### TraFiC cluster not available for rearrangement beg nor end coordinates
+                ## Assume insertion type is TD0.
                 else:
-                    insertionType = "NA"
-               
-                #print("# %s, %s, %s, %s, %s, %s #" % (study, donor, sample, chrom, beg, end))
-                if insertionType == "NA":
-                    log("Missing cluster info for deletion", "WARN")
+                    insertionType = "TD0"
+                    num_events_unk += 1
+                    chromPlus, begPlus, endPlus, classPlus = [chrom, beg, beg, "L1"]
+                    chromMinus, begMinus, endMinus, classMinus = [chrom, end, end, "L1"]
+                    nbReadsPlus, readListPlus, nbReadsMinus, readListMinus, cytobandId, sourceType, chromSource, begSource, endSource, strandSource, tdBeg, tdEnd, tdRnaLen, tdLen, psdGene, chromExonA, begExonA, endExonA, chromExonB, begExonB, endExonB = ["NA"] *  21
                     print("MISSING: ", chrom, beg, end, rgType, id_sample)
-                    num_events_missed += 1
-                    continue
 
+
+                ## Swap clusters if  begin < end or UNK is at positive cluster coordinates while not at negative
+                #       
+                if ((beg == "UNK") and (end != "UNK")) or ((beg != "UNK") and (end != "UNK") and (int(beg) > int(end))): 
+                    
+                    chromPlusTmp, begPlusTmp, endPlusTmp, nbReadsPlusTmp, classPlusTmp, readListPlusTmp = [chromMinus, begMinus, endMinus, nbReadsMinus, classMinus, readListMinus]
+                    chromMinusTmp, begMinusTmp, endMinusTmp, nbReadsMinusTmp, classMinusTmp, readListMinusTmp = [chromPlus, begPlus, endPlus, nbReadsPlus, classPlus, readListPlus]  
+
+                    chromPlus, begPlus, endPlus, nbReadsPlus, classPlus, readListPlus = [chromPlusTmp, begPlusTmp, endPlusTmp, nbReadsPlusTmp, classPlusTmp, readListPlusTmp]
+                    chromMinus, begMinus, endMinus, nbReadsMinus, classMinus, readListMinus = [chromMinusTmp, begMinusTmp, endMinusTmp, nbReadsMinusTmp, classMinusTmp, readListMinusTmp]
+
+
+                ## Print properly formated line into the output file
                 outline = chromPlus + "\t" + begPlus + "\t" + endPlus + "\t" + nbReadsPlus + "\t" + classPlus + "\t" + readListPlus + "\t" + chromMinus + "\t" + begMinus + "\t" + endMinus + "\t" + nbReadsMinus + "\t" + classMinus + "\t" + readListMinus + "\t" + insertionType + "\t" + cytobandId + "\t" + sourceType + "\t" + chromSource + "\t" + begSource + "\t" + endSource + "\t" + strandSource + "\t" + tdBeg + "\t" + tdEnd + "\t" + tdRnaLen + "\t" + tdLen + "\t" + psdGene + "\t" + chromExonA + "\t" + begExonA + "\t" + endExonA + "\t" + chromExonB + "\t" + begExonB + "\t" + endExonB + "\t" + rgType       
                 print(outline, file=outfile)
     
-    log("Skipped events: %d (of %d)" % (num_events_missed, num_events))
+    log("Unknown type events: %d (of %d)" % (num_events_unk, num_events))
 
 
 
