@@ -749,7 +749,6 @@ class insertion():
             if self.TEClass == "ERVK":
                 self.polyA = "UNK"
 
-
             ## 3. Determine insertion score and Target Site Duplication if possible:
             CI5prime = bkp5prime[2]
             CI3prime = bkp3prime[2]
@@ -846,8 +845,8 @@ class insertion():
                         self.informativeContigIdBkpA = informative5primeContigObj.ID
                         self.bkpA = bkp5prime
                         self.informativeContigBkpA = informative5primeContigObj.seq
-                        beg = bkp5prime[1]
-                        end = int(insertionCoordList[2])
+                        beg = int(bkp5prime[1])
+                        end = insertionCoordList[2]
                         self.bkpB = [chrom, end, "NA"]
                     
                     else:
@@ -856,10 +855,15 @@ class insertion():
                         self.informativeContigBkpB = informative5primeContigObj.seq
                         beg = int(insertionCoordList[1])
                         end = bkp5prime[1]
-
                         self.bkpA = [chrom, beg, "NA"]
 
-                    self.targetSiteSize = beg - end
+                    ## a) Unknown length for DEL or DUP with end not known or TRANS 
+                    if (end == "UNK") or (self.grInfo == "TRANS"):
+                        self.targetSiteSize = "UNK" 
+                    
+                    ## b) Known length
+                    else:
+                        self.targetSiteSize = beg - int(end)
 
                 # b) Insertion do not associated with a rearrangement.
                 else:
@@ -880,8 +884,8 @@ class insertion():
                         self.informativeContigIdBkpA = informative3primeContigObj.ID
                         self.bkpA = bkp3prime
                         self.informativeContigBkpA = informative3primeContigObj.seq
-                        beg = bkp3prime[1]
-                        end = int(insertionCoordList[2])
+                        beg = int(bkp3prime[1])
+                        end = insertionCoordList[2]
                         self.bkpB = [chrom, end, "NA"]
                     
                     else:
@@ -893,7 +897,13 @@ class insertion():
 
                         self.bkpA = [chrom, beg, "NA"]
 
-                    self.targetSiteSize = beg - end
+                    ## a) Unknown length for DEL or DUP with end not known or TRANS 
+                    if (end == "UNK") or (self.grInfo == "TRANS"):
+                        self.targetSiteSize = "UNK" 
+                    
+                    ## b) Known length
+                    else:
+                        self.targetSiteSize = beg - int(end)
 
                 # b) Insertion do not associated with a rearrangement.
                 else:
