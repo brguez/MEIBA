@@ -124,6 +124,7 @@ for line in insertions:
         pseudogeneDict["chromExonB"] = chromExonB
         pseudogeneDict["begExonB"] = begExonB
         pseudogeneDict["endExonB"] = endExonB
+        pseudogeneDict["grType"] = "NA"
 
         if tumor_wgs_aliquot_id not in allPseudogenesDict:
             allPseudogenesDict[tumor_wgs_aliquot_id] = []
@@ -147,50 +148,44 @@ for line in metadata:
         fieldsList = line.split("\t")
 
         submitted_donor_id = fieldsList[0]	
-        wgs_exclusion_white_gray = fieldsList[1]  	
-        wgs_exclusion_trafic = fieldsList[2]   	  	
-        dcc_project_code = fieldsList[5]
- 
-        tumor_wgs_aliquot_ids = fieldsList[11]
-        
-        # Discard excluded donors        
-        if (wgs_exclusion_trafic != "Excluded"):
+        dcc_project_code = fieldsList[9]
+        tumor_wgs_aliquot_ids = fieldsList[21]
 
-            # For each tumor sample from a given donor (>1 for multitumor donors)
-            tumor_wgs_aliquot_ids_list = tumor_wgs_aliquot_ids.split(",")
+        # For each tumor sample from a given donor (>1 for multitumor donors)
+        tumor_wgs_aliquot_ids_list = tumor_wgs_aliquot_ids.split(",")
         
-            for tumor_wgs_aliquot_id in tumor_wgs_aliquot_ids_list:
+        for tumor_wgs_aliquot_id in tumor_wgs_aliquot_ids_list:
 
-                ## Create donor directory:
-                outDonorDir = outDir + "/" + dcc_project_code + "/" + submitted_donor_id + "/" + tumor_wgs_aliquot_id
+            ## Create donor directory:
+            outDonorDir = outDir + "/" + dcc_project_code + "/" + submitted_donor_id + "/" + tumor_wgs_aliquot_id
     
-                try:
-                    os.makedirs(outDonorDir)
+            try:
+                os.makedirs(outDonorDir)
 
-                # Do not create directory if already exists
-                except OSError as exc:
-                    if exc.errno == errno.EEXIST and os.path.isdir(outDonorDir):  
-                        pass
-                    else:
-                        raise
+            # Do not create directory if already exists
+            except OSError as exc:
+                if exc.errno == errno.EEXIST and os.path.isdir(outDonorDir):  
+                    pass
+                else:
+                    raise
         
-                ## Create text file with processed pseudogenes:
-                pseudogenesPath = outDonorDir + "/" + tumor_wgs_aliquot_id + ".somatic.PSD.tsv"
-                outFile = open(pseudogenesPath, "w" )
+            ## Create text file with processed pseudogenes:
+            pseudogenesPath = outDonorDir + "/" + tumor_wgs_aliquot_id + ".somatic.PSD.tsv"
+            outFile = open(pseudogenesPath, "w" )
 
-                # Print header into the output file
-                header = "#chromPlus" + "\t" + "begPlus" + "\t" + "endPlus" + "\t" + "nbReadsPlus" + "\t" + "classPlus" + "\t" + "readListPlus" + "\t" + "chromMinus" + "\t" + "begMinus" + "\t" + "endMinus" + "\t" + "nbReadsMinus" + "\t" + "classMinus" + "\t" + "readListMinus" + "\t" + "insertionType" + "\t" + "cytobandId" + "\t" + "sourceType" + "\t" + "chromSource" + "\t" + "begSource" + "\t" + "endSource" + "\t" + "strandSource" + "\t" + "tdBeg" + "\t" + "tdEnd" + "\t" + "tdRnaLen" + "\t" + "tdLen" + "\t" + "psdGene" + "\t" + "chromExonA" + "\t" + "begExonA" + "\t" + "endExonA" + "\t" + "chromExonB" + "\t" + "begExonB" + "\t" + "endExonB" + "\n"
-                outFile.write(header)
+            # Print header into the output file
+            header = "#chromPlus" + "\t" + "begPlus" + "\t" + "endPlus" + "\t" + "nbReadsPlus" + "\t" + "classPlus" + "\t" + "readListPlus" + "\t" + "chromMinus" + "\t" + "begMinus" + "\t" + "endMinus" + "\t" + "nbReadsMinus" + "\t" + "classMinus" + "\t" + "readListMinus" + "\t" + "insertionType" + "\t" + "cytobandId" + "\t" + "sourceType" + "\t" + "chromSource" + "\t" + "begSource" + "\t" + "endSource" + "\t" + "strandSource" + "\t" + "tdBeg" + "\t" + "tdEnd" + "\t" + "tdRnaLen" + "\t" + "tdLen" + "\t" + "psdGene" + "\t" + "chromExonA" + "\t" + "begExonA" + "\t" + "endExonA" + "\t" + "chromExonB" + "\t" + "begExonB" + "\t" + "endExonB" + "\t" + "grType" + "\n"
+            outFile.write(header)
 
-                # Print insertions for those tumor samples with at least one pseudogene insertions
-                if (tumor_wgs_aliquot_id in allPseudogenesDict):
+            # Print insertions for those tumor samples with at least one pseudogene insertions
+            if (tumor_wgs_aliquot_id in allPseudogenesDict):
                 
-                    # For each processed pseudogene:
-                    for pseudogeneDict in allPseudogenesDict[tumor_wgs_aliquot_id]:
-                        row = pseudogeneDict["chromPlus"] + "\t" + pseudogeneDict["begPlus"] + "\t" + pseudogeneDict["endPlus"] + "\t" + pseudogeneDict["nbReadsPlus"] + "\t" + pseudogeneDict["classPlus"] + "\t" + pseudogeneDict["readListPlus"] + "\t" + pseudogeneDict["chromMinus"] + "\t" + pseudogeneDict["begMinus"] + "\t" + pseudogeneDict["endMinus"] + "\t" + pseudogeneDict["nbReadsMinus"] + "\t" + pseudogeneDict["classMinus"] + "\t" + pseudogeneDict["readListMinus"] + "\t" + pseudogeneDict["insertionType"] + "\t" + pseudogeneDict["cytobandId"] + "\t" + pseudogeneDict["sourceType"] + "\t" +  pseudogeneDict["chromSource"] + "\t" + pseudogeneDict["begSource"] + "\t" + pseudogeneDict["endSource"] + "\t" + pseudogeneDict["strandSource"] + "\t" + pseudogeneDict["tdBeg"] + "\t" + pseudogeneDict["tdEnd"] + "\t" + pseudogeneDict["tdRnaLen"] + "\t" + pseudogeneDict["tdLen"] + "\t" + pseudogeneDict["psdGene"] + "\t" + pseudogeneDict["chromExonA"] + "\t" + pseudogeneDict["begExonA"] + "\t" + pseudogeneDict["endExonA"] + "\t" + pseudogeneDict["chromExonB"] + "\t" + pseudogeneDict["begExonB"] + "\t" + pseudogeneDict["endExonB"] + "\n"
+                # For each processed pseudogene:
+                for pseudogeneDict in allPseudogenesDict[tumor_wgs_aliquot_id]:
+                    row = pseudogeneDict["chromPlus"] + "\t" + pseudogeneDict["begPlus"] + "\t" + pseudogeneDict["endPlus"] + "\t" + pseudogeneDict["nbReadsPlus"] + "\t" + pseudogeneDict["classPlus"] + "\t" + pseudogeneDict["readListPlus"] + "\t" + pseudogeneDict["chromMinus"] + "\t" + pseudogeneDict["begMinus"] + "\t" + pseudogeneDict["endMinus"] + "\t" + pseudogeneDict["nbReadsMinus"] + "\t" + pseudogeneDict["classMinus"] + "\t" + pseudogeneDict["readListMinus"] + "\t" + pseudogeneDict["insertionType"] + "\t" + pseudogeneDict["cytobandId"] + "\t" + pseudogeneDict["sourceType"] + "\t" +  pseudogeneDict["chromSource"] + "\t" + pseudogeneDict["begSource"] + "\t" + pseudogeneDict["endSource"] + "\t" + pseudogeneDict["strandSource"] + "\t" + pseudogeneDict["tdBeg"] + "\t" + pseudogeneDict["tdEnd"] + "\t" + pseudogeneDict["tdRnaLen"] + "\t" + pseudogeneDict["tdLen"] + "\t" + pseudogeneDict["psdGene"] + "\t" + pseudogeneDict["chromExonA"] + "\t" + pseudogeneDict["begExonA"] + "\t" + pseudogeneDict["endExonA"] + "\t" + pseudogeneDict["chromExonB"] + "\t" + pseudogeneDict["begExonB"] + "\t" + pseudogeneDict["endExonB"] + "\t" + pseudogeneDict["grType"]  + "\n"
 
-                        # Print pseudogene information into the output file
-                        outFile.write(row)   
+                    # Print pseudogene information into the output file
+                    outFile.write(row)   
 
 print "***** Finished! *****"
 print
