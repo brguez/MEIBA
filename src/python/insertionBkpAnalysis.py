@@ -781,7 +781,7 @@ class insertion():
                 self.score = '5'
 
                 # Find Target site duplication or deletion
-                self.targetSiteSize, self.targetSiteSeq = self.target_site(informative5primeContigObj, informative3primeContigObj)
+                self.targetSiteSize, self.targetSiteSeq = self.target_site(informative5primeContigObj, informative3primeContigObj, self.grInfo)
 
                 # Inconsistent TSD:
                 if (self.targetSiteSize == "inconsistent"):
@@ -952,7 +952,7 @@ class insertion():
         print "bkpBContig: ", self.informativeContigBkpB
         print "poly-A: ", self.polyA
 
-    def target_site(self, informative5primeContigObj, informative3primeContigObj):
+    def target_site(self, informative5primeContigObj, informative3primeContigObj, grInfo):
         """
             Determine Target Site Duplication or Deletion sequence and length (TSD).
 
@@ -1019,7 +1019,7 @@ class insertion():
             #   --------------------
             # qBeg               *qEnd*
             if (alignObj5prime.alignType == "beg"):
-                beg = alignObj5prime.qEnd - abs(targetSiteSize)
+                beg = alignObj5prime.qEnd - targetSiteSize
                 end = alignObj5prime.qEnd
                 targetSiteSeq = informative5primeContigObj.seq[beg:end]
 
@@ -1029,11 +1029,13 @@ class insertion():
             #                    *qBeg*               qEnd
             else:
                 beg = alignObj5prime.qBeg    # (no substract 1 since psl coordinates are 0-based as python strings)
-                end = alignObj5prime.qBeg + abs(targetSiteSize)
+                end = alignObj5prime.qBeg + targetSiteSize
                 targetSiteSeq = informative5primeContigObj.seq[beg:end]
 
-            ## Inconsistent TSD if sequence has not the expected length or if it is longer than 50bp 
-            if (abs(targetSiteSize) != len(targetSiteSeq)) or (abs(targetSiteSize) > 50):
+            ## Inconsistent TSD if sequence has not the expected length or it has not an associated rearrangement and 
+            # it is longer than 50bp 
+            if (targetSiteSize != len(targetSiteSeq)) or ((grInfo == "NA") and (targetSiteSize > 50)):
+
                 targetSiteSize = "inconsistent"
                 targetSiteSeq = "inconsistent"
 
@@ -1045,6 +1047,13 @@ class insertion():
             ## Compute length. 
             targetSiteSize = abs(bkpPos5prime - bkpPos3prime) * -1 # Convert into negative length as it is a deletion
             targetSiteSeq = "NA"
+
+            ## Inconsistent TSD if insertion has not an associated rearrangement and 
+            # it is shorter than 50bp 
+            if (grInfo == "NA") and (abs(targetSiteSize) > 50):
+
+                targetSiteSize = "inconsistent"
+                targetSiteSeq = "inconsistent"
 
         return (targetSiteSize, targetSiteSeq)
 

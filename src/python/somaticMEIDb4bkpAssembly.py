@@ -322,6 +322,7 @@ for line in insertions:
         insertionDict["chromExonB"] = "NA"
         insertionDict["begExonB"] = "NA"
         insertionDict["endExonB"] = "NA"
+        insertionDict["grType"] = "NA"
 
         if tumor_wgs_aliquot_id not in allInsertionsDict:
             allInsertionsDict[tumor_wgs_aliquot_id] = []
@@ -344,53 +345,46 @@ for line in donorMetadata:
     if not line.startswith("#"):
         
         fieldsList = line.split("\t")
-
         submitted_donor_id = fieldsList[0]	
-        wgs_exclusion_white_gray = fieldsList[2]  	
-        wgs_exclusion_trafic = fieldsList[3]   	  	
         dcc_project_code = fieldsList[9]
- 
         tumor_wgs_aliquot_ids = fieldsList[21]
         
-        # Discard TraFiC excluded donors         
-        if (wgs_exclusion_trafic != "Excluded"):
-
-            # For each tumor sample from a given donor (>1 for multitumor donors)
-            tumor_wgs_aliquot_ids_list = tumor_wgs_aliquot_ids.split(",")
+        # For each tumor sample from a given donor (>1 for multitumor donors)
+        tumor_wgs_aliquot_ids_list = tumor_wgs_aliquot_ids.split(",")
         
-            for tumor_wgs_aliquot_id in tumor_wgs_aliquot_ids_list:
+        for tumor_wgs_aliquot_id in tumor_wgs_aliquot_ids_list:
 
-                ## Create donor directory:
-                outDonorDir = outDir + "/" + dcc_project_code + "/" + submitted_donor_id + "/" + tumor_wgs_aliquot_id
+            ## Create donor directory:
+            outDonorDir = outDir + "/" + dcc_project_code + "/" + submitted_donor_id + "/" + tumor_wgs_aliquot_id
     
-                try:
-                    os.makedirs(outDonorDir)
+            try:
+                os.makedirs(outDonorDir)
 
-                # Do not create directory if already exists
-                except OSError as exc:
-                    if exc.errno == errno.EEXIST and os.path.isdir(outDonorDir):  
-                        pass
-                    else:
-                        raise
+            # Do not create directory if already exists
+            except OSError as exc:
+                if exc.errno == errno.EEXIST and os.path.isdir(outDonorDir):  
+                    pass
+                else:
+                    raise
         
-                ## Create text file with insertions:
-                insertionsPath = outDonorDir + "/" + tumor_wgs_aliquot_id + ".somatic.td0_td1_td2.tsv"
-                outFile = open(insertionsPath, "w" )
+            ## Create text file with insertions:
+            insertionsPath = outDonorDir + "/" + tumor_wgs_aliquot_id + ".somatic.td0_td1_td2.tsv"
+            outFile = open(insertionsPath, "w" )
 
-                # Print header into the output file
-                header = "#chromPlus" + "\t" + "begPlus" + "\t" + "endPlus" + "\t" + "nbReadsPlus" + "\t" + "classPlus" + "\t" + "readListPlus" + "\t" + "chromMinus" + "\t" + "begMinus" + "\t" + "endMinus" + "\t" + "nbReadsMinus" + "\t" + "classMinus" + "\t" + "readListMinus" + "\t" + "insertionType" + "\t" + "cytobandId" + "\t" + "sourceType" + "\t" + "chromSource" + "\t" + "begSource" + "\t" + "endSource" + "\t" + "strandSource" + "\t" + "tdBeg" + "\t" + "tdEnd" + "\t" + "tdRnaLen" + "\t" + "tdLen" + "\t" + "psdGene" + "\t" + "chromExonA" + "\t" + "begExonA" + "\t" + "endExonA" + "\t" + "chromExonB" + "\t" + "begExonB" + "\t" + "endExonB" + "\n"
-                outFile.write(header)
+            # Print header into the output file
+            header = "#chromPlus" + "\t" + "begPlus" + "\t" + "endPlus" + "\t" + "nbReadsPlus" + "\t" + "classPlus" + "\t" + "readListPlus" + "\t" + "chromMinus" + "\t" + "begMinus" + "\t" + "endMinus" + "\t" + "nbReadsMinus" + "\t" + "classMinus" + "\t" + "readListMinus" + "\t" + "insertionType" + "\t" + "cytobandId" + "\t" + "sourceType" + "\t" + "chromSource" + "\t" + "begSource" + "\t" + "endSource" + "\t" + "strandSource" + "\t" + "tdBeg" + "\t" + "tdEnd" + "\t" + "tdRnaLen" + "\t" + "tdLen" + "\t" + "psdGene" + "\t" + "chromExonA" + "\t" + "begExonA" + "\t" + "endExonA" + "\t" + "chromExonB" + "\t" + "begExonB" + "\t" + "endExonB" + "\t" + "grType" + "\n"
+            outFile.write(header)
 
-                # Print insertions for those tumor samples with at least one insertion
-                if (tumor_wgs_aliquot_id in allInsertionsDict):
+            # Print insertions for those tumor samples with at least one insertion
+            if (tumor_wgs_aliquot_id in allInsertionsDict):
                 
-                    # For each insertion:
-                    for insertionDict in allInsertionsDict[tumor_wgs_aliquot_id]:
+                # For each insertion:
+                for insertionDict in allInsertionsDict[tumor_wgs_aliquot_id]:
 
-                        row = insertionDict["chromPlus"] + "\t" + insertionDict["begPlus"] + "\t" + insertionDict["endPlus"] + "\t" + insertionDict["nbReadsPlus"] + "\t" + insertionDict["classPlus"] + "\t" + insertionDict["readListPlus"] + "\t" + insertionDict["chromMinus"] + "\t" + insertionDict["begMinus"] + "\t" + insertionDict["endMinus"] + "\t" + insertionDict["nbReadsMinus"] + "\t" + insertionDict["classMinus"] + "\t" + insertionDict["readListMinus"] + "\t" + insertionDict["insertionType"] + "\t" + insertionDict["cytobandId"] + "\t" + insertionDict["sourceType"] + "\t" + insertionDict["chromSource"] + "\t" + insertionDict["begSource"] + "\t" + insertionDict["endSource"] + "\t" + insertionDict["strandSource"] + "\t" + insertionDict["tdBeg"] + "\t" + insertionDict["tdEnd"] + "\t" + insertionDict["tdRnaLen"] + "\t" + insertionDict["tdLen"] + "\t" + insertionDict["psdGene"] + "\t" + insertionDict["chromExonA"] + "\t" + insertionDict["begExonA"] + "\t" + insertionDict["endExonA"] + "\t" + insertionDict["chromExonB"] + "\t" + insertionDict["begExonB"] + "\t" + insertionDict["endExonB"] + "\n"
+                    row = insertionDict["chromPlus"] + "\t" + insertionDict["begPlus"] + "\t" + insertionDict["endPlus"] + "\t" + insertionDict["nbReadsPlus"] + "\t" + insertionDict["classPlus"] + "\t" + insertionDict["readListPlus"] + "\t" + insertionDict["chromMinus"] + "\t" + insertionDict["begMinus"] + "\t" + insertionDict["endMinus"] + "\t" + insertionDict["nbReadsMinus"] + "\t" + insertionDict["classMinus"] + "\t" + insertionDict["readListMinus"] + "\t" + insertionDict["insertionType"] + "\t" + insertionDict["cytobandId"] + "\t" + insertionDict["sourceType"] + "\t" + insertionDict["chromSource"] + "\t" + insertionDict["begSource"] + "\t" + insertionDict["endSource"] + "\t" + insertionDict["strandSource"] + "\t" + insertionDict["tdBeg"] + "\t" + insertionDict["tdEnd"] + "\t" + insertionDict["tdRnaLen"] + "\t" + insertionDict["tdLen"] + "\t" + insertionDict["psdGene"] + "\t" + insertionDict["chromExonA"] + "\t" + insertionDict["begExonA"] + "\t" + insertionDict["endExonA"] + "\t" + insertionDict["chromExonB"] + "\t" + insertionDict["begExonB"] + "\t" + insertionDict["endExonB"] + "\t" + insertionDict["grType"] + "\n"
 
-                        # Print insertion information into the output file
-                        outFile.write(row)   
+                    # Print insertion information into the output file
+                    outFile.write(row)   
 
 print "***** Finished! *****"
 print
