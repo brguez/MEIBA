@@ -51,23 +51,25 @@ def makeSourceRegions(sourceElements):
     
         ## Discard header
         if not line.startswith("#"):
+            # 1p21.1    	1	102568909	102568923	L1	plus    	0	1	1
+            # 1p13.1    	1	116980828	116980842	L1	minus	0	1	1
         
             fieldsList = line.split("\t")
-            chrom = fieldsList[0]
-            beg = int(fieldsList[1])
-            end = int(fieldsList[2])
-            orientation = fieldsList[3]
+            chrom = fieldsList[1]
+            beg = int(fieldsList[2])
+            end = int(fieldsList[3])
+            orientation = fieldsList[5]
 
             msg = "Processing source element: " + chrom + '_' + str(beg) + '_' + str(end) + '_' + orientation
             log("TD-REGION", msg)
 
             ## Forward orientation
-            if (orientation == "+"):     
+            if (orientation == "plus"):     
                 tdRegionBeg = end
                 tdRegionEnd = end + 13000    
                             
             ## Reverse orientation
-            elif (orientation == "-"): 
+            elif (orientation == "minus"): 
 
                 tdRegionBeg = beg - 13000
                 tdRegionEnd = beg   
