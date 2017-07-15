@@ -147,8 +147,8 @@ for line in traficBlackList:
     if not line.startswith("#"):
             
         fieldsList = line.split("\t")
-        donorUniqueId = fieldsList[0] 
-        blackList.append(donorUniqueId)
+        icgc_donor_id = fieldsList[0] 
+        blackList.append(icgc_donor_id)
 
 ### 5) Read file with donor clinical information. 
 # Store clinical information into a nested dictionary
@@ -255,7 +255,7 @@ for line in mainMetadata:
 
         ## Blacklist
         # a) Donor in TraFiC blacklist
-        if donorUniqueId in blackList:
+        if icgc_donor_id in blackList:
             wgs_exclusion_trafic = "Excluded"
             
         # b) Donor not in blacklist
