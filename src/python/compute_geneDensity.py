@@ -138,8 +138,11 @@ for line in chromLenFile:
 ### 2. Intersect with annotation
 intersectionPath = outDir +'/intersection.txt'
 #command = 'bedtools intersect -wao -a ' + intervalsPath + ' -b ' + annot + ' > ' +  intersectionPath
+# os.system(command)
 # Executed outside the script. For some reason gives problems within the script... 
 # Improper formated row in chr20 leading to truncated output without all the expected windows. 
+
+
 
 ## Sort intersection
 sortedPath = outDir +'/intersection.sorted.txt'
