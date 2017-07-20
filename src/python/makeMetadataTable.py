@@ -227,7 +227,7 @@ for line in mainMetadata:
         histology_count = len(histology_abbreviation.split(','))
         histology_tier1 = histologyDict[donorUniqueId]["tier1"] 
         histology_tier2 = histologyDict[donorUniqueId]["tier2"]   
-        histology_exclusion_status = 'excluded' if histology_abbreviation in excludedTumorTypesList else 'included'
+        histology_exclusion_status = 'Excluded' if histology_abbreviation in excludedTumorTypesList else 'included'
 
         ## Clinical
         donor_sex = clinicalDict[donorUniqueId]["sex"] 
