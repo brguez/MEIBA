@@ -71,7 +71,7 @@ for line in donorMetadataFile:
 
         line = line.rstrip('\n')
         line = line.split("\t")
-        donorId = line[0]
+        donorId = line[1]
         exclusionStatus = line[3]
 
         if (exclusionStatus == "Whitelist"):
@@ -113,7 +113,7 @@ for line in inputFile:
         line = line.split("\t")
     
         donorId = line[0]
-        VCFfile = line[1]
+        VCFfile = line[2]
 
         # Create VCF object
         VCFObj = formats.VCF()
@@ -123,41 +123,49 @@ for line in inputFile:
         # Input VCF available
         if os.path.isfile(VCFfile):
 
-            # Read donor's VCF and add information to VCF object
-            VCFObj.read_VCF(VCFfile)
+            ## If not excluded donor:
+            if donorId in germlineSrcActivityDict:
+    
+                # Read donor's VCF and add information to VCF object
+                VCFObj.read_VCF(VCFfile)
+    
+                ## For each somatic MEI in the VCf
+                for MEIObj in VCFObj.lineList:
+    
+                    # Select transductions that passess all the filters. Exclude L1-mediated rearrangements mediated by transductions:
+                    if ("GR" not in MEIObj.infoDict) and (MEIObj.filter == "PASS") and ((MEIObj.infoDict["TYPE"] == "TD1") or (MEIObj.infoDict["TYPE"] == "TD2")):
 
-            ## For each somatic MEI in the VCf
-            for MEIObj in VCFObj.lineList:
-
-                # Select transductions that passess all the filters:
-                if (MEIObj.filter == "PASS") and ((MEIObj.infoDict["TYPE"] == "TD1") or (MEIObj.infoDict["TYPE"] == "TD2")):
-
-                    # A) germline source element                     
-                    if (MEIObj.infoDict["SRCTYPE"] == "GERMLINE"):
-                        srcId = MEIObj.infoDict["SRCID"] # Use the cytoband as the source element identifier
-                        germlineSrcActivityDict[donorId][srcId] += 1  
+                        # A) germline source element                     
+                        if (MEIObj.infoDict["SRCTYPE"] == "GERMLINE"):
+ 
+                            srcId = MEIObj.infoDict["SRCID"] # Use the cytoband as the source element identifier                       
+                            germlineSrcActivityDict[donorId][srcId] += 1  
                     
-                    # B) somatic germline element
-                    else:
-                        srcId = MEIObj.infoDict["SRC"]
-                        print "SOMATIC: ", srcId, MEIObj.infoDict["SRCTYPE"]                               
-
-                        # a) somatic source element not reported yet
-                        if srcId not in somaticSrcActivityDict:
-                            somaticSrcActivityDict[srcId] = {}
-                            somaticSrcActivityDict[srcId][donorId] = 1
-
-                        # b) somatic source element not reported yet in a given donor
-                        elif donorId not in somaticSrcActivityDict[srcId]:
-                            somaticSrcActivityDict[srcId][donorId] = 1
-                    
-                        # c) somatic source element already reported in the donor
+                        # B) somatic germline element
                         else:
-                            somaticSrcActivityDict[srcId][donorId] += 1
+                            srcId = MEIObj.infoDict["SRC"]
+                            print "SOMATIC: ", srcId, MEIObj.infoDict["SRCTYPE"]                               
+
+                            # a) somatic source element not reported yet
+                            if srcId not in somaticSrcActivityDict:
+                                somaticSrcActivityDict[srcId] = {}
+                                somaticSrcActivityDict[srcId][donorId] = 1
+
+                            # b) somatic source element not reported yet in a given donor
+                            elif donorId not in somaticSrcActivityDict[srcId]:
+                                somaticSrcActivityDict[srcId][donorId] = 1
+                    
+                            # c) somatic source element already reported in the donor
+                            else:
+                                somaticSrcActivityDict[srcId][donorId] += 1
                            
 ### 3. Convert germline dictionary into dataframe and write into tsv
 info("3. Convert dictionary into dataframe and write into tsv")
 germlineSrcActivityDf = pd.DataFrame(germlineSrcActivityDict)
+
+print "germlineSrcActivityDf: ", germlineSrcActivityDf
+
+sys.exit(1)
 
 ## Save output into tsv
 outFilePath = outDir + '/germline_' +  outFileName +'.tsv'
