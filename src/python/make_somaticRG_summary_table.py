@@ -53,7 +53,7 @@ outPath = outDir + '/supplementaryTable3.tsv'
 outFile = open(outPath, 'w')
   
 ## Write file header in the output file
-row = '#icgc_donor_id' + "\t" + 'tumorType' + "\t" + 'chrom' + '\t' + 'beg' + '\t' + 'end' + '\t' + 'delLength' + '\t' + 'type' + '\t' + 'srcElementCoord' + '\t' + 'srcElementType' + '\t' + 'srcElementId' + '\n'
+row = '#icgc_donor_id' + "\t" + 'tumorType' + "\t" + 'chrom' + '\t' + 'beg' + '\t' + 'end' + '\t' + 'delLength' + '\t' + 'type' + '\t' + 'L1structure' + '\t' + 'L1strand' + '\t' + 'L1length' + '\t' + 'srcElementCoord' + '\t' + 'srcElementType' + '\t' + 'srcElementId' + '\n'
     
 outFile.write(row)
 
@@ -92,8 +92,11 @@ for line in inputFile:
                 chrom = MEIObj.chrom
                 beg = MEIObj.pos
                 end = MEIObj.infoDict['BKPB'] if 'BKPB' in MEIObj.infoDict else 'UNK' 
-                rtType = MEIObj.infoDict['TYPE']  
                 delLength = abs(int(MEIObj.infoDict['TSLEN'])) if 'TSLEN' in MEIObj.infoDict else 'UNK' 
+                rtType = MEIObj.infoDict['TYPE']  
+                structure = MEIObj.infoDict['STRUCT'] if 'STRUCT' in MEIObj.infoDict else 'UNK'  
+                strand = MEIObj.infoDict['STRAND'] if 'STRAND' in MEIObj.infoDict else 'UNK'  
+                length = MEIObj.infoDict['LEN']  if 'LEN' in MEIObj.infoDict else 'UNK' 
 
                 # a) Solo insertions
                 if (rtType == "TD0"):
@@ -108,7 +111,7 @@ for line in inputFile:
                     srcElementId = MEIObj.infoDict['SRCID'] if 'SRCID' in MEIObj.infoDict else 'NA' 
 
                 ## Write MEI into the output file
-                row = donorId + "\t" + tumorType + "\t" + chrom + '\t' + str(beg) + '\t' + end + '\t' + str(delLength) + '\t' + rtType + '\t' + srcElementCoord + '\t' + srcElementType + '\t' + srcElementId + '\n'
+                row = donorId + "\t" + tumorType + "\t" + chrom + '\t' + str(beg) + '\t' + end + '\t' + str(delLength) + '\t' + rtType + '\t' + structure + '\t' + strand + '\t' + length + '\t' + srcElementId + '\t' + srcElementCoord + '\t' + srcElementType + '\n'
                 outFile.write(row)
  
 
