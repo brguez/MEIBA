@@ -23,9 +23,10 @@ class cohort():
         Methods:
         -
     """
-    def __init__(self):
+    def __init__(self, excludedDonorsList):
         """
         """
+        self.excludedDonorsList = excludedDonorsList
         self.VCFdict = {}
 
 
@@ -42,32 +43,33 @@ class cohort():
             line = line.split("\t")
 
             donorId = line[0]
-            projectCode = line[1]
+            tumorTypeList = line[1].split(",")
             VCFfile = line[2]
+            
+            if (donorId not in self.excludedDonorsList) and ("UNK" not in tumorTypeList):
 
-            #print "tiooo: ", donorId, projectCode, VCFfile
+                # Create VCF object
+                VCFObj = formats.VCF()
 
-            # Create VCF object
-            VCFObj = formats.VCF()
+                info("Reading " + VCFfile + "...")
 
-            info("Reading " + VCFfile + "...")
+                # Input VCF available
+                if os.path.isfile(VCFfile):
 
-            # Input VCF available
-            if os.path.isfile(VCFfile):
+                    # Read VCF and add information to VCF object
+                    VCFObj.read_VCF(VCFfile)
 
-                # Read VCF and add information to VCF object
-                VCFObj.read_VCF(VCFfile)
+                    for tumorType in tumorTypeList:
+                    
+                        # Initialize the donor list for a given project if needed 
+                        if tumorType not in self.VCFdict:
 
-                # Initialize the donor list for a given project if needed 
-                if projectCode not in self.VCFdict:
+                            self.VCFdict[tumorType] = []   
 
-                    self.VCFdict[projectCode] = []   
-
-                # Add donor VCF to cohort
-                self.VCFdict[projectCode].append(VCFObj)
-
-            else:
-                print "[ERROR] Input file does not exist"
+                        # Add donor VCF to cohort
+                        self.VCFdict[tumorType].append(VCFObj)
+                else:
+                    print "[ERROR] Input file does not exist"
 
 
 ####### FUNCTIONS #######
@@ -85,6 +87,7 @@ def autolabel(rects, ax, valuesList):
 
         index += 1
 
+
 #### MAIN ####
 
 ## Import modules ##
@@ -101,11 +104,13 @@ import matplotlib.patches as mpatches
 
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
-parser.add_argument('inputPath', help='Tabular text file containing one row per donor with the following consecutive fields: projectCode donorId vcf_path')
+parser.add_argument('inputPath', help='Tabular text file containing one row per donor with the following consecutive fields: donorId tumorType vcf_path')
+parser.add_argument('metadata', help='Tabular text file containing donor metadata info')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.')
 
 args = parser.parse_args()
 inputPath = args.inputPath
+metadata = args.metadata
 outDir = args.outDir
 
 scriptName = os.path.basename(sys.argv[0])
@@ -114,6 +119,7 @@ scriptName = os.path.basename(sys.argv[0])
 print
 print "***** ", scriptName, " configuration *****"
 print "inputPath: ", inputPath
+print "metadata: ", metadata
 print "outDir: ", outDir
 print
 print "***** Executing ", scriptName, ".... *****"
@@ -122,8 +128,27 @@ print
 
 ## Start ##
 
+### 0. Read metadata file and create list of donors to be excluded
+donorMetadataFile = open(metadata, 'r')
+excludedDonorsList = []
+
+## For donor's metadata:
+for line in donorMetadataFile:
+    if not line.startswith("#"):
+
+        line = line.rstrip('\n')
+        line = line.split("\t")
+        donorId = line[1]
+        traficExclusionStatus = line[3]
+        tumorTypeExclusionStatus = line[11]
+
+        if (traficExclusionStatus == "Excluded") or (tumorTypeExclusionStatus == "Excluded"):
+            excludedDonorsList.append(donorId)
+
+# print len(excludedDonorsList) # 91
+
 ### 1. Initialize cohort object
-cohortObj = cohort()
+cohortObj = cohort(excludedDonorsList)
 
 ### 2. Read VCF files, create VCF objects and organize them
 cohortObj.read_VCFs(inputPath)
@@ -136,18 +161,18 @@ cohortObj.read_VCFs(inputPath)
 
 categoryCountsDict = {}
 
-for projectCode in cohortObj.VCFdict:
+for tumorType in cohortObj.VCFdict:
 
     ## Initialize category counts    
-    categoryCountsDict[projectCode] = {}
-    categoryCountsDict[projectCode]["None"] = 0
-    categoryCountsDict[projectCode]["Low"] = 0
-    categoryCountsDict[projectCode]["Moderate"] = 0
-    categoryCountsDict[projectCode]["High"] = 0
+    categoryCountsDict[tumorType] = {}
+    categoryCountsDict[tumorType]["None"] = 0
+    categoryCountsDict[tumorType]["Low"] = 0
+    categoryCountsDict[tumorType]["Moderate"] = 0
+    categoryCountsDict[tumorType]["High"] = 0
 
     ## Count total number of donors per tumor type and number of donor per category
     ## For each donor    
-    for VCFObj in cohortObj.VCFdict[projectCode]:
+    for VCFObj in cohortObj.VCFdict[tumorType]:
 
         nbInsertions = 0
 
@@ -160,19 +185,19 @@ for projectCode in cohortObj.VCFdict:
         
         ## a) None (0 insertions):
         if (nbInsertions == 0):
-            categoryCountsDict[projectCode]["None"] += 1
+            categoryCountsDict[tumorType]["None"] += 1
 
         ## b) Low ([1-10] insertions):
         elif (nbInsertions > 0) and (nbInsertions <= 10):
-            categoryCountsDict[projectCode]["Low"] += 1
+            categoryCountsDict[tumorType]["Low"] += 1
 
         ## c) Moderate ((10-100] insertions):
         elif (nbInsertions > 10) and (nbInsertions <= 100):
-            categoryCountsDict[projectCode]["Moderate"] += 1
+            categoryCountsDict[tumorType]["Moderate"] += 1
 
         ## d) High (>100 insertions):
         elif (nbInsertions > 100):
-            categoryCountsDict[projectCode]["High"] += 1                
+            categoryCountsDict[tumorType]["High"] += 1                
 
         ## d) Error
         else:
@@ -181,51 +206,25 @@ for projectCode in cohortObj.VCFdict:
 ### 4. Make dataframe with the number of samples per category for each tumor type
 # Project codes: columns
 # Categories number of samples:
-#                   ProjectCode1 ProjectCode2 ProjectCode3....
+#                   tumorType1 tumorType2 tumorType3....
 # 0_insertions      X1           Y1           Z1     
 # 1-10_insertions   X2           Y2           Z2
 # ...
 
 categoryCountsDataframe =  pd.DataFrame(categoryCountsDict)
-
 print "categoryCountsDataframe: ", categoryCountsDataframe
-
-## Filter out those tumor types with 0 donors with high retrotransposition activity. 
-categoryCountsFinalDataframe = categoryCountsDataframe
-#tumorTypesBoolSerie =  categoryCountsDataframe.loc['High'] >= 1 # Enable this for selecting a subset of tumor types
-#categoryCountsFinalDataframe = categoryCountsDataframe[tumorTypesBoolSerie.index[tumorTypesBoolSerie]]
-
-print "categoryCountsFinalDataframe: ", categoryCountsFinalDataframe
-
-### Group those elements contributing less than 1% in the category 'Other'
-tumorTypesBoolSerie =  categoryCountsDataframe.loc['High'] < 1
-
-categoryCountsOtherDataframe = categoryCountsDataframe[tumorTypesBoolSerie.index[tumorTypesBoolSerie]]
-
-print "categoryCountsOtherDataframe: ", categoryCountsOtherDataframe
-
-categoryCountsSerieOther = categoryCountsOtherDataframe.sum(axis=1)
-
-print "categoryCountsSerieOther: ", categoryCountsSerieOther
-
-### Make final dataframe and add the other category as an additional row
-colName = "Other" 
-
-categoryCountsFinalDataframe[colName] = categoryCountsSerieOther
-print "final-counts: ", categoryCountsFinalDataframe
 
 ### 5. Make dataframe with the percentage of samples per category for each tumor type
 # Project codes: columns
 # Categories % samples:
-#                   ProjectCode1 ProjectCode2 ProjectCode3....
+#                   tumorType1 tumorType2 tumorType3....
 # 0_insertions      X1%          Y1%          Z1%     
 # 1-10_insertions   X2%          Y2%          Z2%
 
-donorsPerTumorTypeSerie = categoryCountsFinalDataframe.sum(axis=0)
-#donorsPerTumorTypeSerie = categoryCountsDataframe.sum(axis=0)
+donorsPerTumorTypeSerie = categoryCountsDataframe.sum(axis=0)
 
-categories = categoryCountsFinalDataframe.index
-projecCodes = categoryCountsFinalDataframe.columns
+categories = categoryCountsDataframe.index
+projecCodes = categoryCountsDataframe.columns
 
 categoryPercDataframe = pd.DataFrame(index=categories, columns=projecCodes)
 
@@ -233,16 +232,16 @@ categoryPercDataframe = pd.DataFrame(index=categories, columns=projecCodes)
 for category in categories:
 
     # Iterate over column index labels (project codes)
-    for projectCode in projecCodes:
+    for tumorType in projecCodes:
     
-        categoryCountProjectCode = categoryCountsFinalDataframe.loc[category, projectCode]
-        nbDonorsInTumortype = donorsPerTumorTypeSerie.loc[projectCode]
+        categoryCountTumorType = categoryCountsDataframe.loc[category, tumorType]
+        nbDonorsInTumortype = donorsPerTumorTypeSerie.loc[tumorType]
 
         # Compute the percentage
-        donorPercTumorType = float(categoryCountProjectCode)/float(nbDonorsInTumortype) * 100
+        donorPercTumorType = float(categoryCountTumorType)/float(nbDonorsInTumortype) * 100
 
         # Add source element contribution to dataframe
-        categoryPercDataframe.loc[category, projectCode] = donorPercTumorType
+        categoryPercDataframe.loc[category, tumorType] = donorPercTumorType
 
 # Order dataframe columns (tumor types) first according to "High" and then to "None" category
 transposedDf = categoryPercDataframe.transpose()
@@ -252,8 +251,8 @@ categoryPercSortedDataframe = sortedDf.transpose()
 print "categoryPercSortedDataframe: ", categoryPercSortedDataframe
 
 ### 6. Make list per category containing the percentage of samples belonging to a given category in each tumor type
-# list 0 insertions [%ProjectCode1, %ProjectCode2, ... ]
-# list 1-10 insertions [%ProjectCode1, %ProjectCode2, ... ]
+# list 0 insertions [%tumorType1, %tumorType2, ... ]
+# list 1-10 insertions [%tumorType1, %tumorType2, ... ]
 # ...
 
 percHighList, percLowList, percModerateList, percNoneList = categoryPercSortedDataframe.values.tolist()
@@ -274,7 +273,7 @@ ypos = np.arange(1, len(percHighList) + 1)    # the y locations for the groups
 
 height = 0.75      # the width of the bars: can also be len(x) sequence
 #fig = plt.figure(figsize=(5,3))
-fig = plt.figure(figsize=(5,7))
+fig = plt.figure(figsize=(3,7))
 ax = fig.add_subplot(111)
 ax.yaxis.set_label_position("right")
 plt.ylabel('Number of samples', fontsize=10, labelpad=35)
