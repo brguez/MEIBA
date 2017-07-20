@@ -82,13 +82,7 @@ print
 
 ### Read transductions count dataframe
 transductionsCountDf = pd.read_csv(transductionsCountFile, header=0, index_col=0, sep='\t')
-
-test = transductionsCountDf.loc[: ,"OCCAMS-AH-096"]
-outFilePath = outDir + '/test.tsv'
-test.to_csv(outFilePath, sep='\t') 
-
 transductionsCountDf = transductionsCountDf.T 
-
 
 ### Compute the number of transductions per donor
 nbTdPerDonorSeries = transductionsCountDf.sum(axis=1)
