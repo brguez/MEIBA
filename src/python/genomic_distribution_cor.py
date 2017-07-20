@@ -108,15 +108,13 @@ print
 print "***** Executing ", scriptName, ".... *****"
 print
 
-
 ## Start ## 
 
 #### 1. Load input tables:
 ##########################
 inputDf = pd.read_csv(inputFile, header=0, sep='\t')
 
-print "inputDf: ", inputDf
-
+# print "inputDf: ", inputDf
 
 #### 2. Number L1 insertions and median replication time correlation
 #####################################################################
@@ -135,6 +133,11 @@ plt.savefig(outPath)
 ## Remove bins with NA values for gene expression (no bins with NA expression actually)
 filteredDf = inputDf.dropna(subset=["medianExpr"]) 
 
+## Remove bins with expression level == 0
+# These will mostly  correspond to telomeric, centromeric regions
+filteredDf = filteredDf[filteredDf["medianExpr"] > 0]
+
+  
 ## Add pseudocount to expression values (to avoid expr of 0) 
 pseudocount = 10
 filteredDf["medianExpr"] += pseudocount
@@ -156,9 +159,18 @@ plt.savefig(outPath)
 
 #### 4. Number L1 insertions and gene density correlation
 #####################################################################
+## Remove bins with NA values for gene density (no bins with NA expression actually)
+filteredDf = inputDf.dropna(subset=["geneDensity"]) 
+
+## Remove bins with gene density == 0
+# These will mostly  correspond to telomeric, centromeric regions
+filteredDf = filteredDf[filteredDf["geneDensity"] > 0]
+
+print "filteredDf: ", filteredDf
+
 fig = plt.figure(figsize=(6,6))
 ax1 = fig.add_subplot(1, 1, 1)
-plot = sns.jointplot("nbL1", "geneDensity", data=inputDf, xlim=(0,30), kind="kde", space=0, dropna=True, cmap="Blues", stat_func=spearmanr)
+plot = sns.jointplot("nbL1", "geneDensity", data=filteredDf, xlim=(0,30), kind="kde", space=0, dropna=True, cmap="Blues", stat_func=spearmanr)
 #sns.regplot("nbL1", "medianRT", data=inputDf, ax=plot.ax_joint, scatter=False)
 
 ## Save figure
