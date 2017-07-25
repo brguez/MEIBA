@@ -90,8 +90,8 @@ sns.set_style("white")
 sns.set_style("ticks")
 
 ## Get user's input ##
-parser = argparse.ArgumentParser(description= """""")
-parser.add_argument('input', help='tsv...')
+parser = argparse.ArgumentParser(description="Compute correlation between L1 retrotransposition rate and diverse genomic features (replication time, gene expression and gene density)")
+parser.add_argument('input', help='Genomic features table')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
