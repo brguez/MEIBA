@@ -315,7 +315,7 @@ sns.set_style("whitegrid")
 #### 5.1 Prepare Data
 
 ## transpose dataframes to have source elements as columns and tumor types as rows
-srcElementContributionSortedDf = srcElementContributionSortedDf.T
+#srcElementContributionSortedDf = srcElementContributionSortedDf.T
 srcElementContributionFilteredSortedDf = srcElementContributionFilteredSortedDf.T 
  
 ## Convert dataframe values into floats 
@@ -325,9 +325,9 @@ srcElementContributionFilteredSortedDf = srcElementContributionFilteredSortedDf.
 #### 5.2 Make heatmaps
 ### ** Not filtered dataframe **
 ## A) Source element contribution across tumor types
-fig = plt.figure(figsize=(50,10))
+fig = plt.figure(figsize=(20,60))
 fig.suptitle('')
-ax1 = sns.heatmap(srcElementContributionSortedDf, vmin=0, vmax=50, annot=True, fmt=".1f", linewidths=.5, cmap=plt.cm.Oranges, cbar=True, annot_kws={"size": 8}, square=True)
+ax1 = sns.heatmap(srcElementContributionSortedDf, vmin=0, vmax=50, annot=True, fmt=".1f", linewidths=.5, cmap=plt.cm.Oranges, cbar=True, annot_kws={"size": 9}, square=True)
 
 ax1.set_xlabel('')
 ax1.set_ylabel('')
@@ -345,38 +345,14 @@ fileName = outDir + "/Pictures/germline_srcElements_contribution_tumorTypes_heat
 plt.savefig(fileName)
 
 
-## B) Source element contribution in the PCAWG cohort
-colList = [ "PCAWG" ] 
-totalSrcElementContributionSeries = srcElementContributionSortedDf.loc[colList, :]
-
-fig = plt.figure(figsize=(50,4))
-fig.suptitle('')
-
-ax2 = sns.heatmap(totalSrcElementContributionSeries, vmin=0, vmax=10, annot=True, fmt=".1f", linewidths=.5, cmap=plt.cm.Oranges, cbar=True, annot_kws={"size": 8}, square=True)
-
-ax2.set_xlabel('')
-ax2.set_ylabel('')
-ax2.xaxis.tick_top()
-
-# turn the axis labels
-for item in ax2.get_yticklabels():
-    item.set_rotation(0)
-
-for item in ax2.get_xticklabels():
-    item.set_rotation(45)
-
-## Save figure 
-fileName = outDir + "/Pictures/germline_srcElements_contribution_heatmap.pdf"
-plt.savefig(fileName)
-
-## C) Heatmap with total number of transductions per tumor type
-
-fig = plt.figure(figsize=(50,10))
+## B) Heatmap with total number of transductions per tumor type
+fig = plt.figure(figsize=(60,5))
 fig.suptitle('')
 
 totalNbTdPerTumorTypeSortedDf = totalNbTdPerTumorTypeSortedSerie.to_frame(name="# transductions")
+totalNbTdPerTumorTypeSortedDf = totalNbTdPerTumorTypeSortedDf.T
 
-ax3 = sns.heatmap(totalNbTdPerTumorTypeSortedDf, vmin=0, vmax=500, annot=True, fmt='.0f', linewidths=.5, cmap=plt.cm.Blues, cbar=True, annot_kws={"size": 8}, square=True)
+ax3 = sns.heatmap(totalNbTdPerTumorTypeSortedDf, vmin=0, vmax=500, annot=True, fmt='.0f', linewidths=.5, cmap=plt.cm.Blues, cbar=True, annot_kws={"size": 9}, square=True)
 
 ax3.set_xlabel('')
 ax3.set_ylabel('')
@@ -394,15 +370,13 @@ fileName = outDir + "/Pictures/totalNbTd_per_tumortype_heatmap.pdf"
 plt.savefig(fileName)
 
 
-## D) Heatmap with total number of transductions per source element
-
-fig = plt.figure(figsize=(50,10))
+## C) Heatmap with total number of transductions per source element
+fig = plt.figure(figsize=(5,60))
 fig.suptitle('')
 
 nbTdPCAWGSortedDf = nbTdPCAWGSortedSerie.to_frame(name="# transductions")
 
-nbTdPCAWGSortedDf = nbTdPCAWGSortedDf.T
-ax4 = sns.heatmap(nbTdPCAWGSortedDf, vmin=0, vmax=500, annot=True, fmt='.0f', linewidths=.5, cmap=plt.cm.Greens, cbar=True, annot_kws={"size": 8}, square=True)
+ax4 = sns.heatmap(nbTdPCAWGSortedDf, vmin=0, vmax=500, annot=True, fmt='.0f', linewidths=.5, cmap=plt.cm.Greens, cbar=True, annot_kws={"size": 9}, square=True)
 
 ax4.set_xlabel('')
 ax4.set_ylabel('')
@@ -422,9 +396,9 @@ plt.savefig(fileName)
 
 ### ** Filtered dataframe ** 
 ## A) Source element contribution across tumor types
-fig = plt.figure(figsize=(12,5))
+fig = plt.figure(figsize=(11,5))
 fig.suptitle('')
-ax1 = sns.heatmap(srcElementContributionFilteredSortedDf, vmin=0, vmax=50, annot=True, fmt=".1f", linewidths=.5, cmap=plt.cm.Oranges, cbar=True, annot_kws={"size": 8}, square=True)
+ax1 = sns.heatmap(srcElementContributionFilteredSortedDf, vmin=0, vmax=50, annot=True, fmt=".1f", linewidths=.5, cmap=plt.cm.Oranges, cbar=True, annot_kws={"size": 9}, square=True)
 
 ax1.set_xlabel('')
 ax1.set_ylabel('')
@@ -442,38 +416,13 @@ fileName = outDir + "/Pictures/germline_srcElements_contribution_tumorTypes_heat
 plt.savefig(fileName)
 
 
-## B) Source element contribution in the PCAWG cohort
-colList = [ "PCAWG" ] 
-totalSrcElementContributionSeries = srcElementContributionFilteredSortedDf.loc[colList, :]
-
-fig = plt.figure(figsize=(8,4))
-fig.suptitle('')
-
-ax2 = sns.heatmap(totalSrcElementContributionSeries, vmin=0, vmax=10, annot=True, fmt=".1f", linewidths=.5, cmap=plt.cm.Oranges, cbar=True, annot_kws={"size": 8}, square=True)
-
-ax2.set_xlabel('')
-ax2.set_ylabel('')
-ax2.xaxis.tick_top()
-
-# turn the axis labels
-for item in ax2.get_yticklabels():
-    item.set_rotation(0)
-
-for item in ax2.get_xticklabels():
-    item.set_rotation(45)
-
-## Save figure 
-fileName = outDir + "/Pictures/germline_srcElements_contribution_heatmap.filtered.pdf"
-plt.savefig(fileName)
-
-## C) Heatmap with the total number of transductions per tumor type
-
-fig = plt.figure(figsize=(10,10))
+## B) Heatmap with the total number of transductions per tumor type
+fig = plt.figure(figsize=(5,11))
 fig.suptitle('')
 
 nbTdPerTumorTypeFilteredDf = nbTdPerTumorTypeFilteredSerie.to_frame(name="# transductions")
 
-ax3 = sns.heatmap(nbTdPerTumorTypeFilteredDf, vmin=0, vmax=500, annot=True, fmt='.0f', linewidths=.5, cmap=plt.cm.Blues, cbar=True, annot_kws={"size": 8}, square=True)
+ax3 = sns.heatmap(nbTdPerTumorTypeFilteredDf, vmin=0, vmax=500, annot=True, fmt='.0f', linewidths=.5, cmap=plt.cm.Blues, cbar=True, annot_kws={"size": 9}, square=True)
 
 ax3.set_xlabel('')
 ax3.set_ylabel('')
