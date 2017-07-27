@@ -51,11 +51,13 @@ sns.set_style("ticks")
 parser = argparse.ArgumentParser(description= "Plot the number of active source source elements per tumor genome across each tumor type")
 parser.add_argument('activeSource', help='')
 parser.add_argument('donorMetadata', help='')
+parser.add_argument('palette', help='')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
 activeSource = args.activeSource
 donorMetadata = args.donorMetadata
+palette = args.palette
 outDir = args.outDir
 
 scriptName = os.path.basename(sys.argv[0])
@@ -65,6 +67,7 @@ print
 print "***** ", scriptName, " configuration *****"
 print "activeSource: ", activeSource
 print "donorMetadata: ", donorMetadata
+print "palette: ", palette
 print "outDir: ", outDir
 print
 print "***** Executing ", scriptName, ".... *****"
@@ -72,7 +75,7 @@ print
 
 ## Start ## 
 
-#### 0. Read metadata file
+#### 1. Read metadata file
 ##########################
 # Initialize a dictionary with the following structure:
 # - dict: key(donorId) -> tumorType
@@ -90,7 +93,7 @@ for line in donorMetadataFile:
         line = line.rstrip('\n')
         line = line.split('\t')
 
-        donorId = line[0]
+        donorId = line[1]
         donorExclusion = line[3]
 
         histologyCount	= line[10]
@@ -109,13 +112,38 @@ for line in donorMetadataFile:
 # Convert into dataframe
 donorIdTumorTypeSeries = pd.Series(donorIdTumorTypeDict, name='tumorType') 
 
-print "donorIdTumorTypeDf: ", donorIdTumorTypeSeries.shape
+print "donorIdTumorTypeSeries: ", donorIdTumorTypeSeries
 
 
-#### 1. Load number of active source elements into a dataframe
+#### 2. Read palette file
+##########################
+# Initialize a dictionary with the following structure:
+# - dict: key(tumor_histology) -> RGB_colorI
+
+header("2. Read palette file")
+
+paletteFile = open(palette, 'r')
+colorTumorTypeDict = {}
+
+for line in paletteFile:
+
+    # Skip header
+    if not line.startswith("#"):
+
+        line = line.rstrip('\n')
+        line = line.split('\t')
+
+        tumorType = line[0]
+        rgbColor = line[1]
+ 
+        colorTumorTypeDict[tumorType] = rgbColor
+
+print colorTumorTypeDict
+
+#### 3. Load number of active source elements into a dataframe
 ################################################################
 
-header("1. Load number of active source elements per donor into a dataframe")
+header("3. Load number of active source elements per donor into a dataframe")
 
 activeSourceSeries = pd.read_csv(activeSource, header=0, index_col=0, sep='\t')
 
@@ -124,53 +152,50 @@ donorIdList = donorIdTumorTypeSeries.keys()
 activeSourceFilteredSeries = activeSourceSeries.loc[donorIdList]
 
 
-#### 2. Merge series generated in 0) and 1) into a single dataframe
+#### 4. Merge series generated in 0) and 1) into a single dataframe
 #####################################################################
 
-header("2. Merge series generated in 0) and 1) into a single dataframe")
+header("4. Merge series generated in 0) and 1) into a single dataframe")
 tumorTypeActiveSourceDf = pd.concat([donorIdTumorTypeSeries, activeSourceFilteredSeries], axis=1)
-
-print "tumorTypeActiveSourceDf: ", tumorTypeActiveSourceDf
 
 ## Select donors with at least one active source element in a single donor
 tumorTypesDict = Counter(tumorTypeActiveSourceDf[tumorTypeActiveSourceDf["nbActiveSrc"] > 0]["tumorType"].tolist())
 
-print "tumorTypesDict: ", tumorTypesDict
-
-## Make ordered list of tumor types with at least one active source element in a single donor 
+## Make list of tumor types with at least one active source element in a single donor 
 selectedTumorTypesList =  [w for w in sorted(tumorTypesDict, key=tumorTypesDict.get, reverse=True)]
 
 ## Select donors of selected tumor types
 tumorTypeActiveSourceFilteredDf = tumorTypeActiveSourceDf[tumorTypeActiveSourceDf["tumorType"].isin(selectedTumorTypesList)]
 
-#### 3. Compute the average number of germline active source elements per tumor type
+
+#### 5. Compute the average number of germline active source elements per tumor type
 ######################################################################################
 
-header("3. Compute the average number of germline active source elements per tumor type")
+header("5. Compute the average number of germline active source elements per tumor type")
 
-tumorTypeNbActiveSrcDict = {k: g["nbActiveSrc"].tolist() for k,g in tumorTypeActiveSourceDf.groupby("tumorType")}
+tumorTypeNbActiveSrcDict = {k: g["nbActiveSrc"].tolist() for k,g in tumorTypeActiveSourceFilteredDf.groupby("tumorType")}
 
 meanDict = {}
 for tumorType in tumorTypeNbActiveSrcDict:
 
     meanDict[tumorType] = np.mean(tumorTypeNbActiveSrcDict[tumorType])
 
-print sorted(meanDict.items(), key=operator.itemgetter(1), reverse=True)
+tumorTypeNbActiveSrcSortedTuples = sorted(meanDict.items(), key=operator.itemgetter(1), reverse=True)
+sortedTumorTypesList = list(zip(*tumorTypeNbActiveSrcSortedTuples)[0])
 
-sys.exit(1)
 
-#### 4. Make the strip plot
+#### 6. Make the strip plot
 ############################
 
-header("4. Make the strip plot")
+header("6. Make the strip plot")
 
 fig = plt.figure(figsize=(12,4))
 
-ax = sns.stripplot(x='tumorType', y='nbActiveSrc', data=tumorTypeActiveSourceFilteredDf, size=3, edgecolor="gray", jitter=True, order=selectedTumorTypesList)
+ax = sns.stripplot(x='tumorType', y='nbActiveSrc', data=tumorTypeActiveSourceFilteredDf, size=8, edgecolor="black", linewidth=1, jitter=True, palette=colorTumorTypeDict, order=sortedTumorTypesList)
 
 ### Axis labels
 ax.set_xlabel('')
-ax.set_ylabel('# active germline source elements')
+ax.set_ylabel('Active source elements')
 
 # turn the axis labels
 for item in ax.get_yticklabels():
