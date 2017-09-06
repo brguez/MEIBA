@@ -134,14 +134,12 @@ if (!is.null(opt$highlight)) {
 if (is.null(opt$x_title)) {x_title = x_col} else {x_title = opt$x_title}
 if (is.null(opt$y_title)) {y_title = y_col} else {y_title = opt$y_title}
 
-
-
 countBins <- c(0,1,2,5,10,25,50,75,100,500,Inf)
 
 gp = ggplot(df, aes_string(x=x_col, y=y_col)) 
 
 if (opt$type == 'tile') {
-	gp = gp + stat_bin2d(bins=100)
+	gp = gp + stat_bin2d(bins=40)
 	gp = gp + scale_fill_gradientn(colours=terrain.colors(20), name=opt$legend_title)
 	if (!is.null(opt$highlight)) {
 		gp = gp + geom_point(data=df_h, aes_string(x=x_col, y=y_col))

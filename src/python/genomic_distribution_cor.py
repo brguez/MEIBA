@@ -136,7 +136,6 @@ filteredDf = inputDf.dropna(subset=["medianExpr"])
 ## Remove bins with expression level == 0
 # These will mostly  correspond to telomeric, centromeric regions
 filteredDf = filteredDf[filteredDf["medianExpr"] > 0]
-
   
 ## Add pseudocount to expression values (to avoid expr of 0) 
 pseudocount = 10

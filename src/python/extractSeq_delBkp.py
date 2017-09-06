@@ -55,13 +55,13 @@ class cohort():
 
             #print "tiooo: ", donorId, projectCode, VCFfile
 
-            # Create VCF object
-            VCFObj = formats.VCF()
-
             info("Reading " + VCFfile + "...")
 
             # Input VCF available
             if os.path.isfile(VCFfile):
+
+                # Create VCF object
+                VCFObj = formats.VCF()
 
                 # Read VCF and add information to VCF object
                 VCFObj.read_VCF(VCFfile)
@@ -265,7 +265,7 @@ for tumorType in cohortObj.VCFdict:
             if (MEIObj.filter == "PASS"):
 
 
-                ####### Insertion with at least the 5' bkp reconstructed (polyA extreme)
+                ####### Insertion with at least the 5' bkp reconstructed
                 if (int(MEIObj.infoDict["SCORE"]) == 3) or (int(MEIObj.infoDict["SCORE"]) == 5):
 
                     #### Select sequence around 5' insertion breakpoint
@@ -294,21 +294,44 @@ for tumorType in cohortObj.VCFdict:
 
 
                 ####### Insertion with at least the 3' bkp reconstructed (polyA extreme)
-                if (int(MEIObj.infoDict["SCORE"])>3):
+                if ("POLYA" in MEIObj.infoDict):
 
                     #### Select sequence around 3' insertion breakpoint
-                    # A) Insertion in plus orientation 
-                    #  >>>>>>>>>>>>>>AAAAAAAA(BKPB)-------
-                    if (MEIObj.infoDict["STRAND"] == '+'):
                     
-                        beg = int(MEIObj.infoDict["BKPB"]) - 9
-                        end = int(MEIObj.infoDict["BKPB"]) + 10                   
+                    # A) Unknown insertion orientation
+                    if "STRAND" not in MEIObj.infoDict:
+                        beg = int(MEIObj.pos) - 9
+                        end = int(MEIObj.pos) + 10                   
                         targetInterval = MEIObj.chrom + ':' + str(beg) + '-' + str(end)
                 
-                        # Extract sequence and print into fasta   
-                        command="samtools faidx " + genome + ' ' + targetInterval + ' >> ' + out3PrimePlusPath
+                        # Extract sequence and print into fasta                    
+                        command="samtools faidx " + genome + ' ' + targetInterval + ' >> ' + out3PrimeMinusPath
                         os.system(command)
+                    
+                    # B) Insertion in plus orientation 
+                    #  >>>>>>>>>>>>>>AAAAAAAA(BKPB)------  
+                    elif (MEIObj.infoDict["STRAND"] == '+'):
     
+                        ## A) BkpB coordinates available                 
+                        if "BKPB" in MEIObj.infoDict:
+                            beg = int(MEIObj.infoDict["BKPB"]) - 9
+                            end = int(MEIObj.infoDict["BKPB"]) + 10                   
+                            targetInterval = MEIObj.chrom + ':' + str(beg) + '-' + str(end)
+                
+                            # Extract sequence and print into fasta   
+                            command="samtools faidx " + genome + ' ' + targetInterval + ' >> ' + out3PrimePlusPath
+                            os.system(command)
+
+                        ## B) BkpB coordinates not available   
+                        else:          
+                            beg = int(MEIObj.pos) - 9
+                            end = int(MEIObj.pos) + 10                   
+                            targetInterval = MEIObj.chrom + ':' + str(beg) + '-' + str(end)
+                
+                            # Extract sequence and print into fasta                    
+                            command="samtools faidx " + genome + ' ' + targetInterval + ' >> ' + out3PrimeMinusPath
+                            os.system(command)
+
                     # B) Insertion in minus orientation 
                     # (POS)AAAAAAAA<<<<<<<<<<<<<-------
                     else:

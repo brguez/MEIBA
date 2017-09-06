@@ -121,6 +121,17 @@ def variantFrequencies(MEIObj, donorIdAncestryDict):
         else:    
             alleleFreqDict[ancestry] = float(alleleCountDict[ancestry])/float(nbChromDict[ancestry])
 
+    ## A) Novel insertion
+    if ('GERMDB' not in MEIObj.infoDict):
+
+        alleleFreqDict["novelty"] = "novel"
+  
+    ## B) Not novel insertion
+    else:
+
+        alleleFreqDict["novelty"] = "known"
+
+
     return alleleCountDict, alleleFreqDict
 
 
@@ -378,7 +389,7 @@ alleleFreqDf = pd.DataFrame(alleleFreqDict)
 alleleFreqDf = alleleFreqDf.T 
 
 # Reorder columns and remove UNK columns:
-colOrder = ['PCAWG', 'EUR', 'ASN', 'AFR', 'SAN', 'AMR']
+colOrder = ['PCAWG', 'EUR', 'ASN', 'AFR', 'SAN', 'AMR', 'novelty']
 alleleFreqDf = alleleFreqDf[colOrder]
 
 # Save output into tsv

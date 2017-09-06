@@ -76,6 +76,7 @@ header("1. Read metadata file")
 
 donorMetadataFile = open(donorMetadata, 'r')
 donorIdTumorTypeDict = {}
+donorIdAncestryDict = {}
 
 for line in donorMetadataFile:
 
@@ -86,8 +87,9 @@ for line in donorMetadataFile:
         line = line.split('\t')
 
         donorId = line[1]
+        #donorId = line[0]
         donorExclusion = line[3]
-
+        ancestry = line[4]
         histologyCount	= line[10]
         histologyExclusion = line[11]
         tumorHistology = line[12]
@@ -100,10 +102,11 @@ for line in donorMetadataFile:
         if (donorExclusion == 'Whitelist') and (tumorHistology != "UNK") and (histologyCount == "1") and (histologyExclusion == "included") :
 
             donorIdTumorTypeDict[donorId] = tumorHistology
+            donorIdAncestryDict[donorId] = ancestry
+
 
 #### 1. Compute the total number of transductions per source element in each tumor type
 #########################################################################################
-
 header("1. Compute the total number of transductions per source element in each tumor type")
 
 transductionsCountDf = pd.read_csv(transductionsCountFile, header=0, index_col=0, sep='\t')
@@ -141,16 +144,52 @@ outFilePath = outDir + '/germline_srcElements_tdPerTumorType.tsv'
 nbTdPerTumorTypeDf.to_csv(outFilePath, sep='\t') 
 
 
-#### 2. Compute the contribution (%) of each source element to the total number of
+#### 2. Compute the total number of transductions per source element in each ancestry
+#########################################################################################
+header("2. Compute the total number of transductions per source element in each ancestry")
+
+
+## Generate dictionary with the following format:
+# - dict: key(sourceElementId) -> dict2: key(tumorType) -> total_number_transductions
+nbTdPerAncestryDict = {}
+
+for sourceElementId, tdPerDonorSeries in transductionsCountFilteredDf.iterrows():
+
+    nbTdPerAncestryDict[sourceElementId] = {}
+        
+    for donorId, nbTd in tdPerDonorSeries.iteritems():
+
+        ancestry = donorIdAncestryDict[donorId]
+        #print "TIOO: ", donorId, ancestry, nbTd
+        
+        if ancestry not in nbTdPerAncestryDict[sourceElementId]:
+            nbTdPerAncestryDict[sourceElementId][ancestry] = nbTd    
+
+        else:
+            nbTdPerAncestryDict[sourceElementId][ancestry] += nbTd
+
+#print "nbTdPerAncestryDict: ", nbTdPerAncestryDict
+## Create pandas dataframe from dictionary
+nbTdPerAncestryDf = pd.DataFrame(nbTdPerAncestryDict) 
+
+## transpose dictionary to have source elements as rows and ancestries as columns
+nbTdPerAncestryDf = nbTdPerAncestryDf.T 
+
+# Save output into tsv
+outFilePath = outDir + '/germline_srcElements_tdPerAncestry.tsv'
+nbTdPerAncestryDf.to_csv(outFilePath, sep='\t') 
+
+
+#### 3. Compute the contribution (%) of each source element to the total number of
 #################################################################################
 # transductions in each tumor type
 ####################################
 ### Notes:
 ## contribution(%) = nb_transductions_src_element/total_nb_transductions_cancer_type
 
-header("2. Compute the contribution (%) of each source element to the total number of transductions in each tumor type")
+header("3. Compute the contribution (%) of each source element to the total number of transductions in each tumor type")
 
-#### 2.1 Select those tumor types with at least 1 transduction
+#### 3.1 Select those tumor types with at least 1 transduction
 ## Compute the total number of transductions per tumor type
 totalNbTdPerTumorTypeSerie = nbTdPerTumorTypeDf.sum(axis=0)
 
@@ -161,7 +200,7 @@ totalNbTdPerTumorTypeFilteredSerie = totalNbTdPerTumorTypeSerie[totalNbTdPerTumo
 tumorTypesList = list(totalNbTdPerTumorTypeFilteredSerie.index)
 nbTdPerTumorTypeFilteredDf = nbTdPerTumorTypeDf[tumorTypesList] 
 
-#### 2.2 Compute the source element contribution (in %) for the selected tumor types to the total number of transductions
+#### 3.2 Compute the source element contribution (in %) for the selected tumor types to the total number of transductions
 srcElementIds = nbTdPerTumorTypeFilteredDf.index
 tumorTypes = nbTdPerTumorTypeFilteredDf.columns
 
@@ -183,6 +222,43 @@ for srcElementId in srcElementIds:
 #print "test: ", srcElementContributionDf.sum(axis=0)
 # Ok, all 100% as expected. 
 
+
+#### 3. Compute the contribution (%) of each source element to the total number of
+#################################################################################
+# transductions in each ancestry
+####################################
+### Notes:
+## contribution(%) = nb_transductions_src_element/total_nb_transductions_ancestry
+
+header("3. Compute the contribution (%) of each source element to the total number of transductions in each ancestry")
+
+#### 3.1 Select those tumor types with at least 1 transduction
+## Compute the total number of transductions per tumor type
+totalNbTdPerAncestrySerie = nbTdPerAncestryDf.sum(axis=0)
+
+print "totalNbTdPerAncestrySerie: ", totalNbTdPerAncestrySerie
+
+#### 3.2 Compute the source element contribution (in %) for the selected tumor types to the total number of transductions
+srcElementIds = nbTdPerAncestryDf.index
+ancestries = nbTdPerAncestryDf.columns
+
+srcElementContributionAncestryDf = pd.DataFrame(index=srcElementIds, columns=ancestries)
+
+# Iterate over row index labels (source element ids)
+for srcElementId in srcElementIds:
+
+    # Iterate over column index labels (tumor types)
+    for ancestry in ancestries:
+    
+        nbTdSrcElement = nbTdPerAncestryDf.loc[srcElementId, ancestry]
+        nbTdAncestry = totalNbTdPerAncestrySerie.loc[ancestry]
+        tdPercAncestry = float(nbTdSrcElement)/float(nbTdAncestry) * 100
+
+        ## Add source element contribution to dataframe
+        srcElementContributionAncestryDf.loc[srcElementId, ancestry] = tdPercAncestry
+
+# print "test: ", srcElementContributionAncestryDf.sum(axis=0)
+# Ok, all 100% as expected. 
 
 #### 3. Compute the contribution (%) of each source element to 
 ##############################################################
@@ -287,11 +363,14 @@ srcElementContributionFilteredSortedDf = srcElementContributionFilteredSortedDf[
 ## Sort source element in descending order of total number of transductions
 nbTdPCAWGSortedSerie = nbTdPCAWGSerie.sort_values(ascending=False)
 
-#print "srcElementContributionSortedDf: ", srcElementContributionSortedDf
-#print "totalNbTdPerTumorTypeSortedSerie: ", totalNbTdPerTumorTypeSortedSerie
+## Select those source elements contributing more than 1% from ancestries dataframe:
+sourceElementList = srcElementContributionFilteredSortedDf.index.tolist()[1:]
 
-#print "srcElementContributionFilteredSortedDf: ", srcElementContributionFilteredSortedDf
-#print "nbTdPerTumorTypeFilteredSerie: ", nbTdPerTumorTypeFilteredSerie
+srcElementContributionAncestryFilteredDf = srcElementContributionAncestryDf.loc[sourceElementList]
+srcElementContributionAncestryFilteredDf["PCAWG"] = srcElementContributionFilteredSortedDf["PCAWG"]
+
+nbTdPerAncestryFilteredDf = nbTdPerAncestryDf.loc[sourceElementList]
+nbTdPerAncestryFilteredDf["PCAWG"] = nbTdPCAWGSortedSerie
 
 #### 4.3 Save both unfiltered and filtered dataframes into a tsv
 
@@ -315,7 +394,7 @@ sns.set_style("whitegrid")
 #### 5.1 Prepare Data
 
 ## transpose dataframes to have source elements as columns and tumor types as rows
-#srcElementContributionSortedDf = srcElementContributionSortedDf.T
+srcElementContributionSortedDf = srcElementContributionSortedDf.T
 srcElementContributionFilteredSortedDf = srcElementContributionFilteredSortedDf.T 
  
 ## Convert dataframe values into floats 
@@ -325,7 +404,7 @@ srcElementContributionFilteredSortedDf = srcElementContributionFilteredSortedDf.
 #### 5.2 Make heatmaps
 ### ** Not filtered dataframe **
 ## A) Source element contribution across tumor types
-fig = plt.figure(figsize=(20,60))
+fig = plt.figure(figsize=(60,20))
 fig.suptitle('')
 ax1 = sns.heatmap(srcElementContributionSortedDf, vmin=0, vmax=50, annot=True, fmt=".1f", linewidths=.5, cmap=plt.cm.Oranges, cbar=True, annot_kws={"size": 9}, square=True)
 
@@ -346,11 +425,11 @@ plt.savefig(fileName)
 
 
 ## B) Heatmap with total number of transductions per tumor type
-fig = plt.figure(figsize=(60,5))
+fig = plt.figure(figsize=(5,60))
 fig.suptitle('')
 
 totalNbTdPerTumorTypeSortedDf = totalNbTdPerTumorTypeSortedSerie.to_frame(name="# transductions")
-totalNbTdPerTumorTypeSortedDf = totalNbTdPerTumorTypeSortedDf.T
+#totalNbTdPerTumorTypeSortedDf = totalNbTdPerTumorTypeSortedDf.T
 
 ax3 = sns.heatmap(totalNbTdPerTumorTypeSortedDf, vmin=0, vmax=500, annot=True, fmt='.0f', linewidths=.5, cmap=plt.cm.Blues, cbar=True, annot_kws={"size": 9}, square=True)
 
@@ -371,10 +450,11 @@ plt.savefig(fileName)
 
 
 ## C) Heatmap with total number of transductions per source element
-fig = plt.figure(figsize=(5,60))
+fig = plt.figure(figsize=(60,5))
 fig.suptitle('')
 
 nbTdPCAWGSortedDf = nbTdPCAWGSortedSerie.to_frame(name="# transductions")
+nbTdPCAWGSortedDf = nbTdPCAWGSortedDf.T
 
 ax4 = sns.heatmap(nbTdPCAWGSortedDf, vmin=0, vmax=500, annot=True, fmt='.0f', linewidths=.5, cmap=plt.cm.Greens, cbar=True, annot_kws={"size": 9}, square=True)
 
@@ -439,6 +519,33 @@ for item in ax3.get_xticklabels():
 fileName = outDir + "/Pictures/totalNbTd_per_tumortype_heatmap.filtered.pdf"
 plt.savefig(fileName)
 
+
+#### 5.3 Make barplots
+
+print "srcElementContributionAncestryFilteredDf: ", srcElementContributionAncestryFilteredDf
+
+print "nbTdPerAncestryFilteredDf: ", nbTdPerAncestryFilteredDf
+
+for ancestry, contributionSeries in srcElementContributionAncestryFilteredDf.iteritems():
+
+    # Initialize the matplotlib figure
+    fig = plt.figure(figsize=(6, 2))
+
+    # Plot the contribution of each source element to the total number of retrotransposition insertions across PCAWG
+    ax = contributionSeries.plot(kind='bar')
+    ax.set(ylim=(0, 50), ylabel="Contribution (%)")
+
+    # Add to the top of each bar the total number of retrotransposition events mediated by each src element
+    rects = ax.patches
+    labels = nbTdPerAncestryFilteredDf[ancestry].values
+
+    for rect, label in zip(rects, labels):
+        height = rect.get_height()
+        ax.text(rect.get_x() + rect.get_width()/2, height, label, ha='center', va='bottom', size='8')
+
+    ## Save figure 
+    fileName = outDir + "/Pictures/source_element_contribution_" + ancestry + ".pdf"
+    plt.savefig(fileName)
 
 ### End
 header("FINISH!!")
