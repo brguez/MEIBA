@@ -155,7 +155,7 @@ outPath = outDir + "/" + outFileName + ".TraFiC.tsv"
 outFile = open(outPath, "w" )
 
 # Print header into the output file
-header = "#chromPlus" + "\t" + "begPlus" + "\t" + "endPlus" + "\t" + "nbReadsPlus" + "\t" + "classPlus" + "\t" + "readListPlus" + "\t" + "chromMinus" + "\t" + "begMinus" + "\t" + "endMinus" + "\t" + "nbReadsMinus" + "\t" + "classMinus" + "\t" + "readListMinus" + "\t" + "insertionType" + "\t" + "cytobandId" + "\t" + "sourceType" + "\t" + "chromSource" + "\t" + "begSource" + "\t" + "endSource" + "\t" + "strandSource" + "\t" + "tdBeg" + "\t" + "tdEnd" + "\t" + "tdRnaLen" + "\t" + "tdLen" + "\t" + "psdGene" + "\t" + "chromExonA" + "\t" + "begExonA" + "\t" + "endExonA" + "\t" + "chromExonB" + "\t" + "begExonB" + "\t" + "endExonB" + "\n"
+header = "#chromPlus" + "\t" + "begPlus" + "\t" + "endPlus" + "\t" + "nbReadsPlus" + "\t" + "classPlus" + "\t" + "readListPlus" + "\t" + "chromMinus" + "\t" + "begMinus" + "\t" + "endMinus" + "\t" + "nbReadsMinus" + "\t" + "classMinus" + "\t" + "readListMinus" + "\t" + "insertionType" + "\t" + "cytobandId" + "\t" + "sourceType" + "\t" + "chromSource" + "\t" + "begSource" + "\t" + "endSource" + "\t" + "strandSource" + "\t" + "tdBeg" + "\t" + "tdEnd" + "\t" + "tdRnaLen" + "\t" + "tdLen" + "\t" + "psdGene" + "\t" + "chromExonA" + "\t" + "begExonA" + "\t" + "endExonA" + "\t" + "chromExonB" + "\t" + "begExonB" + "\t" + "endExonB" + "\t" + "grType" + "\n"
 
 outFile.write(header) 
 
@@ -362,8 +362,11 @@ for line in clusterPaths:
                 begExonB = "NA"
                 endExonB = "NA"
 
+                ## Set as NA rearrangement specific fields:
+                grType = "NA"                
+
                 ## Write properly formated line into the output file:            
-                row = chromPlus + "\t" + begPlus + "\t" + endPlus + "\t" + nbReadsPlus + "\t" + classPlus + "\t" + readListPlus + "\t" + chromMinus + "\t" + begMinus + "\t" + endMinus + "\t" + nbReadsMinus + "\t" + classMinus + "\t" + readListMinus + "\t" + insertionType + "\t" + cytobandId + "\t" + sourceType + "\t" + chromSource + "\t" + begSource + "\t" + endSource + "\t" + strandSource + "\t" + tdBeg + "\t" + tdEnd + "\t" + tdRnaLen + "\t" + tdLen + "\t" + psdGene + "\t" + chromExonA + "\t" + begExonA + "\t" + endExonA + "\t" + chromExonB + "\t" + begExonB + "\t" + endExonB + "\n"        
+                row = chromPlus + "\t" + begPlus + "\t" + endPlus + "\t" + nbReadsPlus + "\t" + classPlus + "\t" + readListPlus + "\t" + chromMinus + "\t" + begMinus + "\t" + endMinus + "\t" + nbReadsMinus + "\t" + classMinus + "\t" + readListMinus + "\t" + insertionType + "\t" + cytobandId + "\t" + sourceType + "\t" + chromSource + "\t" + begSource + "\t" + endSource + "\t" + strandSource + "\t" + tdBeg + "\t" + tdEnd + "\t" + tdRnaLen + "\t" + tdLen + "\t" + psdGene + "\t" + chromExonA + "\t" + begExonA + "\t" + endExonA + "\t" + chromExonB + "\t" + begExonB + "\t" + endExonB + "\t" + grType + "\n"        
 
                 outFile.write(row) 
 
