@@ -74,7 +74,7 @@ header("2. Write each MEI as a BED data line")
 
 # Open output file
 outFilePath = outDir + '/' + fileName + '.bed'
-outFile = open(outFilePath, 'a')
+outFile = open(outFilePath, 'w')
 
 # Write header:
 row = '#chrom' + "\t" + 'beg' +  "\t" + 'end' + "\t" + 'iClass' + "\t" + 'iType' + "\t" + 'srcId' + "\n"
