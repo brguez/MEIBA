@@ -34,6 +34,21 @@ PICARD="java -jar /Users/brodriguez/Research/Apps/Picard/2.12.1/picard.jar Filte
 #PICARD="java -Xms10G -Xmx10G -jar /software/CGP/external-apps/picard-tools-1.80/lib/FilterSamReads.jar" # Sanger
 
 
+### 0) If 0 regions generate an empty bam file containing header and exit
+#############################################################################
+
+nbRegions=`grep -v '^#' $bed | wc -l`
+
+if [ $nbRegions == 0 ]
+then
+    echo "** 0 input regions. Generate an empty bam file containing header and exit ** " 
+    $SAMTOOLS view -Hb -o $outDir/${fileName}_minibam.bam $bam
+    echo "FINISHED!!"
+    exit 0
+fi
+
+
+
 ### 1) Generate a text file containing the read-pair ids 
 #########################################################
 # from all the regions of interest
@@ -60,4 +75,5 @@ $PICARD I=$bam O=$outDir/${fileName}_minibam.bam READ_LIST_FILE=$outDir/${fileNa
 ### Make cleanup
 rm $outDir/${fileName}_readIds.tmp
 
+echo "FINISHED!!"
 
