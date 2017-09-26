@@ -34,12 +34,6 @@ import argparse
 import sys
 import os.path
 import time
-import numpy as np
-import pandas as pd
-from matplotlib import pyplot as plt
-from scipy import stats
-import seaborn as sns
-import scipy
 import formats
 
 ## Get user's input ##
