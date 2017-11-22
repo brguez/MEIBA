@@ -53,7 +53,6 @@ fi
 #########################################################
 # from all the regions of interest
 ###################################
-
 echo
 echo "** 1) Generate a text file containing the read-pair ids from all the regions of interest **"
 
@@ -66,14 +65,31 @@ done
 
 ### 2) Generate a minibam file only containing the read-pairs from 1)
 ######################################################################
-
 echo
 echo "** 2) Generate a minibam file only containing the read-pairs from 1) **"
 
 $PICARD I=$bam O=$outDir/${fileName}_minibam.bam READ_LIST_FILE=$outDir/${fileName}_readIds.tmp FILTER=includeReadList WRITE_READS_FILES=false VALIDATION_STRINGENCY=SILENT
 
+
+### 3) Sort minibam 
+####################
+echo
+echo "** 3) Sort minibam **"
+
+$SAMTOOLS sort $outDir/${fileName}_minibam.bam > $outDir/${fileName}_minibam.sorted.bam
+
+
+### 4) Index minibam file
+#########################
+echo
+echo "** 4) Index minibam file **"
+
+$SAMTOOLS index $outDir/${fileName}_minibam.sorted.bam >$outDir/${fileName}_minibam.sorted.bam.bai
+
+
 ### Make cleanup
 rm $outDir/${fileName}_readIds.tmp
+rm $outDir/${fileName}_minibam.bam
 
 echo "FINISHED!!"
 
