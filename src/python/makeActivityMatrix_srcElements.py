@@ -113,7 +113,8 @@ for line in inputFile:
         line = line.split("\t")
     
         donorId = line[0]
-        VCFfile = line[2]
+        VCFfile = line[1]
+        #VCFfile = line[2]
 
         # Create VCF object
         VCFObj = formats.VCF()
