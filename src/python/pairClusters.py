@@ -125,28 +125,36 @@ class unpairedClusters():
             line = line.rstrip('\n')
             line = line.split("\t")
 
-            chrom, beg, end, nbReads, rtClass, readList = line             
-            clusterObj = cluster(chrom, beg, end, nbReads, rtClass, readList)
+            
+            ### Line with expected number of columns
+            if (int(len(line)) == 6):
+                chrom, beg, end, nbReads, rtClass, readList = line             
+                clusterObj = cluster(chrom, beg, end, nbReads, rtClass, readList)
          
-            # print "clusterObj: ", clusterObj.chrom, clusterObj.beg, clusterObj.end, clusterObj.nbReads, clusterObj.rtClass, clusterObj.readList
+                # print "clusterObj: ", clusterObj.chrom, clusterObj.beg, clusterObj.end, clusterObj.nbReads, clusterObj.rtClass, clusterObj.readList
 
-            # A) First cluster of a given class
-            if clusterObj.rtClass not in self.clustersDict:
-                self.clustersDict[clusterObj.rtClass] = {}
-                self.clustersDict[clusterObj.rtClass][clusterObj.chrom] = [ clusterObj ]
-
-            # B) There are already clusters of this class
-            else:
-
-                # a) First cluster in the chromosome
-                if clusterObj.chrom not in self.clustersDict[clusterObj.rtClass]:
-                    self.clustersDict[clusterObj.rtClass][clusterObj.chrom] = {}
+                # A) First cluster of a given class
+                if clusterObj.rtClass not in self.clustersDict:
+                    self.clustersDict[clusterObj.rtClass] = {}
                     self.clustersDict[clusterObj.rtClass][clusterObj.chrom] = [ clusterObj ]
 
-                # b) There are already clusters in the chromosome
+                # B) There are already clusters of this class
                 else:
-                    self.clustersDict[clusterObj.rtClass][clusterObj.chrom].append(clusterObj)
-        
+
+                    # a) First cluster in the chromosome
+                    if clusterObj.chrom not in self.clustersDict[clusterObj.rtClass]:
+                        self.clustersDict[clusterObj.rtClass][clusterObj.chrom] = {}
+                        self.clustersDict[clusterObj.rtClass][clusterObj.chrom] = [ clusterObj ]
+
+                    # b) There are already clusters in the chromosome
+                    else:
+                        self.clustersDict[clusterObj.rtClass][clusterObj.chrom].append(clusterObj)
+            
+            ## Line without the expected number of columns            
+            else:
+                print >>sys.stderr, "[ERROR] Filtering out a cluster with unexpected number of columns: ", line
+
+
     def filter_clusters(self, chromList):
         """
         """
