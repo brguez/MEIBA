@@ -101,7 +101,8 @@ for MEIObj in VCFObj.lineList:
         iType = MEIObj.infoDict["TYPE"]
         srcId = MEIObj.infoDict['SRCID'] if 'SRCID' in MEIObj.infoDict else 'NA' 
         GR = MEIObj.infoDict['GR'] if 'GR' in MEIObj.infoDict else 'NA' 
-        row = chrom + '\t' + beg + '\t' + end + '\t' + iClass + '\t' + iType + '\t' + srcId + '\t' + GR + '\n'
+        score =  MEIObj.infoDict['SCORE']
+        row = chrom + '\t' + beg + '\t' + end + '\t' + iClass + '\t' + iType + '\t' + srcId + '\t' + GR + '\t' + score + '\n'
         outFile.write(row)
        
 
