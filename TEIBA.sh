@@ -597,7 +597,6 @@ fi
 # 4. Directories
 ################
 ## binaries and scripts
-PICARD="java -jar /Users/brodriguez/Research/Apps/Picard/2.12.1/picard.jar" ## Harcoded, provisional...
 srcDir=$rootDir/src
 pyDir=$srcDir/python
 bashDir=$srcDir/bash
