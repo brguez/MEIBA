@@ -81,7 +81,7 @@ BEGIN{
         ### Insertion coordinates
         chrPlus = $1;
         endPlus = $3 + 100; # Done because this coordinate is the beginning of the read. So, we need to sum the readlength
--                    # (this is provisional, input file should already have this corrected)
+                            # (this is provisional, input file should already have this corrected)
         begMinus = $8;
 
         ### Family:
