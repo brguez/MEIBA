@@ -5,9 +5,10 @@
 import argparse
 import time
 import sys
-from itertools import groupby
 import os.path
 import re
+import formats
+import itertools 
 
 #### FUNCTIONS ####
 
@@ -38,2026 +39,137 @@ def log(label, string):
     """
     print "[" + label + "]", string
 
-def test_overlap(begA, endA, begB, endB):
+
+def parse_args():
+    """Define and parse command line parameters."""
+    parser = argparse.ArgumentParser(description="Per MEI called by TraFiC: 1) Identifies informative contigs spanning 5' and/or 3' insertion ends if possible, 2) Use informative contigs for characterizing MEI in detail (exact breakpoints, length, strand...) and 3) Produce a VCF with the MAI plus all these information")
+    parser.add_argument('inputPaths', help='Text file containing, per MEI, the needed files')
+    parser.add_argument('sampleId', help='Sample identifier to be incorporated in the SL field of the output VCF. In PCAWG we use the normal_wgs_aliquot_id or tumor_wgs_aliquot_id.')
+    parser.add_argument('fileName', help='Output VCF name. In PCAWG we use the submitted_donor_id.')
+    parser.add_argument('genome', help='Reference genome in fasta format')
+    parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
+
+    args = parser.parse_args()
+    return args
+
+
+def overlap(begA, endA, begB, endB, overhang):
 
     """
     Check if both ranges overlap. 2 criteria for defining overlap: 
-
     ## A) Begin of the range A within the range B         
     #       *beg* <---------range_A---------->                         
-    # <---------range_B----------> 
+    # <---------range_B----------> 
                 
     #    *beg* <-------range_A----->
     # <-------------range_B------------------>
 
-    ## B) Begin of the range B within the range A     
+
+    ## B) Begin of the range B within the range A     
     # <---------range_A----------> 
-    #               *beg* <---------range_B---------->
+    #               *beg* <---------range_B---------->
             
     # <-------------range_A----------------->
     #    *beg* <-------range_B------>
     """    
-       
-    # a) Begin of the range A within the range B   
-    if ((begA >= begB) and (begA <= endB)):
-        overlap = True
-        
-    # b) Begin of the range B within the range A            
-    elif ((begB >= begA) and (begB <= endA)):
-        overlap = True
+    
+    begA = max(0, (begA - overhang)) # Use 0 if it becomes negative 
+    endA = endA + overhang
+    begB = max(0, (begB - overhang)) # Use 0 if it becomes negative 
+    endB = endB + overhang
+ 
 
-    # c) Ranges do not overlapping
+    # A) Range A within range B
+    #    *beg* <-------range_A----->   
+    # <-------------range_B------------------>
+    if ((begA >= begB) and (endA <= endB)):
+
+        nbBases = endA - begA + 1
+        overlap = "within"
+
+    # B) Range B within range A
+    # <-------------range_A----------------->
+    #    *beg* <-------range_B------>
+    elif ((begB >= begA) and (endB <= endA)):
+
+        nbBases = endB - begB + 1
+        overlap = "within"
+
+    # C) Range A partially overlapping range B
+    #           *beg* <---------range_A----------> 
+    #   <---------range_B---------->    
+    elif ((begA > begB) and (begA <= endB)):
+      
+        nbBases = endB - begA + 1
+        overlap = "partial"
+
+    # D) Range B partially overlapping range A 
+    # <---------range_A----------> 
+    #               *beg* <---------range_B---------->            
+    elif ((begB > begA) and (begB <= endA)):
+
+        nbBases = endA - begB + 1
+        overlap = "partial"
+
+    # E) Ranges do not overlapping
     else:
-        overlap = False
+        nbBases = 0
+        overlap = "not"
 
-    return overlap
+    return overlap, nbBases
+
 
 #### CLASSES ####
-
-class VCF():
-    """
-        .....................
-
-        Methods:
-        -
-
-    """
+class breakpoint():
 
     def __init__(self):
-        """
-            ...
-
-            Output:
-            -
-        """
-        self.lineList = []  # List of VCFline objects
-
-    #### METHODS ####
-    def addLine(self, VCFlineObj):
-        """
-            ...
-
-            Input:
-            1) ...
-
-            Output:
-            1) ...
-        """
-        self.lineList.append(VCFlineObj)
+        self.chrom = ""
+        self.pos = ""
+        self.polyA = ""
+        self.alignmentObj = "" ## Contig alignment demarcating the insertion breakpoint
 
 
-    def sort(self):
-        """
-            ...
-
-            Input:
-            1) ...
-
-            Output:
-            1) ...
-        """
-
-        lineListSorted = sorted(self.lineList, key=lambda line: (line.chrom, line.pos))
-
-        return lineListSorted
-
-    def print_header(self, outFilePath):
-        """
-            ...
-
-            Input:
-            1) ...
-
-            Output:
-            1) ...
-        """
-
-        ## Define variables
-        date = time.strftime("%Y%m%d")
-
-        context = {
-         "date": date,
-         "source": "TraFiCv2.0",
-         "reference": "hs37d5"
-         }
-
-        ## Header template
-        template = """##fileformat=VCFv4.2
-##fileDate={date}
-##source={source}
-##reference={reference}
-##contig=<ID=1,assembly=GRCh37,length=249250621,species=human>
-##contig=<ID=2,assembly=GRCh37,length=243199373,species=human>
-##contig=<ID=3,assembly=GRCh37,length=198022430,species=human>
-##contig=<ID=4,assembly=GRCh37,length=191154276,species=human>
-##contig=<ID=5,assembly=GRCh37,length=180915260,species=human>
-##contig=<ID=6,assembly=GRCh37,length=171115067,species=human>
-##contig=<ID=7,assembly=GRCh37,length=159138663,species=human>
-##contig=<ID=8,assembly=GRCh37,length=146364022,species=human>
-##contig=<ID=9,assembly=GRCh37,length=141213431,species=human>
-##contig=<ID=10,assembly=GRCh37,length=135534747,species=human>
-##contig=<ID=11,assembly=GRCh37,length=135006516,species=human>
-##contig=<ID=12,assembly=GRCh37,length=133851895,species=human>
-##contig=<ID=13,assembly=GRCh37,length=115169878,species=human>
-##contig=<ID=14,assembly=GRCh37,length=107349540,species=human>
-##contig=<ID=15,assembly=GRCh37,length=102531392,species=human>
-##contig=<ID=16,assembly=GRCh37,length=90354753,species=human>
-##contig=<ID=17,assembly=GRCh37,length=81195210,species=human>
-##contig=<ID=18,assembly=GRCh37,length=78077248,species=human>
-##contig=<ID=19,assembly=GRCh37,length=59128983,species=human>
-##contig=<ID=20,assembly=GRCh37,length=63025520,species=human>
-##contig=<ID=21,assembly=GRCh37,length=48129895,species=human>
-##contig=<ID=22,assembly=GRCh37,length=51304566,species=human>
-##contig=<ID=hs37d5,assembly=GRCh37,length=35477943,species=human>
-##contig=<ID=GL000191.1,assembly=GRCh37,length=106433,species=human>
-##contig=<ID=GL000192.1,assembly=GRCh37,length=547496,species=human>
-##contig=<ID=GL000193.1,assembly=GRCh37,length=189789,species=human>
-##contig=<ID=GL000194.1,assembly=GRCh37,length=191469,species=human>
-##contig=<ID=GL000195.1,assembly=GRCh37,length=182896,species=human>
-##contig=<ID=GL000196.1,assembly=GRCh37,length=38914,species=human>
-##contig=<ID=GL000197.1,assembly=GRCh37,length=37175,species=human>
-##contig=<ID=GL000198.1,assembly=GRCh37,length=90085,species=human>
-##contig=<ID=GL000199.1,assembly=GRCh37,length=169874,species=human>
-##contig=<ID=GL000200.1,assembly=GRCh37,length=187035,species=human>
-##contig=<ID=GL000201.1,assembly=GRCh37,length=36148,species=human>
-##contig=<ID=GL000202.1,assembly=GRCh37,length=40103,species=human>
-##contig=<ID=GL000203.1,assembly=GRCh37,length=37498,species=human>
-##contig=<ID=GL000204.1,assembly=GRCh37,length=81310,species=human>
-##contig=<ID=GL000205.1,assembly=GRCh37,length=174588,species=human>
-##contig=<ID=GL000206.1,assembly=GRCh37,length=41001,species=human>
-##contig=<ID=GL000207.1,assembly=GRCh37,length=4262,species=human>
-##contig=<ID=GL000208.1,assembly=GRCh37,length=92689,species=human>
-##contig=<ID=GL000209.1,assembly=GRCh37,length=159169,species=human>
-##contig=<ID=GL000210.1,assembly=GRCh37,length=27682,species=human>
-##contig=<ID=GL000211.1,assembly=GRCh37,length=166566,species=human>
-##contig=<ID=GL000212.1,assembly=GRCh37,length=186858,species=human>
-##contig=<ID=GL000213.1,assembly=GRCh37,length=164239,species=human>
-##contig=<ID=GL000214.1,assembly=GRCh37,length=137718,species=human>
-##contig=<ID=GL000215.1,assembly=GRCh37,length=172545,species=human>
-##contig=<ID=GL000216.1,assembly=GRCh37,length=172294,species=human>
-##contig=<ID=GL000217.1,assembly=GRCh37,length=172149,species=human>
-##contig=<ID=GL000218.1,assembly=GRCh37,length=161147,species=human>
-##contig=<ID=GL000219.1,assembly=GRCh37,length=179198,species=human>
-##contig=<ID=GL000220.1,assembly=GRCh37,length=161802,species=human>
-##contig=<ID=GL000221.1,assembly=GRCh37,length=155397,species=human>
-##contig=<ID=GL000222.1,assembly=GRCh37,length=186861,species=human>
-##contig=<ID=GL000223.1,assembly=GRCh37,length=180455,species=human>
-##contig=<ID=GL000224.1,assembly=GRCh37,length=179693,species=human>
-##contig=<ID=GL000225.1,assembly=GRCh37,length=211173,species=human>
-##contig=<ID=GL000226.1,assembly=GRCh37,length=15008,species=human>
-##contig=<ID=GL000227.1,assembly=GRCh37,length=128374,species=human>
-##contig=<ID=GL000228.1,assembly=GRCh37,length=129120,species=human>
-##contig=<ID=GL000229.1,assembly=GRCh37,length=19913,species=human>
-##contig=<ID=GL000230.1,assembly=GRCh37,length=43691,species=human>
-##contig=<ID=GL000231.1,assembly=GRCh37,length=27386,species=human>
-##contig=<ID=GL000232.1,assembly=GRCh37,length=40652,species=human>
-##contig=<ID=GL000233.1,assembly=GRCh37,length=45941,species=human>
-##contig=<ID=GL000234.1,assembly=GRCh37,length=40531,species=human>
-##contig=<ID=GL000235.1,assembly=GRCh37,length=34474,species=human>
-##contig=<ID=GL000236.1,assembly=GRCh37,length=41934,species=human>
-##contig=<ID=GL000237.1,assembly=GRCh37,length=45867,species=human>
-##contig=<ID=GL000238.1,assembly=GRCh37,length=39939,species=human>
-##contig=<ID=GL000239.1,assembly=GRCh37,length=33824,species=human>
-##contig=<ID=GL000240.1,assembly=GRCh37,length=41933,species=human>
-##contig=<ID=GL000241.1,assembly=GRCh37,length=42152,species=human>
-##contig=<ID=GL000242.1,assembly=GRCh37,length=43523,species=human>
-##contig=<ID=GL000243.1,assembly=GRCh37,length=43341,species=human>
-##contig=<ID=GL000244.1,assembly=GRCh37,length=39929,species=human>
-##contig=<ID=GL000245.1,assembly=GRCh37,length=36651,species=human>
-##contig=<ID=GL000246.1,assembly=GRCh37,length=38154,species=human>
-##contig=<ID=GL000247.1,assembly=GRCh37,length=36422,species=human>
-##contig=<ID=GL000248.1,assembly=GRCh37,length=39786,species=human>
-##contig=<ID=GL000249.1,assembly=GRCh37,length=38502,species=human>
-##contig=<ID=MT,assembly=GRCh37,length=16569,species=human>
-##contig=<ID=NC_007605,assembly=GRCh37,length=171823,species=human>
-##contig=<ID=X,assembly=GRCh37,length=155270560,species=human>
-##contig=<ID=Y,assembly=GRCh37,length=59373566,species=human>
-##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant. (All sequence is on the plus strand and in the forward direction).">
-##INFO=<ID=CLASS,Number=1,Type=String,Description="Mobile element class (L1, ALU, SVA or ERVK)">
-##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction, PSD: processed-pseudogene)>
-##INFO=<ID=SCORE,Number=1,Type=Integer,Description="Insertion score (5: 5' and 3' breakpoints (bkp) assembled, 4: 3'bkp assembled, 3: 5'bkp assembled, 2: no bkp assembled, 1: inconsistent (contradictory orientation, bkp or TSD))">
-##INFO=<ID=MANUAL,Number=0,Type=Flag,Description="MEI manually verified and curated through BAM inspection (Only used for PSD)">
-##INFO=<ID=BKPB,Number=1,Type=Integer,Description="MEI right-most breakpoint position (bkp B). Left-most breakpoint position (bkp A) represented in the POS field">
-##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoint">
-##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
-##INFO=<ID=STRUCT,Number=1,Type=String,Description="Mobile element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
-##INFO=<ID=LEN,Number=1,Type=Integer,Description="Mobile element length">
-##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site duplication (+_value) or deletion (-_value) length">
-##INFO=<ID=TSSEQ,Number=1,Type=String,Description="Target site duplication sequence">
-##INFO=<ID=POLYA,Number=1,Type=String,Description="Poly-A sequence">
-##INFO=<ID=SRCID,Number=1,Type=String,Description="Source element cytoband identifier. Only for gemline source elements">
-##INFO=<ID=SRCTYPE,Number=1,Type=String,Description="Source element type (GERMLINE or SOMATIC)">
-##INFO=<ID=SRC,Number=1,Type=String,Description="Coordinates of the source element that mediated the transduction in the format: chrom_beg_end">
-##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the integrated transduced or pseudogene sequence in the format: chrom_beg_end">
-##INFO=<ID=TDLEN,Number=1,Type=Integer,Description="Transduced region length">
-##INFO=<ID=TDLENR,Number=1,Type=Integer,Description="Transduced region length at RNA level">
-##INFO=<ID=SRCGENE,Number=1,Type=String,Description="Source gene of the processed pseudogene insertion">
-##INFO=<ID=GR,Number=1,Type=String,Description="L1-mediated genomic rearrangement (DEL: deletion, DUP: duplication or TRANS: translocation)">
-##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI already reported as germinal in a database (1KGENOMES: 1000 genomes project (source_papers_doi: 10.1038/nature15394 and 10.1073/pnas.1602336113), PCAWG: PCAWG database)">
-##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the mobile element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
-##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
-##INFO=<ID=ROLE,Number=1,Type=String,Description="Role in cancer (oncogene, TSG: tumor suppressor gene, oncogene/TSG: both roles)">
-##INFO=<ID=COSMIC,Number=0,Type=Flag,Description="Reported as cancer driver in COSMIC cancer gene census database">
-##INFO=<ID=CPG,Number=0,Type=Flag,Description="Reported as cancer predisposition gene in 10.1038/nature12981 (DOI).">
-##INFO=<ID=REP,Number=1,Type=String,Description="Repetitive element overlapping the insertion breakpoint">
-##INFO=<ID=DIV,Number=1,Type=Integer,Description="Millidivergence of the overlapping repetitive element with respect a consensus sequence">
-##INFO=<ID=CONTIGA,Number=1,Type=String,Description="Assembled contig sequence spanning 1st bkp (lowest genomic position)">
-##INFO=<ID=CONTIGB,Number=1,Type=String,Description="Assembled contig sequence spanning 2nd bkp (highest genomic position)">
-##INFO=<ID=RP,Number=.,Type=String,Description="Reads from the tumour sample and positive cluster that support this insertion">
-##INFO=<ID=RN,Number=.,Type=String,Description="Reads from the tumour sample and negative cluster that support this insertion">
-##FILTER=<ID=SCORE,Description="Insertion with an score < threshold">
-##FILTER=<ID=FPSOURCE,Description="Transduction mediated by a false somatic source element">
-##FILTER=<ID=REP,Description="Insertion overlapping a satellite region or a repetitive element of the same class">
-##FILTER=<ID=DUP,Description="Duplicated MEI call">
-##FILTER=<ID=GERMLINE,Description="Germline MEI miscalled as somatic">
-##FILTER=<ID=TD,Description="L1 transduction incorrectly identified as a processed pseudogene insertion">
-##FILTER=<ID=COUNT,Description="Allele count < threshold">
-##FILTER=<ID=MISSGT,Description="Genotype missing-ness rate > threshold ">
-##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting reads">
-##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
-##FORMAT=<ID=SL,Number=1,Type=String,Description="List of samples where the variant was found (specially relevant for multi-tumor donors)">
-##FORMAT=<ID=REPR,Number=1,Type=String,Description="Sample selected as representative among all the samples where the variant was found (specially relevant for multi-sample VCF).">
-##FORMAT=<ID=GT,Number=1,Type=String,Description="Unphased genotypes">
-##FORMAT=<ID=NV,Number=1,Type=Integer,Description="Number of reads supporting the variant in this sample">
-##FORMAT=<ID=NR,Number=1,Type=Integer,Description="Number of reads covering variant location in this sample">
-#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  
-"""
-
-        ## Replace variables into the template and print header into the output file
-        with  open(outFilePath,'w') as outFile:
-            outFile.write(template.format(**context))
-
-
-    def print_lines(self, outFilePath):
-        """
-            ...
-
-            Input:
-            1) ...
-
-            Output:
-            1) ...
-        """
-
-        ## Open outfile
-        outFile = open(outFilePath, 'a')
-
-        ## Sort VCF lines
-        lineListSorted = self.sort()
-
-        ## Iterate and print each VCF line into the output VCF file
-        for VCFline in lineListSorted:
-
-            row = VCFline.chrom + "\t" + str(VCFline.pos) + "\t" + VCFline.id + "\t" + VCFline.ref + "\t" + VCFline.alt + "\t" + VCFline.qual + "\t" + VCFline.filter + "\t" + VCFline.info + "\t" + VCFline.format + "\t" + VCFline.genoType + "\n"
-            outFile.write(row)
-
-        ## Close output file
-        outFile.close()
-
-
-class VCFline():
+class chained_alignment():
     """
-        .....................
-
-        Methods:
-        -
 
     """
 
-    def __init__(self, insertionObj, genomeObj):
+    def __init__(self, alignmentList):
         """
-            ...
-
-            Output:
-            -
         """
-        self.chrom = insertionObj.bkpA[0]
-        self.pos = insertionObj.bkpA[1]
-        self.id = "."
-        self.ref = genomeObj.fastaDict[self.chrom][insertionObj.bkpA[1] - 1]  # Substract 1 since python string coordinates start in 0 while bkp position in 1.
-        self.alt = "<MEI>"
-        self.qual = "."
-        self.filter = "."
-        self.info = self.make_info(insertionObj)
-        self.format = "RCP:RCN:SL"
-        RP = str(insertionObj.clusterPlusObj.nbPairs if (insertionObj.clusterPlusObj != "NA") else "NA")
-        RN = str(insertionObj.clusterMinusObj.nbPairs if (insertionObj.clusterMinusObj != "NA") else "NA")
-        self.genoType = RP + ":" + RN + ":" + insertionObj.sampleId
+        self.alignmentList = alignmentList
 
-    def make_info(self, insertionObj):
+    def perc_query_covered(self):
         """
-            ...
-
-            Output:
-            -
         """
-
-        ## Create list containing the order of info fields
-        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "SCORE", "MANUAL", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "TSSEQ", "POLYA", "SRCID", "SRCTYPE", "SRC", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GR", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "RP", "RN" ]
-
-        ## Build dictionary with info tags as keys
-        infoDict = {}
-        infoDict["SVTYPE"] = "<MEI>"
-        infoDict["CLASS"] = insertionObj.TEClass
-        infoDict["TYPE"] = insertionObj.tdType
-        infoDict["SCORE"] = insertionObj.score
-        infoDict["BKPB"] = insertionObj.bkpB[1]
-        infoDict["CIPOS"] = insertionObj.bkpA[2]
-        infoDict["STRAND"] = insertionObj.orientation
-        infoDict["STRUCT"] = insertionObj.structure
-        infoDict["LEN"] = insertionObj.length
-        infoDict["TSLEN"] = insertionObj.targetSiteSize
-        infoDict["TSSEQ"] = insertionObj.targetSiteSeq
-        infoDict["POLYA"] = insertionObj.polyA
-        infoDict["SRCID"] = insertionObj.cytobandId
-        infoDict["SRCTYPE"] = insertionObj.sourceElementType
-        infoDict["SRC"] = insertionObj.sourceElementCoord
-        infoDict["TDC"] = insertionObj.tdCoord
-        infoDict["TDLEN"] = insertionObj.tdLen
-        infoDict["TDLENR"] = insertionObj.tdLenRna
-        infoDict["SRCGENE"] = insertionObj.srcgene
-        infoDict["GR"] = insertionObj.grInfo
-        infoDict["CONTIGA"] = insertionObj.informativeContigBkpA
-        infoDict["CONTIGB"] = insertionObj.informativeContigBkpB
-        infoDict["RP"] = insertionObj.clusterPlusObj.readPairIds if (insertionObj.clusterPlusObj != "NA") else "NA"
-        infoDict["RN"] = insertionObj.clusterMinusObj.readPairIds if (insertionObj.clusterMinusObj != "NA") else "NA"
-
-        ## Create info string in the correct order from dictionary
-        infoList = []
-
-        for info in infoOrder:
-
-            # Information about current info field available and applicable
-            if (info in infoDict.keys()) and (infoDict[info] != "UNK") and (infoDict[info] != "NA"):
-
-                infoField = info + "=" +str(infoDict[info])
-                infoList.append(infoField)
-
-        info = ';'.join(infoList)
-
-        return(info)
-
-
-class insertion():
-    """
-    Transposable element insertion class.
-
-    A cluster can be + or - and it has associated the contigs resulting from the assembly of TE insertion supporting
-    reads identified by TraFiC.
-
-    Methods:
-    - create_cluster
-    - find_insertionBkp
-    - insertion_orientation_polyA
-    - insertion_orientation_ERVK
-    - polyA
-    - target_site
-    - imprecise_bkp
-    """
-
-    def __init__(self, family, tdType, coordinates, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo, pseudogeneInfo, grInfo, sampleId):
-        """
-            Initialize insertion object.
-
-            Input:
-            1) family. TE family (L1, Alu, SVA or ERVK)
-            2) tdType. Insertion type:  td0 (solo-insertion), td1 (partnered-transduccion), td2 (orphan-transduction) or psd (pseudogene insertion).
-            3) coordinates. TraFiC insertion range.
-            4) contigsPlusPath. Fasta file containing the assembled contigs for the positive cluster.
-            5) blatPlusPath. psl file containing the blat aligments for the positive cluster's assembled contigs.
-            6) contigsMinusPath. Fasta file containing the assembled contigs for the negative cluster.
-            7) blatMinusPath. psl file containing the blat aligments for the negative cluster's assembled contigs.
-            8) readPairsPlus. List of + cluster supporting reads.
-            9) readPairsMinus. List of - cluster supporting reads.
-            10) srcElement. Source element information in the format: cytobandId"_"srcElementType"_"chromSource"_"begSource"_"endSource"_"orientationSource. 
-            11) transductionInfo. Transduction information in the format: chromSource"_"transductBeg"_"transductEnd"_"transductRnaLen"_"transductLen.
-            12) pseudogeneInfo. Pseudogene information in the format: srcgene":"chrExonA"_"begExonA"-"endExonA":"chrExonB"_"begExonB"-"endExonB
-            13) grInfo. Insertion associated genomic rearrangement (DEL, DUP, TRANS or NA) 
-            14) sampleId. Sample identifier to be incorporated in the SL field of the output VCF. In PCAWG we use the normal_wgs_aliquot_id or tumor_wgs_aliquot_id.
-            
-            Output:
-            - Insertion object variables initialized
-        """
-        self.TEClass = TEClass
-        self.tdType = tdType
-        self.coordinates = coordinates
-        self.clusterPlusObj = self.create_cluster("+", contigsPlusPath, blatPlusPath, readPairsPlus) if readPairsPlus != 'NA' else 'NA'        
-        self.clusterMinusObj = self.create_cluster("-", contigsMinusPath, blatMinusPath, readPairsMinus) if readPairsMinus != 'NA' else 'NA'    
-        self.grInfo = grInfo
-        self.sampleId = sampleId
-
-        print "TIOO: ", self.TEClass, self.tdType, self.coordinates, self.clusterPlusObj, self.clusterMinusObj, self.grInfo, self.sampleId
-
-        # A) Solo insertion (TD0). Not applicable
-        if (self.tdType == "TD0"):
-            self.cytobandId = "NA"
-            self.sourceElementType = "NA"
-            self.sourceElementCoord = "NA"
-            self.tdCoord = "NA"
-            self.tdLen = "NA"
-            self.tdLenRna = "NA"
-            self.srcgene = "UNK"
-
-        # B) Partnered or orphan transduction (TD1 and TD2)
-        elif (self.tdType in ["TD1", "TD2"]):
-
-            ### L1 source element information
-            srcElementList = srcElement.split("_")
-
-            self.cytobandId = srcElementList[0]
-            self.sourceElementType = srcElementList[1]
-            self.sourceElementCoord = srcElementList[2] + "_" + srcElementList[3] + "_" + srcElementList[4]
-            
-            status = srcElementList[5]
-
-            ### Mobilized region coord
-            transductionInfoList = transductionInfo.split("_")
-            self.tdCoord = transductionInfoList[0] + "_" + transductionInfoList[1] + "_" + transductionInfoList[2]
-            self.srcgene = "UNK"
-
-            # A) Putative. Uncharacterized germline or somatic source element
-            if (status == "putative"):
-                self.tdLenRna = "UNK"                
-                self.tdLen = "UNK"
-              
-            # B) Characterized germline source element
-            else:
-                self.tdLenRna = transductionInfoList[3]                
-                self.tdLen = transductionInfoList[4]
-
-            print "test_status: ", status
-                
-        # C) pseudogene insertion (PSD)
-        elif (self.tdType == "PSD"):
-            self.cytobandId = "NA"
-            self.sourceElementType = "NA"
-            self.sourceElementCoord = "NA"
-            self.tdLen = "UNK"
-            self.tdLenRna = "UNK"
-
-            # parse pseudogene info, format:
-            # gene:chrA_begA-endA:chrB_begB-begB
-            regex = r'(?P<gene>\w+):(?P<chrA>\w+)_(?P<begA>\d+)-(?P<endA>\d+):(?P<chrB>\w+)_(?P<begB>\d+)-(?P<endB>\d+)'
-
-            m = re.search(regex, pseudogeneInfo)
-            srcgene = m.group("gene")
-            chrExonA = m.group("chrA")
-            begExonA = int(m.group("begA"))
-            endExonA = int(m.group("endA"))
-            chrExonB = m.group("chrB")
-            begExonB = int(m.group("begB"))
-            endExonB = int(m.group("endB"))
-
-            self.srcgene = srcgene
-
-            # construct source region from exon coordinates
-            minBeg = min(begExonA, begExonB)
-            maxEnd = max(endExonA, endExonB)
-            self.tdCoord = "%s_%d_%d" % (chrExonA, minBeg, maxEnd)
-
-        ## Unkown values by default:
-        self.traficId = "UNK"
-        self.score = "UNK"
-        self.bkpA = ["UNK", "UNK", "UNK"]
-        self.bkpB = ["UNK", "UNK", "UNK"]
-        self.targetSiteSize = "UNK"
-        self.targetSiteSeq = "UNK"
-        self.orientation = "UNK"
-        self.structure = "UNK"
-        self.length = "UNK"
-        self.percLength = "UNK"
-        self.informativeContigIdBkpA = "UNK"
-        self.informativeContigBkpA = "UNK"
-        self.informativeContigIdBkpB = "UNK"
-        self.informativeContigBkpB = "UNK"
-        self.polyA = "UNK"
-
-    #### FUNCTIONS ####
-    def create_cluster(self, ID, contigsPath, blatPath, readPairsList):
-        """
-            Create cluster object.
-
-            Input:
-            1) ID. Cluster id (+ or -)
-            2) contigsPath. Fasta file containing the assembled contigs for the given
-                            cluster.
-            3) blatPath. psl file containing the blat aligments for the assembled contigs.
-            4) readPairsList. List of cluster supporting reads.
-
-            Output:
-            1) clusterObj. Cluster object
-        """
-
-        # Create cluster object
-        clusterObj = cluster(ID, contigsPath, readPairsList)
-
-        # Add blat alignments to cluster object
-        clusterObj.add_alignments(blatPath)
-
-        return clusterObj
-
-
-    def find_insertionBkp(self, genomeObj, outDir):
-        """
-            Identify TE insertion breakpoints, TSD, orientation and poly-A sequence from assembled contigs
-
-            Input:
-            1) outDir. Output directory (provisional).
-
-            Output (Provisional):
-            1) score. One of these values:
-                5: 5' and 3' breakpoints (bkp) assembled
-                4: 3'bkp assembled
-                3: 5'bkp assembled
-                2: no bkp assembled
-                1: inconsistent (contradictory orientation, bkp or TSD)
-
-            2) breakpoint. Breakpoint coordinates (3 elements list: chrom, pos and confidence interval (CI))
-            3) TS. Target site duplication or deletion (tuple: TSD size and sequence).
-            4) orientation. TE insertion DNA strand/orientation (+ or -)
-            5) polyA. Poly-A sequence.
-        """
-
-        ### Find informative contig for + cluster if possible 
-        if (self.clusterPlusObj != "NA"):
-            subHeader("Searching informative contigs for + cluster")
-            bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj = self.clusterPlusObj.find_informative_contigs(self.coordinates, self.tdType, self.tdCoord)
-
-        else:
-            subHeader("Not available contigs for + cluster")
-            bestInformative5primeContigPlusObj, bestInformative3primeContigPlusObj = ["UNK", "UNK"]
-
-        
-        ### Find informative contig for - cluster if possible
-        if (self.clusterMinusObj != "NA"):
-            subHeader("Searching informative contigs for - cluster")
-            bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj = self.clusterMinusObj.find_informative_contigs(self.coordinates, self.tdType, self.tdCoord)
-        
-        else:
-            subHeader("Not available contigs for - cluster")
-            bestInformative5primeContigMinusObj, bestInformative3primeContigMinusObj = ["UNK", "UNK"]
-
-        ### Determine insertion breakpoints, TS and TE orientation from informative contigs 
-        subHeader("Determining insertion breakpoint, TS and TE orientation from informative contigs")
-
-        ## Set default variables
-        self.traficId = self.TEClass + ":" + self.coordinates
-
-        ## A) ERKV insertion without any contig spanning one of insertion breakpoints 
-        # Note that ERVK insertions do not have polyA tail. So both 5' and 3' breakpoints are identified as 5'
-        if (self.TEClass == "ERVK") and (bestInformative5primeContigPlusObj == "UNK") and (bestInformative5primeContigMinusObj == "UNK"):
-
-            info("no-informative-contigs:")
-
-            # No informative contigs, imprecise breakpoint
-            self.score = '2'
-            self.bkpA = self.imprecise_bkp(self.coordinates)
-
-        ## B) No ERVK insertion (L1, SVA, Alu or PSD) without any contig spanning one of insertion breakpoint
-        elif (self.TEClass != "ERVK") and (bestInformative5primeContigPlusObj == "UNK") and (bestInformative3primeContigPlusObj == "UNK") and (bestInformative5primeContigMinusObj == "UNK") and (bestInformative3primeContigMinusObj == "UNK"):
-
-            info("no-informative-contigs:")
-
-            # No informative contigs
-            self.score = '2'
+        alignmentObjA = self.alignmentList[0]
+        alignmentObjB = self.alignmentList[len(self.alignmentList) - 1]
     
-            # A) L1-mediated rearrangement. Use rearrangement beg and end rough coordinates
-            if (self.grInfo in ["DEL", "DUP", "TRANS"]):
-                insertionCoordList = self.coordinates.split("_")
-                chrom = str(insertionCoordList[0])
-                beg = int(insertionCoordList[1])
-                end = insertionCoordList[2]
+        percQueryCovered = float(alignmentObjB.qEnd - alignmentObjA.qBeg) / alignmentObjA.qSize * 100  
+        return percQueryCovered
 
-                self.bkpA = [chrom, beg, "NA"]
-                self.bkpB = [chrom, end, "NA"]
-
-                self.targetSiteSize = beg - int(end) if end != "UNK" else "UNK"
-
-            # B) Insertion do not associated with a rearrangement. Imprecise bkp
-            else:
-                self.bkpA = self.imprecise_bkp(self.coordinates)
-
-        ## C) Insertion with at least one contig spanning one of the insertion breakpoints
-        else:
-
-            info("informative-contig:")
-
-            ## There are two main classes of MEI events:
-            #   1. ERVK-like (insertion without poly-A tail)
-            #   2. L1-like (insertion with poly-A tail)
-
-            # 1. ERVK: two 5' informative contigs are detected,
-            #          but one represents 3' end of insertion
-            if self.TEClass == "ERVK":
-                # sanity check: we are not expecting 3' informative contigs here
-                if (bestInformative3primeContigPlusObj != "UNK"):
-                    log("WARNING", "ERVK event \"%s\" has 3'-informative contig (+ cluster), which is not expected." % self.traficId)
-                if (bestInformative3primeContigMinusObj != "UNK"):
-                    log("WARNING", "ERVK event \"%s\" has 3'-informative contig (- cluster), which is not expected." % self.traficId)
-
-                # treat 5' informative contig of minus cluster as 3' informative
-                bestInformative3primeContigMinusObj = bestInformative5primeContigMinusObj
-                bestInformative5primeContigMinusObj = "UNK"
-
-            ## 1. Determine 5' informative contig and insertion breakpoint
-            # a) 5' informative contigs in + and - clusters:
-            if (bestInformative5primeContigPlusObj != "UNK") and (bestInformative5primeContigMinusObj != "UNK"):
-
-                ## Evaluate breakpoint consistency between both 5' informative contigs (+ and -)
-                informative5primeContigObj = bestInformative5primeContigPlusObj
-
-                bkpPos5primePlus = bestInformative5primeContigPlusObj.informativeDict["bkp"][1]
-                bkpPos5primeMinus = bestInformative5primeContigMinusObj.informativeDict["bkp"][1]
-
-                # Compute consensus breakpoint position.
-                # Consensus defined as mean position + confidence interval (CI):
-                #     + bkp                       - bkp
-                #  -----------*               *------------
-                #              <-----Mean----->
-                #              <-CI->
-                bkpPos5prime = int(bkpPos5primePlus + bkpPos5primeMinus) / 2
-
-                CI = int(abs(bkpPos5primePlus - bkpPos5primeMinus)) / 2
-                bkp5prime = [ informative5primeContigObj.informativeDict["bkp"][0], bkpPos5prime, CI]
-                informative5prime = "both"
-
-            # b) 5' informative contig in + cluster
-            elif (bestInformative5primeContigPlusObj != "UNK"):
-                informative5primeContigObj = bestInformative5primeContigPlusObj
-                bkp5prime = informative5primeContigObj.informativeDict["bkp"] + [0]
-                informative5prime = "plus"
-
-            # c) 5' informative contig in - cluster
-            elif (bestInformative5primeContigMinusObj != "UNK"):
-                informative5primeContigObj = bestInformative5primeContigMinusObj
-                bkp5prime = informative5primeContigObj.informativeDict["bkp"] + [0]
-                informative5prime = "minus"
-
-            # d) none 5' informative contig
-            else:
-                informative5primeContigObj = "UNK"
-                bkp5prime = ["UNK", "UNK", "UNK"]
-                informative5prime = "none"
-
-            ## 2. Determine 3' informative contig and insertion breakpoint
-            # a) 3' informative contigs in + and - clusters:
-            if (bestInformative3primeContigPlusObj != "UNK") and (bestInformative3primeContigMinusObj != "UNK"):
-
-                ## Evaluate breakpoint consistency between both 3' informative contigs (+ and -)
-                informative3primeContigObj = bestInformative3primeContigPlusObj
-
-                bkpPos3primePlus = bestInformative3primeContigPlusObj.informativeDict["bkp"][1]
-                bkpPos3primeMinus = bestInformative3primeContigMinusObj.informativeDict["bkp"][1]
-
-                # Compute consensus breakpoint position.
-                # Consensus defined as mean position + confidence interval (CI):
-                #     + bkp                       - bkp
-                #  -----------*               *------------
-                #              <-----Mean----->
-                #              <-CI->
-                bkpPos3prime = int(bkpPos3primePlus + bkpPos3primeMinus) / 2
-
-                CI = int(abs(bkpPos3primePlus - bkpPos3primeMinus)) / 2
-                bkp3prime = [ informative3primeContigObj.informativeDict["bkp"][0], bkpPos3prime, CI]
-                informative3prime = "both"
-
-                ## Poly-A
-                self.polyA = informative3primeContigObj.informativeDict["info"]
-
-            # b) 3' informative contig in + cluster
-            elif (bestInformative3primeContigPlusObj != "UNK"):
-                informative3primeContigObj = bestInformative3primeContigPlusObj
-                bkp3prime = informative3primeContigObj.informativeDict["bkp"] + [0]
-                self.polyA = informative3primeContigObj.informativeDict["info"]
-                informative3prime = "plus"
-
-            # c) 3' informative contig in - cluster
-            elif (bestInformative3primeContigMinusObj != "UNK"):
-                informative3primeContigObj = bestInformative3primeContigMinusObj
-                bkp3prime = informative3primeContigObj.informativeDict["bkp"] + [0]
-                self.polyA = informative3primeContigObj.informativeDict["info"]
-                informative3prime = "minus"
-
-            # d) none 3' informative contig
-            else:
-                informative3primeContigObj = "UNK"
-                bkp3prime = ["UNK", "UNK", "UNK"]
-                polyA = "UNK"
-                informative3prime = "none"
-
-            # ERVK-like events do not have poly-A signal
-            if self.TEClass == "ERVK":
-                self.polyA = "UNK"
-
-            ## 3. Determine insertion score and Target Site Duplication if possible:
-            CI5prime = bkp5prime[2]
-            CI3prime = bkp3prime[2]
-
-            # a) Inconsistent bkp 5'
-            if (CI5prime > 8) and (CI5prime != "UNK"):
-                info("inconsistent bkp 5'")
-                self.score = '1'
-                self.targetSiteSize = "UNK"
-                self.targetSiteSeq = "UNK"
-                self.orientation = "UNK"
-                self.structure = "UNK"
-                self.length = "UNK"
-                self.percLength = "UNK"
-
-            # b) Inconsistent bkp 3'
-            elif (CI3prime > 8) and (CI3prime != "UNK"):
-                info("inconsistent bkp 3'")
-                self.score = '1'
-                self.targetSiteSize = "UNK"
-                self.targetSiteSeq = "UNK"
-                self.orientation = "UNK"
-                self.structure = "UNK"
-                self.length = "UNK"
-                self.percLength = "UNK"
-
-            # c) Consistent 5' and 3' bkps/informative_contigs
-            elif (informative5primeContigObj != "UNK") and (informative3primeContigObj != "UNK"):
-                info("5' and 3' informative contigs:")
-                self.score = '5'
-
-                # Find Target site duplication or deletion
-                self.targetSiteSize, self.targetSiteSeq = self.target_site(informative5primeContigObj, informative3primeContigObj, self.grInfo)
-
-                # Inconsistent TSD:
-                if (self.targetSiteSize == "inconsistent"):
-                    self.score = '1'
-                    self.orientation = "UNK"
-                    self.structure = "UNK"
-                    self.length = "UNK"
-                    self.percLength = "UNK"
-
-            # d) 5' bkp/informative_contig
-            elif (informative5primeContigObj != "UNK"):
-                info("5' informative contig:")
-                self.score = '3'
-
-            # e) 3' bkp/informative_contig
-            else:
-                info("3' informative contig:")
-                # ERVK-like events do not have poly-A signal, so they do not receive score 4
-                if (self.TEClass != "ERVK"):
-                    self.score = '4'
-                else:
-                    self.score = '3'
-
-            ## 4. Compute TE insertion orientation and structure if not inconsistent
-            if (self.score != '1'):
-
-                if (self.TEClass != "ERVK"):
-                    # TE insertion orientation
-                    self.orientation = self.insertion_orientation_polyA(informative5primeContigObj, informative3primeContigObj)
-
-                    if (self.tdType != "PSD"):
-                        # TE insertion structure
-                        self.structure, self.length, self.percLength = self.insertion_structure(informative5primeContigObj)
-                else:
-                    # TE insertion orientation
-                    self.orientation = self.insertion_orientation_ERVK(informative5primeContigObj, informative3primeContigObj)
-                    #self.structure = "UNK"
-
-                # Inconsistent orientation:
-                if (self.orientation == "inconsistent"):
-                    self.score = '1'
-                    self.targetSiteSize = "UNK"
-                    self.targetSiteSeq = "UNK"
-                    self.structure = "UNK"
-                    self.length = "UNK"
-                    self.percLength = "UNK"
-
-            ## 5. Order breakpoints by coordinates
-            bkpCoord5prime  = bkp5prime[1]
-            bkpCoord3prime  = bkp3prime[1]
-
-            # A) 5' bkp characterized
-            if (bkpCoord3prime == "UNK"):
-
-                # a) L1-mediated rearrangement. Use rearrangement beg and end rough coordinates
-                if (self.grInfo in ["DEL", "DUP", "TRANS"]):
-                    insertionCoordList = self.coordinates.split("_")
-                    chrom = str(insertionCoordList[0])
-                    
-                    if (informative5prime == "plus"):
-                        self.informativeContigIdBkpA = informative5primeContigObj.ID
-                        self.bkpA = bkp5prime
-                        self.informativeContigBkpA = informative5primeContigObj.seq
-                        beg = int(bkp5prime[1])
-                        end = insertionCoordList[2]
-                        self.bkpB = [chrom, end, "NA"]
-                    
-                    else:
-                        self.informativeContigIdBkpB = informative5primeContigObj.ID
-                        self.bkpB = bkp5prime
-                        self.informativeContigBkpB = informative5primeContigObj.seq
-                        beg = int(insertionCoordList[1])
-                        end = bkp5prime[1]
-                        self.bkpA = [chrom, beg, "NA"]
-
-                    ## a) Unknown length for DEL or DUP with end not known or TRANS 
-                    if (end == "UNK") or (self.grInfo == "TRANS"):
-                        self.targetSiteSize = "UNK" 
-                    
-                    ## b) Known length
-                    else:
-                        self.targetSiteSize = beg - int(end)
-
-                # b) Insertion do not associated with a rearrangement.
-                else:
-
-                    self.informativeContigIdBkpA = informative5primeContigObj.ID
-                    self.bkpA = bkp5prime
-                    self.informativeContigBkpA = informative5primeContigObj.seq
-
-            # B) 3' bkp characterized
-            elif (bkpCoord5prime == "UNK"):
-
-                # a) L1-mediated rearrangement. Use rearrangement beg and end rough coordinates
-                if (self.grInfo in ["DEL", "DUP", "TRANS"]):
-                    insertionCoordList = self.coordinates.split("_")
-                    chrom = str(insertionCoordList[0])
-                    
-                    if (informative3prime == "plus"):
-                        self.informativeContigIdBkpA = informative3primeContigObj.ID
-                        self.bkpA = bkp3prime
-                        self.informativeContigBkpA = informative3primeContigObj.seq
-                        beg = int(bkp3prime[1])
-                        end = insertionCoordList[2]
-                        self.bkpB = [chrom, end, "NA"]
-                    
-                    else:
-                        self.informativeContigIdBkpB = informative3primeContigObj.ID
-                        self.bkpB = bkp3prime
-                        self.informativeContigBkpB = informative3primeContigObj.seq
-                        beg = int(insertionCoordList[1])
-                        end = bkp3prime[1]
-
-                        self.bkpA = [chrom, beg, "NA"]
-
-                    ## a) Unknown length for DEL or DUP with end not known or TRANS 
-                    if (end == "UNK") or (self.grInfo == "TRANS"):
-                        self.targetSiteSize = "UNK" 
-                    
-                    ## b) Known length
-                    else:
-                        self.targetSiteSize = beg - int(end)
-
-                # b) Insertion do not associated with a rearrangement.
-                else:
-
-                    self.informativeContigIdBkpA = informative3primeContigObj.ID
-                    self.bkpA = bkp3prime
-                    self.informativeContigBkpA = informative3primeContigObj.seq
-
-            # C) 5' and 3' bkp characterized
-            else:
-
-                # c.a) 5' bkp < 3' bkp
-                if (bkpCoord5prime < bkpCoord3prime):
-
-                    self.informativeContigIdBkpA = informative5primeContigObj.ID
-                    self.informativeContigIdBkpB = informative3primeContigObj.ID
-                    self.bkpA = bkp5prime
-                    self.bkpB = bkp3prime
-                    self.informativeContigBkpA = informative5primeContigObj.seq
-                    self.informativeContigBkpB = informative3primeContigObj.seq
-
-                # c.b) 3' bkp < 5' bkp
-                else:
-
-                    self.informativeContigIdBkpA = informative3primeContigObj.ID
-                    self.informativeContigIdBkpB = informative5primeContigObj.ID
-                    self.bkpA = bkp3prime
-                    self.bkpB = bkp5prime
-                    self.informativeContigBkpA = informative3primeContigObj.seq
-                    self.informativeContigBkpB = informative5primeContigObj.seq
-
-        ## Print results into the standard output
-        print "TraFiC-id: ", self.traficId
-        print "Score: ", self.score
-        print "bkpA: ", self.bkpA
-        print "bkpB", self.bkpB
-        print "TS-length: ", self.targetSiteSize
-        print "TS-seq: ", self.targetSiteSeq
-        print "Orientation: ", self.orientation
-        print "Structure: ", self.structure
-        print "TE-length: ", self.length
-        print "perc-Length: ", self.percLength
-        print "bkpAContigId: ", self.informativeContigIdBkpA
-        print "bkpAContig: ", self.informativeContigBkpA
-        print "bkpBContigId: ", self.informativeContigIdBkpB
-        print "bkpBContig: ", self.informativeContigBkpB
-        print "poly-A: ", self.polyA
-
-    def target_site(self, informative5primeContigObj, informative3primeContigObj, grInfo):
+    def rev_complement(self):
         """
-            Determine Target Site Duplication or Deletion sequence and length (TSD).
-
-
-            *** Target Site Duplication *** 
-
-            + strand)
-
-            --------------------------- bkp5'
-                       bkp3' --------------------
-                             <-------->
-                             TSD (7bp)
-
-            - strand)
-
-            --------------------------- bkp3'
-                       bkp5' --------------------
-                             <-------->
-                             TSD (7bp)
-
-            *** Target Site Deletion ***
-
-            + strand)
-
-            --------------------------- bkp5'
-                                                                bkp3' --------------------
-                                            <------------------>
-                                              deletion (10bp)
-            - strand)
-
-            --------------------------- bkp3'
-                                                                bkp5' --------------------
-                                           <------------------>
-                                              deletion (10bp)
-
-            Input:
-            1) informative5primeContigObj.
-            2) informative3primeContigObj.
-
-            Output:
-            1) targetSiteSize. Target site duplication or deletion length. 'inconsistent' if expected TSD size different to TSD sequence length.
-            2) targetSiteSeq. Target site duplication or deletion sequence. 'NA' if no TSD. 'inconsistent' if expected TSD size different to TSD sequence length.
         """
 
-        bkpPos5prime = informative5primeContigObj.informativeDict["bkp"][1]
-        bkpPos3prime = informative3primeContigObj.informativeDict["bkp"][1]
-        alignObj5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"]
-        alignObj3prime = informative3primeContigObj.informativeDict["targetRegionAlignObj"]        
+        alignmentListRev = []
+
+        # Iterate over list from the back   
+        for alignmentObj in reversed(self.alignmentList):
+
+            #print "** BLAT-BEFORE: ", alignmentObj.qName, alignmentObj.qSize, alignmentObj.qBeg, alignmentObj.qEnd, alignmentObj.tName, alignmentObj.tSize, alignmentObj.tBeg, alignmentObj.tEnd, alignmentObj.blockCount
+
+            # Reverse complement the alignment
+            alignmentObj.rev_complement()
+
+            #print "** BLAT-AFTER: ", alignmentObj.qName, alignmentObj.qSize, alignmentObj.qBeg, alignmentObj.qEnd, alignmentObj.tName, alignmentObj.tSize, alignmentObj.tBeg, alignmentObj.tEnd, alignmentObj.blockCount
+
+            # Incorporate alignment to the list
+            alignmentListRev.append(alignmentObj)
+
+        return alignmentListRev 
         
-        ### Determine if target site duplication or deletion based on if the aligment of the 5' and 3' contigs on the integration region overlap or not.   
-        overlap = test_overlap(alignObj5prime.tBeg, alignObj5prime.tEnd, alignObj3prime.tBeg, alignObj3prime.tEnd)
 
-        ## A) Target Site Duplication
-        # ----------contig----------bkp
-        #             bkp-------contig-----------
-        if (overlap):
-
-            ## Compute length
-            targetSiteSize = abs(bkpPos5prime - bkpPos3prime)
-
-            ## Extract TSD sequence from 5' informative contig
-            # a) Begin of the contig sequence aligned in the TE insertion genomic region
-            #   -------------**TSD**######TE#####
-            #   --------------------
-            # qBeg               *qEnd*
-            if (alignObj5prime.alignType == "beg"):
-                beg = alignObj5prime.qEnd - targetSiteSize
-                end = alignObj5prime.qEnd
-                targetSiteSeq = informative5primeContigObj.seq[beg:end]
-
-            # b) End of the contig sequence aligned in the TE insertion genomic region
-            #   ######TE#####AAAAAAA**TSD**-------------
-            #                       --------------------
-            #                    *qBeg*               qEnd
-            else:
-                beg = alignObj5prime.qBeg    # (no substract 1 since psl coordinates are 0-based as python strings)
-                end = alignObj5prime.qBeg + targetSiteSize
-                targetSiteSeq = informative5primeContigObj.seq[beg:end]
-
-            ## Inconsistent TSD if sequence has not the expected length or it has not an associated rearrangement and 
-            # it is longer than 50bp 
-            if (targetSiteSize != len(targetSiteSeq)) or ((grInfo == "NA") and (targetSiteSize > 50)):
-
-                targetSiteSize = "inconsistent"
-                targetSiteSeq = "inconsistent"
-
-        ## B) Target Site Deletion 
-        # ----------contig----------bkp
-        #                                       bkp-------contig-----------
-        else:
-
-            ## Compute length. 
-            targetSiteSize = abs(bkpPos5prime - bkpPos3prime) * -1 # Convert into negative length as it is a deletion
-            targetSiteSeq = "NA"
-
-            ## Inconsistent TSD if insertion has not an associated rearrangement and 
-            # it is shorter than 50bp 
-            if (grInfo == "NA") and (abs(targetSiteSize) > 50):
-
-                targetSiteSize = "inconsistent"
-                targetSiteSeq = "inconsistent"
-
-        return (targetSiteSize, targetSiteSeq)
-
-
-    def insertion_orientation_polyA(self, informative5primeContigObj, informative3primeContigObj):
-        """
-            Determine TE insertion strand/orientation.
-
-            1) + orientation:
-                5' informative contig      -------beg-------####TE####
-                3' informative contig      AAAAAAAAAA--------end------
-
-            2) - orientation (the opposite)
-                3' informative contig      --------beg------AAAAAAAAAA
-                5' informative contig      ####TE####-------end-------
-
-            Input:
-            1) informative5primeContigObj
-            2) informative3primeContigObj
-
-            Output:
-            1) orientation. +, -, na or inconsistent dna strand.
-
-            Note: Inconsistent when 5' and 3' informative contigs suggest contradictory orientations (should not happen).
-        """
-
-        ## A) 5' and 3' informative contigs
-        if (informative5primeContigObj != "UNK") and (informative3primeContigObj != "UNK"):
-            alignType5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"].alignType
-            alignType3prime = informative3primeContigObj.informativeDict["targetRegionAlignObj"].alignType
-
-            # a) + strand
-            if (alignType5prime == "beg") and (alignType3prime == "end"):
-                orientation = "+"
-
-            # b) - strand
-            elif (alignType5prime == "end") and (alignType3prime == "beg"):
-                orientation = "-"
-
-            # c) Contradictory/inconsistent
-            else:
-                orientation = "inconsistent"
-
-        ## B) 5' informative contig
-        elif (informative5primeContigObj != "UNK"):
-            alignType5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"].alignType
-
-            # a) + strand
-            if (alignType5prime == "beg"):
-                orientation = "+"
-
-            # b) - strand
-            else:
-                orientation = "-"
-
-        ## C) 3' informative contig
-        elif (informative3primeContigObj != "UNK"):
-            alignType3prime = informative3primeContigObj.informativeDict["targetRegionAlignObj"].alignType
-
-            # a) + strand
-            if (alignType3prime == "end"):
-                orientation = "+"
-
-            # b) - strand
-            else:
-                orientation = "-"
-
-        ## D) None informative contig
-        else:
-            orientation = "UNK"
-
-        return orientation
-
-    def insertion_orientation_ERVK(self, informative5primeContigObj, informative3primeContigObj):
-        """
-            Determine ERVK insertion strand/orientation.
-
-            If informative contigs have a consistent mapping direction
-            over their length, the element has been in normal sense:
-
-            --------|#####TE#####
-            >>>>>>>>|>>>>>>>>>>>>
-
-            A switch in mapping direction indicates that the element has
-            been inserted in an inverted direction:
-
-            --------|#####TE#####
-            >>>>>>>>|<<<<<<<<<<<<
-
-            Input:
-            1) informative5primeContigObj
-            2) informative3primeContigObj
-
-            Output:
-            1) orientation. +, -, UNK or inconsistent dna strand.
-
-            Note: Inconsistent when 5' and 3' informative contigs suggest
-                  contradictory orientations (should not happen).
-        """
-
-        # check if required alignment members are present
-        has_req_aln_5prime = (
-            (informative5primeContigObj == "UNK") or
-            (
-             (informative5primeContigObj.informativeDict["targetRegionAlignObj"] and
-              isinstance(informative5primeContigObj.informativeDict["targetRegionAlignObj"], blat_alignment))
-             and
-             (informative5primeContigObj.informativeDict["info"] and
-              isinstance(informative5primeContigObj.informativeDict["info"], blat_alignment))
-            )
-        )
-        has_req_aln_3prime = (
-            (informative3primeContigObj == "UNK") or
-            (
-             (informative3primeContigObj.informativeDict["targetRegionAlignObj"] and
-              isinstance(informative3primeContigObj.informativeDict["targetRegionAlignObj"], blat_alignment))
-             and
-             (informative3primeContigObj.informativeDict["info"] and
-              isinstance(informative3primeContigObj.informativeDict["info"], blat_alignment))
-            )
-        )
-        has_required_alignments = has_req_aln_5prime and has_req_aln_3prime
-
-        # if any of the expected alignments is missing:
-        # log error and set orientation to "inconsistent"
-        if (not has_required_alignments):
-            log("ERROR", "Alignment object missing for insertion '%s'" % self.traficId)
-            orientation = "inconsistent"
-            return orientation
-
-        ## A) 5' and 3' informative contigs
-        if (informative5primeContigObj != "UNK") and (informative3primeContigObj != "UNK"):
-
-            # get alignment directions
-            targDir5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"].strand
-            consDir5prime = informative5primeContigObj.informativeDict["info"].strand
-            targDir3prime = informative3primeContigObj.informativeDict["targetRegionAlignObj"].strand
-            consDir3prime = informative3primeContigObj.informativeDict["info"].strand
-
-            # a) + strand
-            if (targDir5prime == consDir5prime) and (targDir3prime == consDir3prime):
-                orientation = "+"
-
-            # b) - strand
-            elif (targDir5prime != consDir5prime) and (targDir3prime != consDir3prime):
-                orientation = "-"
-
-            # c) Contradictory/inconsistent
-            else:
-                #orientation = "inconsistent"
-                orientation = "UNK"
-
-        ## B) 5' informative contig
-        elif (informative5primeContigObj != "UNK"):
-
-            # get alignment directions
-            targDir5prime = informative5primeContigObj.informativeDict["targetRegionAlignObj"].strand
-            consDir5prime = informative5primeContigObj.informativeDict["info"].strand
-
-            # a) + strand
-            if (targDir5prime == consDir5prime):
-                orientation = "+"
-
-            # b) - strand
-            else:
-                orientation = "-"
-
-        ## C) 3' informative contig
-        elif (informative3primeContigObj != "UNK"):
-
-            # get alignment directions
-            targDir3prime = informative3primeContigObj.informativeDict["targetRegionAlignObj"].strand
-            consDir3prime = informative3primeContigObj.informativeDict["info"].strand
-
-            # a) + strand
-            if (targDir3prime == consDir3prime):
-                orientation = "+"
-
-            # b) - strand
-            else:
-                orientation = "-"
-
-        ## D) None informative contig
-        else:
-            orientation = "UNK"
-
-        return orientation
-
-
-    def insertion_structure(self, informative5primeContigObj):
-        """
-            Determine TE (L1, Alu, SVA or ERVK) insertion structure.
-
-            1) 5'inverted:
-
-                TE in + orientation with 5'inversion    ----#######TE######AAAAA----
-                                                            <<<<<<>>>>>>>>>>
-                                                            <---->
-                                                           inversion
-                5-prime informative contig              --------- (5'inversion signature: the piece of contig corresponding to the TE
-                                                                   aligns in the opposite DNA strand than the piece of contig aligning in the target region)
-
-            2) Full length insetion:
-
-                                                     -------#######TE######AAAAA----
-            5-prime informative contig                  ---------
-
-            3) 5' truncated insertion:
-
-                                                       --------###TE######AAAAA----
-                                                           <-->
-                                                         deletion
-                5-prime informative contig              ---____--- (5'truncation signature: the piece of contig corresponding to TE
-                                                                    aligns in the body of the TE and not in the 5' extreme)
-
-            Input:
-            1) informative5primeContigObj
-
-            Output:
-            1) structure. One of 'na', 'INV', 'DEL' or 'FULL'
-            2) length. Inserted TE length, 'na' if not available.
-            3) percLength. Percentage of TE consensus sequence inserted, 'na' if not available.
-        """
-
-        ## A) Not TD2, not ERVK and 5' informative contig
-        if (self.tdType != "TD2") and (self.TEClass != "ERVK") and (informative5primeContigObj != "UNK"):
-
-            strand = informative5primeContigObj.informativeDict["info"].strand
-
-            ## Determine MEI length
-            tBeg = informative5primeContigObj.informativeDict["info"].tBeg
-            tSize = informative5primeContigObj.informativeDict["info"].tSize
-
-            length = tSize - tBeg
-            percLength = float(length) / tSize * 100
-
-            ## Determine TE insertion structure
-            # a) TE inverted in its 5'
-            if (strand == "-"):
-                structure = "INV"
-           
-            # b) Full length 
-            elif (percLength > 95):
-                # L1 (6021 bp length + 30bp polyA, first ~300bp correspond to promoter)
-                # Alu (282 bp length + 30bp polyA).
-                # SVA (X bp length + 30bp polyA).
-                # ERVK (X bp length + 30bp polyA).
-                structure = "FULL"
-
-            # c) 5' truncated
-            else:
-                structure = "DEL"
-
-        ## B) TD2 or ERVK or No 5' informative contig 
-        else:
-            structure = "UNK"
-            length = "UNK"
-            percLength = "UNK"
-
-        return (structure, length, percLength)
-
-
-    def imprecise_bkp(self, insertionCoord):
-        """
-            Compute confidence interval for imprecise breakpoints from + and - TraFiC cluster coordinates.
-
-            Imprecise breakpoints are those that do not have any
-            any informative contig associated
-
-              + cluster                      - cluster
-            -------------->              <---------------
-                          <-----Mean----->
-                          d/2    d      d/2
-
-            Input:
-            1) insertionCoord. TraFiC insertion coordinates. Format: ${chrom}_${beg}_${end}.
-                               Example: 10_108820680_108820678.
-
-            Output:
-            1) breakpoint. Three elements list (chromosome, mean_position and confidence interval)
-        """
-
-        insertionCoordList = insertionCoord.split("_")
-
-        chrom = str(insertionCoordList[0])
-        beg = int(insertionCoordList[1])
-        end = int(insertionCoordList[2])
-
-        meanPos = (beg + end)/2
-        dist = abs(end - beg)
-        CI = dist/2
-
-        breakpoint = [chrom, meanPos, CI]
-
-        return breakpoint
-
-class cluster():
-    """
-    Transposable element insertion cluster class.
-
-    A cluster can be + or - and it has associated the contigs resulting from the assembly of TE insertion supporting
-    reads identified by TraFiC.
-
-    Methods:
-    - blat_alignment_reader
-    - create_contigs_dict
-    - add_alignments
-    - find_informative_contig
-    """
-
-    def __init__(self, ID, contigsFasta, readPairsList):
-        """
-            Initialize cluster object.
-
-            Input:
-            1) ID. Cluster id.
-            2) contigsFasta. Fasta file containing the assembled contigs for the given cluster
-            3) readPairsList. List of cluster supporting reads
-
-            Output:
-            - Cluster object variables initialized
-        """
-        self.ID = ID
-        self.contigsDict = self.create_contigs_dict(contigsFasta)
-        self.readPairIds = readPairsList
-        self.nbPairs =  len(readPairsList.split(','))
-
-    #### FUNCTIONS ####
-    def blat_alignment_reader(self, blatPath):
-        """
-            Read a psl file containing the contig blat aligments on the reference genome, generate a blat alignment
-            object per aligment and store all of them in a dictionary.
-
-            Input:
-            1) blatPath. Psl file containing blat aligments for the assembled contigs.
-
-            Output:
-            1) alignmentsDict. Dictionary containing the contig ids as keys and the list of alignment objects corresponding
-                               to each contig as value
-        """
-
-        blat = open(blatPath, 'r')
-        alignmentsDict = {}
-
-        for alignment in blat:
-
-            ## Create blat alignment object
-            alignmentObject = blat_alignment(alignment)
-
-            ## Initialize contig alignment list if it does not exists
-            if alignmentObject.qName not in alignmentsDict:
-                alignmentsDict[alignmentObject.qName] = []
-
-            ## Add alignment object to the list
-            alignmentsDict[alignmentObject.qName].append(alignmentObject)
-
-        return alignmentsDict
-
-    def create_contigs_dict(self, contigsFasta):
-        """
-            Read fasta file with the cluster's assembled contigs and produce a dictionary with
-            the contig ids as keys and the corresponding contig objects as values.
-
-            Input:
-            1) contigsFasta. Fasta file containing the assembled contigs for the given
-            cluster.
-
-            Output:
-            1) contigsDict. Dictionary containing the contig ids as keys and the corresponding
-            contig objects as values.
-        """
-        fastaObj = fasta(contigsFasta)
-
-        contigsDict = {}
-
-        ### For each contig create a contig object and add it to the dictionary
-        # using the contig id as key
-        for contigId in fastaObj.fastaDict:
-
-            contigSeq = fastaObj.fastaDict[contigId]
-
-            # Create contig object
-            contigObj = contig(contigId, contigSeq)
-
-            # Add contig object to the dictionary
-            contigsDict[contigId] = contigObj
-
-        return contigsDict
-
-    def add_alignments(self, blatPath):
-        """
-            Read a psl file containing the contig blat alignments on the reference genome and TE sequences and associate
-            each alignment to the corresponding contig object.
-
-            Input:
-            1) blatPath. Psl file containing blat aligments for the assembled contigs.
-
-            Output:
-            1) For each contig object in the dictionary sets the 'alignList' variable.
-               This variable holds the list of alignment objects corresponding to the given contig.
-
-        """
-        alignmentsDict = self.blat_alignment_reader(blatPath)
-
-        ## Add the alignment lists to their respective contig objects
-        # Iterate over the alignments dictionary.
-        for contigId in alignmentsDict:
-            alignmentList = alignmentsDict[contigId]
-            self.contigsDict[contigId].alignList = alignmentList
-
-    def find_informative_contigs(self, insertionCoord, tdType, tdCoord):
-        """
-            Identify 5' and 3' informative contig belonging to the cluster. Informative 5' and 3' contigs span 5' and 3' insertion breakpoints, respectively.
-
-            Input:
-            1) insertionCoord. Region of interest. Format: ${chrom}_${beg}_${end}.
-                               Example: 10_108820680_108820678.
-            2) tdType. Type of transduction event ("TD0": solo, "TD1": partnered, "TD2": orphan)
-            3) tdCoord. Mobilized region (relevant for TD2 and PSD events)
-
-            Output:
-            1) bestInformative5primeContigObj. Best 5' Informative contig object. 'na' if not found
-            2) bestInformative3primeContigObj. Best 3' Informative contig object. 'na' if not found
-        """
-
-        ## Initial status -> none informative contig
-        bestInformative5primeContigObj = "UNK"
-        bestInformative3primeContigObj = "UNK"
-
-        informative5primeContigObjList = []
-        informative3primeContigObjList = []
-
-        ## Determine TraFiC target position
-        # A) Target position for positive cluster
-        if (self.ID == "+"):
-            targetPos = int(insertionCoord.split("_")[1])
-        # B) Target position for negative cluster
-        else:
-            targetPos = int(insertionCoord.split("_")[2])
-
-        info(str(len(self.contigsDict)) + ' input contigs')
-
-        ## Iterate over each contig object checking if it is informative or not.
-        # Make two list of 5' and 3' informative contigs
-        for contigId in self.contigsDict:
-            contigObj = self.contigsDict[contigId]
-            contigObj.cluster = self.ID
-
-            # Check if it is an informative contig
-            informative = contigObj.is_informative(insertionCoord, tdType, tdCoord)
-
-            # A) Informative contig
-            if (informative ==  1):
-
-                # A.a) informative 5-prime
-                if contigObj.informativeDict['type'] == "5-prime":
-                    informative5primeContigObjList.append(contigObj)
-
-                # A.b) informative 3-prime
-                else:
-                    informative3primeContigObjList.append(contigObj)
-
-                message = str(contigObj) + " " + contigObj.ID + " " + contigObj.informativeDict['type'] + " " + contigObj.seq + " " + str(contigObj.informativeDict["bkp"]) + " " + str(contigObj.informativeDict["info"])
-                log("INFORMATIVE", message)
-
-            # B) Not informative contig
-            else:
-                message = str(contigObj) + " " + contigObj.ID + " " + contigObj.informativeDict['type'] + " " + contigObj.seq + " " + str(contigObj.informativeDict["bkp"]) + " " + str(contigObj.informativeDict["info"])
-                log("NOT-INFORMATIVE", message)
-
-        ## Select the best 5' and 3' informative contigs
-        # Note: Best defined as contig spanning putative insertion
-        # breakpoint closer to the insertion target region
-
-        # 1) informative 5-prime
-        bestDist = ""
-
-        for contigObj in  informative5primeContigObjList:
-
-            bkpCoord = contigObj.informativeDict["bkp"][1]
-            dist = abs(targetPos - bkpCoord)
-
-            if (bestInformative5primeContigObj == "UNK") or (dist < bestDist):
-
-                bestInformative5primeContigObj = contigObj
-                bestDist = dist
-
-        # 2) informative 3-prime
-        bestDist = ""
-
-        for contigObj in  informative3primeContigObjList:
-
-            bkpCoord = contigObj.informativeDict["bkp"][1]
-            dist = abs(targetPos - bkpCoord)
-
-            if (bestInformative3primeContigObj == "UNK") or (dist < bestDist):
-
-                bestInformative3primeContigObj = contigObj
-                bestDist = dist
-
-        return (bestInformative5primeContigObj, bestInformative3primeContigObj)
-
-
-class contig():
-    """
-    Transposable element insertion contig class.
-
-    Contig sequence results from the assembly of TraFiC + or - cluster supporting reads
-
-    Methods:
-    - is_candidate
-    - is_informative
-    - is_3prime_bkp
-    - is_polyA
-    - is_5prime_bkp
-    """
-
-    def __init__(self, contigId, contigSeq):
-        """
-            Initialize contig object.
-
-            Input:
-            1) contigTuple. First element (contig Id) and second element (contig Sequence)
-
-            Output:
-            - Contig object variables initialized
-        """
-        # Contig id and sequence
-        self.ID = contigId
-        self.seq = contigSeq
-        self.length = int(len(self.seq))
-
-        # Cluster the contig belongs to
-        self.cluster = ""
-
-        # Contig alignment information
-        self.alignList = []   # List of blat alignments for this contig
-        self.informativeDict = {} # Dictionary key -> value pairs:
-        self.informativeDict["type"] = "UNK"                 # type -> 5-prime, 3-prime or none
-        self.informativeDict["bkp"] = "UNK"                  # bkp -> list: chrom and pos, 'na' for both if type == none)
-        self.informativeDict["info"] = "UNK"                 # info -> 5-prime: aligment object with contig's alignment in TE sequence info; 3-prime: PolyA sequence; none: 'na'
-        self.informativeDict["targetRegionAlignObj"] = "UNK" # targetRegionAlignObj -> alignment object with contig's alignment in the target region info.
-
-    #### FUNCTIONS ####
-    def rev_complement(self, seq):
-        """
-            Make the reverse complementary of a dna sequence
-
-            Input:
-            1) seq. DNA sequence
-
-            Output:
-            1) revComplementSeq. Reverse complementary of input DNA sequence
-        """
-        baseComplementDict = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A', 'N': 'N'}
-        seq = seq.upper()
-        revSeq = seq[::-1] # Make reverse sequence
-        letters = list(revSeq)
-        letters = [baseComplementDict[base] for base in letters]
-        revComplementSeq = ''.join(letters) # Make complement of reverse sequence
-
-        return revComplementSeq
-
-
-    def is_candidate(self, insertionCoord, windowSize, maxAlignPerc):
-        """
-        Check if contig is candidate to be informative about the TE insertion breakpoint. Informative contigs
-        span the insertion breakpoint.
-
-        Candidate contigs are defined as contigs partially aligning in the TE insertion region.
-        Contigs completely aligning to either the insertion site or the source element (TE or transduced seq) are not considered as candidates.
-
-        Input:
-            1) insertionCoord. Region of interest. Format: ${chrom}_${beg}_${end}.
-                               Example: 10_108820680_108820678.
-            2) windowSize (integer). Window size to extend from input region coordinates to define the
-                                     region of interest
-            3) maxAlignPerc (Float). Threshold to consider an alignment partial or not.
-                                     Partial defined as % of aligned contig sequence < maxAlignPerc.
-
-        Output:
-            1) candidate. Boolean, 1 (informative candidate) and 0 (not informative candidate)
-            2) supportingAlignList. List of alignment objects supporting the contig as informative candidate.
-        """
-
-        candidate = 0
-        supportingAlignList = []
-
-        # Iterate over all the contig blat alignments
-        for alignment in self.alignList:
-
-            # 1. Check if contig completely aligns on the consensus TE sequence
-            inConsensusTE = alignment.in_consensus_TE()
-
-            # A) Contig not completely aligning on the consensus TE
-            if (inConsensusTE == 0):
-
-                # 2. Check if alignment within the target region
-                insertionRegion = alignment.in_target_region(insertionCoord, windowSize)
-
-                # Within target region
-                if (insertionRegion == 1):
-
-                    # 3. Check if it is a partial alignment
-                    partial = alignment.partial_alignment(maxAlignPerc)
-
-                    # Partial
-                    if (partial == 1):
-                        supportingAlignList.append(alignment)
-
-                        # Informative candidate contig -> partially alignining on the target region and do not aligning completely on the TE sequence
-                        candidate = 1
-
-            # B) Not informative contig as it completely aligns on the consensus TE
-            else:
-                candidate = 0
-                supportingAlignList = []
-                break
-
-        return (candidate, supportingAlignList)
-
-
-    def is_informative(self, insertionCoord, tdType, tdCoord):
-        """
-        Check if candidate contig is 5' or 3' informative. Defined as contigs spanning
-        5' or 3' insertion breakpoints:
-
-        5' informative         ####TE####---------------
-        3' informative         ---------------AAAAAAAAAA
-
-
-        Input:
-            1) insertionCoord. Region of interest. Format: ${chrom}_${beg}_${end}.
-                               Example: 10_108820680_108820678.
-            2) tdType. Type of transduction event
-                       ("TD0": solo,
-                        "TD1": partnered,
-                        "TD2": orphan,
-                        "PSD": pseudogene insertion)
-            3) tdCoord. Mobilized region (relevant for TD2 and PSD events)
-
-        Output:
-            1) informativeBoolean. Boolean, 1 (informative) and 0 (not informative)
-            2) Sets 'informativeDict' variable. Dictionary key -> value pairs:
-                type -> 5-prime, 3-prime or none
-                bkp -> list: chrom and pos, 'na' for both if type == none)
-                info -> 5-prime: aligment object with contig's alignment in TE sequence info;
-                        3-prime: PolyA sequence; none: 'na'
-                targetRegionAlignObj -> alignment object with contig's alignment in the target region info.
-        """
-
-        ## Initial status -> no informative
-        bestInformative5primeDict = "UNK"
-        bestInformative3primeDict = "UNK"
-        informative5primeDict = {}
-        informative3primeDict = {}
-
-        ## Determine TraFiC target position
-        # A) Target position for positive cluster
-        if (self.cluster == "+"):
-            targetPos = int(insertionCoord.split("_")[1])
-        # B) Target position for negative cluster
-        else:
-            targetPos = int(insertionCoord.split("_")[2])
-
-        ## Check if it is an informative candidate contig
-        candidate, supportingAlignList = self.is_candidate(insertionCoord, int(500), float(98))
-
-        ## Informative candidate contig:
-        if (candidate == 1):
-
-            ## Iterate over the alignments supporting the contig as informative.
-            # Check if the alignment support the contig as informative 5' and/or 3'.
-            # Add alignment to the list of 5' and/or 3' alignments
-            for alignObj in supportingAlignList:
-
-                ## Check if alignment support the contig as informative 5'
-                is5prime, bkpCoord, srcAlignmentObj, MEISeq = self.is_5prime_informative(alignObj, tdType, tdCoord)
-
-                # Contig informative 5-prime, it has TE sequence
-                if (is5prime == 1):
-
-                    informative5primeDict[alignObj] = {}
-                    informative5primeDict[alignObj]["type"] = "5-prime"
-                    informative5primeDict[alignObj]["bkp"] = bkpCoord
-                    informative5primeDict[alignObj]["info"] = srcAlignmentObj
-                    informative5primeDict[alignObj]["targetRegionAlignObj"] = alignObj
-
-                ## Check if alignment support the contig as informative 3'
-                is3prime, bkpCoord, polyASeq = self.is_3prime_informative(alignObj)
-
-                # Contig informative 3-prime, it has a polyA tail
-                if (is3prime == 1):
-
-                    informative3primeDict[alignObj] = {}
-                    informative3primeDict[alignObj]["type"] = "3-prime"
-                    informative3primeDict[alignObj]["bkp"] = bkpCoord
-                    informative3primeDict[alignObj]["info"] = polyASeq
-                    informative3primeDict[alignObj]["targetRegionAlignObj"] = alignObj
-
-        ## Select the best alignments supporting the contig as 5' and/or 3' informative contigs
-        # Note: Best defined as alignment supporting putative insertion breakpoint closer to the
-        # insertion target region
-
-        # 1) informative 5-prime
-        bestDist5Prime = ""
-
-        for alignment in informative5primeDict:
-            bkpCoord = informative5primeDict[alignment]["bkp"][1]
-            dist = abs(targetPos - bkpCoord)
-
-            if (bestInformative5primeDict == "UNK") or (dist < bestDist5Prime):
-                bestInformative5primeDict = informative5primeDict[alignment]
-                bestDist5Prime = dist
-
-        # 2) informative 3-prime
-        bestDist3Prime = ""
-
-        for alignment in informative3primeDict:
-            bkpCoord = informative3primeDict[alignment]["bkp"][1]
-            dist = abs(targetPos - bkpCoord)
-
-            if (bestInformative3primeDict == "UNK") or (dist < bestDist3Prime):
-                bestInformative3primeDict = informative3primeDict[alignment]
-                bestDist3Prime = dist
-
-        ## In case there are alignments supporting the contig is 5' and 3' select the best
-        # Note: Best defined as alignment supporting putative insertion breakpoint closer to the
-        # insertion target region
-
-        # A) Any alignment supporting the contig as 5' or 3' informative
-        if (bestDist5Prime == "") and (bestDist3Prime == ""):
-            informativeBoolean = 0
-
-        # B) Best 5'
-        elif (bestDist5Prime < bestDist3Prime) or ((bestDist5Prime != "") and (bestDist3Prime == "")):
-            informativeBoolean = 1
-            self.informativeDict = bestInformative5primeDict
-
-        # C) Best 3'
-        else:
-            informativeBoolean = 1
-            self.informativeDict = bestInformative3primeDict
-
-        ## Fix contig orientation if necessary (contig aligning in -)
-        if (informativeBoolean == 1):
-
-            ## Contig aligning in - strand
-            if (self.informativeDict["targetRegionAlignObj"].strand == "-"):
-
-                ## Substitute contig by its reverse complementary sequence
-                self.seq = self.rev_complement(self.seq)
-
-                ## Fix contig alignment coordinates on the TE insertion genomic region
-                switchTypeDict = {'beg': 'end', 'end': 'beg'}
-                alignType = self.informativeDict["targetRegionAlignObj"].alignType
-                self.informativeDict["targetRegionAlignObj"].alignType = switchTypeDict[alignType]
-                self.informativeDict["targetRegionAlignObj"].rev_complement()
-
-                ## A) Informative 5-prime -> fix contig alignment coordinates on the transposon sequence
-                if (self.informativeDict["type"] == "5-prime"):
-
-                    self.informativeDict["info"].rev_complement()
-
-                ## B) Informative 3-prime -> make the complementary reverse of the poly-A sequence
-                else:
-                    self.informativeDict["info"] = self.rev_complement(self.informativeDict["info"])
-
-        return informativeBoolean
-
-
-    def is_3prime_informative(self, alignObj):
-        """
-        Check if candidate contig is 3' informative. Defined as contigs spanning
-        polyA - insertion target region breakpoint:
-
-        3' informative         ---------------AAAAAAAAAA
-        3' informative         AAAAAAAAAA---------------
-
-        Input:
-            1) alignObj. Blat alignment object.
-
-        Output:
-            1) is3prime. Boolean, 1 (3' informative) and 0 (not 3' informative)
-            2) bkpCoord. Two elements breakpoint coordinates list. First (bkp chromosome) and second (breakpoint position)
-            3) polyASeq. PolyA sequence.
-        """
-
-        ## Select contig target piece of sequence to search for poly-A.
-        # The position of the target sequence in the contig
-        # will depend on the blat alignment type
-
-        # A) Begin of the contig sequence aligned in the TE insertion genomic region
-        #   -------------AAAAAAAAAAAA.....
-        #   -------------
-        # qBeg       *qEnd*
-        if (alignObj.alignType == "beg"):
-            targetSeq = self.seq[alignObj.qEnd:]
-
-            bkpChrom = alignObj.tName
-
-            if (alignObj.strand == "+"):
-                bkpPos = alignObj.tEnd
-            else:
-                bkpPos = alignObj.tBeg
-
-            ## Search for poly-A in the contig target piece of sequence.
-            polyASeq = self.is_polyA(targetSeq)
-
-        # B) End of the contig sequence aligned in the TE insertion genomic region
-        #   ....AAAAAAAAAAAA-------------
-        #                   -------------
-        #                *qBeg*        qEnd
-        elif (alignObj.alignType == "end"):
-            targetSeq = self.seq[:alignObj.qBeg]
-            targetSeq = targetSeq[::-1] # Make the reverse to have the poly-A at the beginning if exists
-
-            bkpChrom = alignObj.tName
-
-            if (alignObj.strand == "+"):
-                bkpPos = alignObj.tBeg
-            else:
-                bkpPos = alignObj.tEnd
-
-            ## Check if the contig target piece of sequence corresponds to polyA
-            polyASeq = self.is_polyA(targetSeq)
-
-            polyASeq = polyASeq[::-1] # Make the reverse to put the poly-A in its original order
-
-        # C) No align type information or 'none' align type
-        else:
-            log("Error", "No valid alignment object provided. Alignment type variable is 'none' or not defined")
-            sys.exit(1)
-
-        ## A) Poly-A sequence
-        if (polyASeq != ""):
-            is3prime = 1
-            bkpCoord = [bkpChrom, bkpPos]
-
-        ## B) No poly-A sequence
-        else:
-            is3prime = 0
-            bkpCoord = ["UNK", "UNK"]
-            polyASeq = "UNK"
-
-        return (is3prime, bkpCoord, polyASeq)
-
-
-    def is_polyA(self, targetSeq):
-        """
-        Check if input sequence is a poly-A tail.
-
-        Compute the percentage of T and A for the input sequence.
-        If it is >80 classify sequence as poly-A.
-
-        Input:
-        1) targetSeq. Target DNA sequence to search for poly A.
-
-        Output:
-        1) polyASeq. PolyA sequence.
-        """
-
-        polyASeq = ""
-
-        # Convert sequence into upper case:
-        targetSeq = targetSeq.upper()
-
-        # Compute percentage of A and T in the given slice
-        nbA = targetSeq.count("A")
-        nbG = targetSeq.count("G")
-        nbC = targetSeq.count("C")
-        nbT = targetSeq.count("T")
-        nbN = targetSeq.count("N")
-
-        percA = float(nbA) / (nbA + nbG + nbC + nbT + nbN) * 100
-        percT = float(nbT) / (nbA + nbG + nbC + nbT + nbN) * 100
-
-        # Classify the input sequence as poly-A if > 80% are T or A
-        if (percA >= 80) or (percT >= 80):
-            polyASeq = targetSeq
-
-        return polyASeq
-
-    def is_5prime_informative(self, alignObj, tdType, tdCoord):
-        """
-        Check if candidate contig is 5' informative. Defined as contigs spanning
-        source element (TE or transduced seq.) - insertion target region breakpoint:
-
-        5' informative:         ---------------###SRC####
-        5' informative:         ###SRC####---------------
-
-        Input:
-        1) alignObj. Blat alignment object.
-        2) tdType. Type of transduction event
-                   ("TD0": solo,
-                    "TD1": partnered,
-                    "TD2": orphan,
-                    "PSD": pseudogene insertion)
-        3) tdCoord. mobilized region (relevant for TD2 and PSD events)
-
-        Output:
-        1) is5prime. Boolean, 1 (5' informative) and 0 (not 5' informative).
-        2) bkpCoord. Two elements breakpoint coordinates list. First (bkp chromosome) and second (breakpoint position).
-        3) srcAlignmentObj. Blat aligment object with the alignment information of the contig in the source sequence (TE or TD).
-                           'na' if not 5' informative.
-        4) MEISeq. Assembled sequence of the mobile element 5' boundary
-        """
-
-        ## Select contig target sequence coordinates to search for alignment in source sequence:
-        #   TD0, TD1 events: consensus L1, Alu or SVA for RD
-        #   TD2 events: transduced region downstream of TE
-        # The position of the target coordinates in the contig
-        # will depend on the blat alignment type
-
-        # A) Begin of the contig sequence aligned in the TE insertion genomic region
-        #   -------------******SRC******
-        #   -------------
-        # qBeg        *qEnd*
-
-        if (alignObj.alignType == "beg"):
-            targetBeg = alignObj.qEnd
-            targetEnd = alignObj.qSize
-            targetSeq = self.seq[alignObj.qEnd:]
-            bkpChrom = alignObj.tName
-
-            # a) Positive dna strand
-            if (alignObj.strand == "+"):
-                bkpPos = alignObj.tEnd
-                MEISeq = targetSeq
-
-            # b) Negative dna strand
-            else:
-                bkpPos = alignObj.tBeg
-                MEISeq = self.rev_complement(targetSeq)
-
-        # B) End of the contig sequence aligned in the TE insertion genomic region
-        #   *****SRC******-------------
-        #                 -------------
-        #              *qBeg*        qEnd
-        elif (alignObj.alignType == "end"):
-            targetBeg = 0
-            targetEnd = alignObj.qBeg
-            targetSeq = self.seq[:alignObj.qBeg]
-
-            bkpChrom = alignObj.tName
-
-            # a) Positive dna strand
-            if (alignObj.strand == "+"):
-                bkpPos = alignObj.tBeg
-                MEISeq = targetSeq
-
-            # b) Negative dna strand
-            else:
-                bkpPos = alignObj.tEnd
-                MEISeq = self.rev_complement(targetSeq)
-
-        # C) No align type information or 'none' align type
-        else:
-            log("Error", "No valid alignment object provided. Alignment type variable is 'none' or not defined")
-            sys.exit(1)
-
-
-        ## Default
-        is5prime = 0
-        bkpCoord = ["UNK", "UNK"]
-        srcAlignmentObj = "UNK"
-        targetMEIs = ["L1", "Alu", "SVA", "ERVK"]
-
-        for alignment in self.alignList:
-
-            # a breakpoint-spanning contig is expected to align partly to
-            #   TD0 (solo insertion) : consensus MEI sequence
-            #   TD1 (partnered TD)   : consensus MEI sequence
-            #   TD2 (orphan TD)      : transduced region downstream of TE
-            has_expected_target = (
-              ( (tdType not in ["TD2", "PSD"]) and (alignment.tName in targetMEIs) ) or
-              ( (tdType in ["TD2", "PSD"]) and (alignment.in_target_region(tdCoord, 1000)) )
-            )
-
-            # Contig alignment in TE sequence (L1, Alu, SVA or ERVK) or transduced region
-            if has_expected_target:
-
-                ## Compute percentage of overlap between:
-                # Expected alignment ---------------
-                #                targetBeg      targetEnd
-
-                # TE alignment           ***************
-                #                      qBeg           qEnd
-                beginList = [ targetBeg, alignment.qBeg ]
-                endList = [ targetEnd, alignment.qEnd ]
-
-                length = float(max(endList) - min(beginList))
-                nbOverlapingBases = float(min(endList) - max(beginList))
-                percOverlap = nbOverlapingBases / length * 100
-
-                # If percentage of overlap > 50% -> Informative 5'
-                if ( percOverlap > 50 ):
-                    is5prime = 1
-                    bkpCoord = [bkpChrom, bkpPos]
-                    srcAlignmentObj = alignment
-                    # NOTE: break from loop here? could following alignments be better?
-
-
-        return (is5prime, bkpCoord, srcAlignmentObj, MEISeq)
 
 class blat_alignment():
     """
@@ -2107,7 +219,14 @@ class blat_alignment():
         # Other
         self.alignType = ""
 
-    #### FUNCTIONS ####
+    def perc_query_covered(self):
+        """
+
+        """
+        percQueryCovered = float(self.qEnd - self.qBeg) / self.qSize * 100  
+        return percQueryCovered
+
+
     def rev_complement(self):
         """
             Make the reverse complementary aligment. This would be the alignment information of the reverse complementary original sequence
@@ -2115,7 +234,6 @@ class blat_alignment():
             Output:
             - Update alignment information for reverse complementary alignment. Need to be improved to also update tStarts variable
         """
-
         ## Reverse complement strand
         switchStrandDict = {'+': '-', '-': '+'}
         self.strand = switchStrandDict[self.strand]
@@ -2127,189 +245,1273 @@ class blat_alignment():
         self.qBeg = updatedBeg
         self.qEnd = updatedEnd
 
-    def in_consensus_TE(self):
-        """
-            Check if blat alignment is completely on the mobile element consensus sequence. No gap is allowed
-        """
-        alignLength = self.qEnd - self.qBeg
-        alignPerc = float(alignLength) / float(self.qSize) * 100      
 
-        MEIlist = ["L1", "Alu", "SVA", "ERVK"]
-
-        # A) More than 99% Contig aligning on the mobile element consensus sequence. No gap allowed       
-        if (self.tName in MEIlist) and (alignPerc > 99) and (self.blockCount == 1):
-            inConsensusTE = 1
-
-        # B) Contig do not aligning on the consensus seq.
-        else:
-            inConsensusTE = 0            
-
-        return inConsensusTE
-        
-    def in_target_region(self, coords, windowSize):
-        """
-            Check if blat alignment within a region of interest:
-
-                region     chrom   beg ------------- end
-                alignment  chrom  tBeg     ------    tEnd
-
-            Input:
-            1) coords. Region of interest. Format: ${chrom}_${beg}_${end}.
-                       Example: 10_108820680_108820678.
-            2) windowSize (integer). Window size to extend from input region coordinates to define the
-                                     region of interest:
-
-                                     <--W-->---Input---<--W-->
-                                      -----------------------
-                                         region of interest
-            Output:
-            1) insertionRegion. Boolean, 1(in region) and 0 (outside of the region)
-        """
-        coordsList = coords.split("_")
-        chrom = coordsList[0]
-
-        beg = int(coordsList[1]) - windowSize if coordsList[1] != "UNK" else int(coordsList[2]) - windowSize
-        end = int(coordsList[2]) + windowSize if coordsList[2] != "UNK" else int(coordsList[1]) + windowSize 
-         
-        # A) Within target region
-        if (chrom == self.tName) and (self.tBeg >= beg) and (self.tEnd <= end):
-            insertionRegion = 1
-
-        # B) Outside target region
-        else:
-            insertionRegion = 0
-
-        return insertionRegion
-
-    def partial_alignment(self, maxAlignPerc):
-        """
-            Check if blat alignment is partial or not and classify partial alignments in one
-            of those categories: "beg" and "end".
-
-                          firstHalf    secondHalf
-            contig_seq:  ------------*------------
-            partial_beg:      ---------
-                             -------------
-
-            partial_end:                ----------
-                                    ------------
-
-            Input:
-            1) maxAlignPerc (Float). Threshold to consider an alignment partial or not.
-                                     Partial defined as % of aligned contig sequence < maxAlignPerc.
-
-            Output:
-            1) partial. Boolean, 1(partial) and 0 (not partial).
-            2) Sets 'alignType' variable to "none", "beg" or "end"
-        """
-
-        alignLength = self.qEnd - self.qBeg
-        alignPerc = float(alignLength) / float(self.qSize) * 100
-
-        # A) One block partial alignment 
-        #if (alignPerc < maxAlignPerc) and (self.blockCount == 1):
-        if (alignPerc < maxAlignPerc):
-            partial = 1
-
-            ## Determine type of partial alignment (beg, end, none):
-            middle = float(self.qSize)/2
-
-            # a) Begin of the alignment within the first half of contig sequence:
-            if self.qBeg <= middle:
-
-                # a.a) End of the alignment within the first half of contig sequence
-                if self.qEnd <= middle:
-                    self.alignType = "beg"
-
-                # a.b) End of the alignment within the second half of contig sequence
-                else:
-                    dist2Beg = self.qBeg
-                    dist2End = self.qSize - self.qEnd
-
-                    if (dist2Beg <= dist2End):
-                        self.alignType = "beg"
-                    else:
-                        self.alignType = "end"
-
-            # b) Begin of the alignment within the second half of contig sequence:
-            else:
-                self.alignType = "end"
-
-        # B) No partial
-        else:
-            partial = 0
-            self.alignType = "none"
-
-        return partial
-
-
-class fasta():
+class contig():
     """
-    .... class.
+    Methods:
+    """
 
-    .....
+    def __init__(self, contigId, contigSeq):
+        """
+            Initialize contig object.
+
+            Input:
+            - 
+
+            Output:
+            - Contig object variables initialized
+        """
+        # Contig id and sequence
+        self.ID = contigId
+        self.seq = contigSeq
+        self.length = int(len(self.seq))
+
+        # Contig alignment information
+        self.alignmentObjList = []   # List of blat alignments for this contig
+        self.representativeAlignmentObj = "NA"
+
+        # bkp information
+        self.informative = ""        
+        self.bkpDict = {}
+
+        # Number supporting reads
+        self.nbReads = ""     
+    
+        # Clipping side   
+        self.clippedSide = ""
+
+    def rev_complement(self, seq):
+        """
+            Make the reverse complementary of a dna sequence
+
+            Input:
+            1) seq. DNA sequence
+
+            Output:
+            1) revComplementSeq. Reverse complementary of input DNA sequence
+        """
+        baseComplementDict = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A', 'N': 'N'}
+        seq = seq.upper()
+        revSeq = seq[::-1] # Make reverse sequence
+        letters = list(revSeq)
+        letters = [baseComplementDict[base] for base in letters]
+        revComplementSeq = ''.join(letters) # Make complement of reverse sequence
+
+        return revComplementSeq
+
+    def best_single_alignment(self):
+        """
+
+        """
+        ## Sort alignment based on percentage of query covered
+        alignmentObjListSorted = sorted(self.alignmentObjList, key=lambda alignmentObj: alignmentObj.perc_query_covered(), reverse=True)        
+
+        ## Pick alignment covering the highest percentage of query sequence
+        bestAlignmentObj = alignmentObjListSorted[0]
+
+        return bestAlignmentObj
+
+    def pair_complementary_alignments(self):
+        """
+
+        """
+        ### Sort alignments based on contig beginning alignment coordinates
+        alignmentObjListSorted = sorted(self.alignmentObjList, key=lambda alignmentObj: alignmentObj.qBeg, reverse=False)
+        #print "sorted-alignments: ", alignmentObjListSorted, [alignmentObj.qBeg for alignmentObj in alignmentObjListSorted]
+
+        ### Make pairs of overlapping partial alignments
+        pairedAlignmentObjList = []
+       
+        ## Generate tuple list with all the possible alignment pairs
+        alignmentObjPairsList = list(itertools.combinations(alignmentObjListSorted, 2))
+         
+        ## Iterate over all the possible pairs of contig's blat alignments
+        for alignmentObjA, alignmentObjB in alignmentObjPairsList:
+                
+            ## Check if both alignments overlap:
+            status, nbBases = overlap(alignmentObjA.qBeg, alignmentObjA.qEnd, alignmentObjB.qBeg, alignmentObjB.qEnd, 15)
+
+            print status, nbBases
+
+            ## Partial overlap with a maximum of 50 overlapping bp (it would be 20, as 15*2 overhang) 
+            if (status == 'partial') and (nbBases <= 50):    
+        
+                pairedAlignmentObj = chained_alignment([alignmentObjA, alignmentObjB])     
+                percQueryCoveredA = alignmentObjA.perc_query_covered()
+                percQueryCoveredB = alignmentObjB.perc_query_covered()
+                percQueryCoveredPaired = pairedAlignmentObj.perc_query_covered()
+
+                ## Paired alignments covers more % of contig sequence than individual alignments:
+                if (percQueryCoveredPaired > percQueryCoveredA) and (percQueryCoveredPaired > percQueryCoveredB):
+                        
+                    ## Add paired alignment to the list
+                    pairedAlignmentObjList.append(pairedAlignmentObj)
+
+
+        ## A) No paired alignment
+        if (len(pairedAlignmentObjList) == 0):
+            bestPairedAlignmentObj = "NA"
+
+        ## B) At least one paired alignment
+        else:
+            ## Sort alignments based on percentage of query covered
+            pairedAlignmentObjSortedList = sorted(pairedAlignmentObjList, key=lambda pairedAlignmentObj: pairedAlignmentObj.perc_query_covered(), reverse=True)        
+        
+            ## If several posible paired alignments, pick the one covering the highest percentage of query sequence
+            bestPairedAlignmentObj = pairedAlignmentObjSortedList[0]
+    
+        return bestPairedAlignmentObj, pairedAlignmentObjList
+
+
+    def chain_alignments(self, chainedAlignmentObjList):
+        """
+
+        """
+        chainedAlignmentObjNewList = []
+
+        ## Generate tuple list with all the possible chained alignment pairs
+        chainedAlignmentObjPairsList = list(itertools.combinations(chainedAlignmentObjList, 2))
+
+        ## Iterate over all the possible pairs of chained alignments
+        for chainedAlignmentObjA, chainedAlignmentObjB in chainedAlignmentObjPairsList:
+
+            alignmentObjList = chainedAlignmentObjA.alignmentList + chainedAlignmentObjB.alignmentList
+                    
+            ## There is some alignment in common between both chained alignments 
+            if (len(alignmentObjList) != len(set(alignmentObjList))):
+          
+                ## Make not redundant list of alignments
+                alignmentObjFilteredList = list(set(alignmentObjList))
+
+                ## Sort alignmnents based on query beginning position
+                alignmentObjSortedList = sorted(alignmentObjFilteredList, key=lambda alignmentObj: alignmentObj.qBeg, reverse=False)
+
+                ## Create chained alignment object
+                chainedAlignmentObj = chained_alignment(alignmentObjSortedList)
+
+                ## Maximum percentage of query sequence for each paired chained alignment
+                maxPerc = max([chainedAlignmentObjA.perc_query_covered(), chainedAlignmentObjB.perc_query_covered()])
+
+                ## Chained alignment better than the best paired chained alignment
+                if (chainedAlignmentObj.perc_query_covered() > maxPerc):
+
+                    chainedAlignmentObjNewList.append(chainedAlignmentObj)
+                    #print "**Chain_alignmnets: ", chainedAlignmentObj.alignmentList, len(chainedAlignmentObj.alignmentList), chainedAlignmentObj.perc_query_covered()
+
+        nbAlignments = len(chainedAlignmentObjNewList)
+
+        ## A) No chained alignment
+        if (nbAlignments == 0):
+            bestChainedAlignmentObj = "NA"
+            return bestChainedAlignmentObj 
+
+        else:
+    
+            ## B) Only one chained alignment (OR best one covers 100% of contig sequence) -> to implement
+            if (nbAlignments == 1):
+                bestChainedAlignmentObj = chainedAlignmentObjNewList[0]
+                return bestChainedAlignmentObj 
+
+            ## C) Multiple chained alignments
+            else:
+
+                ## Provisional, select the best one (In the future it should make recursion and attemp to extend again the chain...)
+                chainedAlignmentObjNewListSorted = sorted(chainedAlignmentObjNewList, key=lambda chainedAlignmentObj: chainedAlignmentObj.perc_query_covered(), reverse=True)        
+
+                bestChainedAlignmentObj = chainedAlignmentObjNewListSorted[0]
+                return bestChainedAlignmentObj
+
+     
+    def representative_alignment(self):
+        """
+            
+            
+            Output: representativeAlignmentObj
+        """        
+        nbAlignments = len(self.alignmentObjList)
+
+        ## A) Contig without blat hits
+        if (nbAlignments == 0):
+                  
+            #print "A) Contig without blat hits"  
+            self.representativeAlignmentObj = chained_alignment([])
+
+        ## Contig with at least one blat hit
+        else:
+
+            ## 1. Identify single alignment spanning the largest piece of contig sequence
+            bestAlignmentObj = self.best_single_alignment()            
+
+            #print "bestAlignmentObj: ", bestAlignmentObj, bestAlignmentObj.perc_query_covered()
+
+            ## B) Only one alignment or multiple but one spans the full contig sequence
+            if (nbAlignments == 1) or (bestAlignmentObj.perc_query_covered() == 100):
+                
+                #print "B) Only one alignment or multiple but one spans the full contig sequence"
+                self.representativeAlignmentObj = chained_alignment([bestAlignmentObj])
+                           
+            ## Multiple alignments and the best one does not span the full contig sequence 
+            else:
+        
+                ## 2. Search for pairs of complementary alignments
+                bestPairedAlignmentObj, pairedAlignmentObjList = self.pair_complementary_alignments()
+
+                ## C) No paired complementary alignments OR best single alignment better/equal than best paired alignment 
+                if (bestPairedAlignmentObj == "NA"):
+                
+                    #print "C) No paired complementary alignments OR best single alignment better/equal than best paired alignment"
+                    self.representativeAlignmentObj = chained_alignment([bestAlignmentObj])
+
+                ## D) Only one paired alignment or multiple but one spans the full contig sequence
+                elif (len(pairedAlignmentObjList) == 1) or (bestPairedAlignmentObj.perc_query_covered() == 100):
+    
+                    #print "D) Only one paired alignment or multiple but one spans the full contig sequence" 
+                    self.representativeAlignmentObj = bestPairedAlignmentObj
+                    #print "bestPairedAlignmentObj: ", bestPairedAlignmentObj, bestPairedAlignmentObj.perc_query_covered()
+
+                ## Multiple paired alignments and the best one does not span the full contig sequence 
+                else:
+                    chainedAlignmentObj = self.chain_alignments(pairedAlignmentObjList)
+                    
+                    # E) No chained complementary alignments OR best paired alignment better/equal than best paired alignment
+                    if (chainedAlignmentObj == "NA"):
+                        #print "E) No chained complementary alignments OR best paired alignment better/equal than best paired alignment"
+                        self.representativeAlignmentObj = bestPairedAlignmentObj
+        
+                    # F) Chained complementary alignment better than paired alignment
+                    else:
+                        #print "F) Chained complementary alignment better than paired alignment"
+                        self.representativeAlignmentObj = chainedAlignmentObj
+   
+
+    def fix_contig_orientation(self, chrom):
+        """
+         
+        """     
+        alignmentList = self.representativeAlignmentObj.alignmentList
+    
+        # Make not-redundant list with the strand for the alignments in the target region
+        strandList = list(set([alignmentObj.strand for alignmentObj in alignmentList if alignmentObj.tName == chrom]))
+
+        # A) No alignment in the target region
+        if len(strandList) == 0:
+            print "A) No alignment in the target region"
+    
+        # B) Ambiguous strand as multiple possibilities (+ and -) 
+        elif len(strandList) > 1:
+            print "B) Ambiguous strand as multiple possibilities (+ and -)"
+
+        # C) Single possible strand
+        else:
+            print "C) Single possible strand"
+        
+            ## Minus strand
+            if (strandList[0] == "-"):
+    
+                ### Make reverse complementary
+                ## Contig sequence
+
+                #print "CONTIG-BEFORE: ", self.seq
+                self.seq = self.rev_complement(self.seq)
+                #print "CONTIG-AFTER: ", self.seq
+
+                ## Blat alignments
+                #print "BLAT-BEFORE: ", self.representativeAlignmentObj.alignmentList
+                self.representativeAlignmentObj.alignmentList = self.representativeAlignmentObj.rev_complement()
+                #print "BLAT-AFTER: ", self.representativeAlignmentObj.alignmentList
+
+
+    def is_complete_polyA(self, targetSeq):
+        """        
+        """
+        ## Remove N characters
+        targetSeqTrimmed = targetSeq.replace("N", "")
+
+        targetSeqLen = len(targetSeqTrimmed)
+
+        # Compute percentage of A and T in the clipped sequence
+        if (targetSeqLen == 0):
+            percA = 0
+            percT = 0
+        else:
+            nbA = targetSeqTrimmed.count("A")
+            nbG = targetSeqTrimmed.count("G")
+            nbC = targetSeqTrimmed.count("C")
+            nbT = targetSeqTrimmed.count("T")
+
+            percA = float(nbA) / (nbA + nbG + nbC + nbT) * 100
+            percT = float(nbT) / (nbA + nbG + nbC + nbT) * 100
+
+        # Classify the input sequence as poly-A if at least 4 bases long and >= 80% bases are A or T
+        if (targetSeqLen >= 4) and ((percA >= 80) or (percT >= 80)):
+            polyASeq = targetSeq
+        else:
+            polyASeq = "NA"
+
+        return polyASeq
+
+
+
+    def is_partial_polyA(self, targetSeq, side):
+        """        
+        """
+        windowSize = 10
+        targetSeqLen = len(targetSeq)
+        
+        print "is_partial_polyA: ", targetSeq, targetSeqLen, side
+
+        ## Search for polyA tails in the target seq. taking consecutive slices of X bases (X = windowSize)
+        polyASeq = ""
+
+        for pos in range(0, targetSeqLen, windowSize):
+ 
+            # Parse sequence forward
+            if (side == "beg"):
+                # Take slice
+                beg = pos
+                end = beg + windowSize
+            
+                if (end > targetSeqLen):
+                    end = targetSeqLen
+    
+            # Parse sequence backward
+            else:
+                # Take slice
+                beg = targetSeqLen - pos - windowSize
+                end = targetSeqLen - pos
+            
+                if (beg < 0):
+                    beg = 0
+
+            seq = targetSeq[beg:end]
+            print "PAJAROO: ", beg, end, targetSeqLen, targetSeq, seq, side, polyASeq
+ 
+            # Compute percentage of A and T in the given slice
+            nbA = seq.count("A") 
+            nbG = seq.count("G") 
+            nbC = seq.count("C") 
+            nbT = seq.count("T") 
+            nbN = seq.count("N")
+       
+            percA = float(nbA) / (nbA + nbG + nbC + nbT + nbN) * 100
+            percT = float(nbT) / (nbA + nbG + nbC + nbT + nbN) * 100
+            
+            # A) Classify the slide as poly-A if >= 80% are T or A
+            if (percA >= 80) or (percT >= 80):
+                
+                # Add sequence slice to the polyA sequence
+                polyASeq = polyASeq + seq 
+            
+            # B) Stop parsing sequence if the slide is not poly-A 
+            else:
+                    break
+
+        if (polyASeq == ""):
+            polyASeq = "NA"
+        
+        return polyASeq
+            
+
+
+    def is_polyA(self, targetSeq, side):
+        """        
+        """
+
+        ## Check if complete polyA
+        polyASeq = self.is_complete_polyA(targetSeq)
+
+        # PolyA not found -> Check if partial polyA
+        if (polyASeq == "NA"):
+        
+            polyASeq = self.is_partial_polyA(targetSeq, side)
+        
+        return polyASeq
+
+
+    def is_polyA_informative(self, alignmentObj):
+        """
+        """
+                
+        #print "* is_polyA function *" 
+        #print "alignmentObj: ", alignmentObj.tName, alignmentObj.qSize, alignmentObj.qBeg, alignmentObj.qEnd, alignmentObj.perc_query_covered() 
+
+        # Initialize bkp dictionary
+        bkpDict = {}
+
+        ## Begin clipped
+        #    #########-----------
+        if (self.clippedSide  == "beg"):
+            targetSeq = self.seq[:alignmentObj.qBeg].upper()
+            polyASeq = self.is_polyA(targetSeq, 'end')
+
+            if (polyASeq != "NA"):
+                polyA = True
+                bkpDict["chrom"] = alignmentObj.tName
+                bkpDict["pos"] = alignmentObj.tBeg
+                bkpDict["polyA"] = polyASeq
+                bkpDict["alignmentObjRT"] = "NA"
+            else:
+                polyA = False
+                
+        ## End clipped 
+        #    ---------#########
+        else:
+            targetSeq = self.seq[alignmentObj.qEnd:].upper()
+            polyASeq = self.is_polyA(targetSeq, 'beg')
+
+            if (polyASeq != "NA"):
+                polyA = True  
+                bkpDict["chrom"] = alignmentObj.tName
+                bkpDict["pos"] = alignmentObj.tEnd
+                bkpDict["polyA"] = polyASeq
+                bkpDict["alignmentObjRT"] = "NA"
+            else:
+                polyA = False
+
+        print "GUAPOO: ", self.clippedSide, self.seq, targetSeq, polyASeq, bkpDict
+
+
+        return polyA, bkpDict 
+
+
+    def is_single_informative(self, chrom):
+        """
+        """                
+        bkpDict = {}
+        alignmentObj = self.representativeAlignmentObj.alignmentList[0]
+
+        # A) Contig does not align on the target region
+        if (alignmentObj.tName != chrom):        
+            print "CONTIG STATUS: Not informative, single alignment ouside the target region"
+            informative = False
+
+        ## B) Not informative, single alignment on the target region but spanning 100% of its sequence
+        elif (self.representativeAlignmentObj.perc_query_covered() == 100):
+            print "CONTIG STATUS: Not informative, single alignment on the target region but spanning 100% of its sequence"
+            informative = False
+
+        ## C) Single partial alignment -> Poly-A contig candidate
+        else:
+            informative, bkpDict = self.is_polyA_informative(alignmentObj)
+
+        return informative, bkpDict
+  
+
+    def is_chained_informative(self, chrom):
+        """
+
+        """
+        bkpDict = {}
+
+        alignmentList = self.representativeAlignmentObj.alignmentList
+        diffSeqList = list(set([ alignmentObj.tName for alignmentObj in alignmentList ]))
+        nbDiffSeq = len(diffSeqList)
+        
+        ## A) Contig aligning multiple times in the same sequence (target region, transposon, exon or transduced region)
+        if (nbDiffSeq == 1):
+
+            print "A) Contig aligning multiple times in the same sequence (target region, transposon, exon or transduced region)"
+
+            # a) Contig does not align on the target region
+            if (diffSeqList[0] != chrom):        
+                print "CONTIG STATUS: Not informative, chained alignment ouside the target region"
+                informative = False
+
+            # b) Not informative, single alignment on the target region but spanning 100% of its sequence
+            elif (self.representativeAlignmentObj.perc_query_covered() == 100):
+                print "CONTIG STATUS: Not informative, chained alignment on the target region but spanning 100% of its sequence"
+                informative = False
+
+            # c) Chained partial alignment on the target region -> Poly-A contig candidate   (TILL HERE)     
+            else:
+                print "Chained partial alignment on the target region -> Poly-A contig candidate"
+
+                # a) End clipped
+                # ------target_region------[....TE....]
+                if (self.clippedSide  == "end"):
+                    alignmentObj = alignmentList[0]  
+
+                # b) Beg clipped
+                # [....TE....]------target_region------
+                else:
+                    alignmentObj = alignmentList[len(alignmentList) - 1]
+
+                informative, bkpDict = self.is_polyA_informative(alignmentObj)
+            
+        ## B) Contig aligning in different sequences -> Informative with or without poly-A
+        else:
+            print "B) Contig aligning in different sequences"    
+            informative = True
+
+            ### 1. Identify the alignment pair spanning the insertion breakpoint
+            alignmentPairList = [] 
+
+            ## Iterate over the aligments list
+            for index, alignmentObjA in enumerate(alignmentList):
+
+                ## Skip last alignment
+                if (index + 1) != len(alignmentList):
+
+                    ## Select next alignment
+                    alignmentObjB = alignmentList[index + 1]
+
+                    ## Current and next alignment in a different template. Possible combinations: 
+                    # target_region -> L1
+                    # target_region -> TD2 (I think I should include an alignment step for TD1 as well)
+                    # target_region -> PSD
+                    # all these combinations can be in the other way around
+                    if alignmentObjA.tName != alignmentObjB.tName:
+                            
+                        # A) End clipped
+                        # ------target_region------[....TE....]
+                        if (self.clippedSide  == "end"):
+                            #print "A) Inserted sequence on the right"
+                            bkpDict["chrom"] = alignmentObjA.tName
+                            bkpDict["pos"] = alignmentObjA.tEnd
+                            bkpDict["alignmentObjRT"] = alignmentObjB
+
+                            ## Check for poly-A breakpoint
+                            nbBases = alignmentObjB.qBeg - alignmentObjA.qEnd
+
+                            if (nbBases > 0):
+                                targetSeq = self.seq[alignmentObjA.qEnd : (alignmentObjA.qEnd + nbBases)].upper()
+                                bkpDict["polyA"] = self.is_complete_polyA(targetSeq)
+                                print "targetSeq-TIO-1: ", targetSeq, self.is_complete_polyA(targetSeq)
+                            else:
+                                targetSeq = self.seq[alignmentObjA.qEnd: ].upper()
+                                print "targetSeq-TIO-2: ", targetSeq, self.is_complete_polyA(targetSeq)
+                                bkpDict["polyA"] = self.is_complete_polyA(targetSeq)
+                   
+                        # B) Beg clipped
+                        # [....TE....]------target_region------
+                        else:
+                            #print "B) Inserted sequence on the left"
+                            bkpDict["chrom"] = alignmentObjB.tName
+                            bkpDict["pos"] = alignmentObjB.tBeg
+                            bkpDict["alignmentObjRT"] = alignmentObjA
+
+                            ## Check for poly-A breakpoint
+                            nbBases = alignmentObjB.qBeg - alignmentObjA.qEnd
+
+                            if (nbBases > 0):
+                                targetSeq = self.seq[(alignmentObjB.qBeg - nbBases) : alignmentObjB.qBeg].upper()
+                                bkpDict["polyA"] = self.is_complete_polyA(targetSeq)
+                                print "targetSeq-TIO-3: ", targetSeq, targetSeq
+                            else:
+                                targetSeq = self.seq[: alignmentObjB.qBeg].upper()
+                                print "targetSeq-TIO-4: ", targetSeq, self.is_complete_polyA(targetSeq)
+                                bkpDict["polyA"] = self.is_complete_polyA(targetSeq)
+                    
+                        # Once breakpoint found stop iterating
+                        break
+                           
+        return informative, bkpDict           
+                
+    def is_informative(self, tdType, coordinates):
+
+        """  
+
+        """
+        chrom, beg, end =  coordinates.split("_")
+
+        print "*** ANALYZING CONTIG: ", tdType, coordinates, chrom, beg, end, self.ID, self.seq, len(self.alignmentObjList), "***"
+
+        ## 1. Obtain contig representative alignment (can be a single alignment or a set of complementary alignments)
+        #print "** 1. Obtain contig representative alignment (can be a single alignment or a set of complementary alignments) **"        
+        self.representative_alignment()
+        
+        ## 2. Reverse contig if the reverse complementary of the contig is aligning on the insertion region
+        #print "** 2. Reverse contig if the reverse complementary of the contig is aligning on the insertion region **"
+        self.fix_contig_orientation(chrom)
+
+        #print self.representativeAlignmentObj.alignmentList
+
+        ## 2. Determine if informative contig based on the representative alignment
+        #print "** 3. Determine if informative contig based on the representative alignment **" 
+
+        nbAlignments = len(self.representativeAlignmentObj.alignmentList)
+        
+        ## A) Not informative -> Contig without blat hits 
+        if (nbAlignments == 0):
+            print "CONTIG STATUS: Not informative, no blat hits"
+            self.informative = False
+
+        ## B) Contig with single alignment
+        elif (nbAlignments == 1):
+            self.informative, self.bkpDict = self.is_single_informative(chrom)    
+
+        ## C) Contig with chained alignment
+        else:
+            self.informative, self.bkpDict = self.is_chained_informative(chrom)
+
+ 
+class insertion():
+    """
+    Transposable element insertion class.
 
     Methods:
-    - fasta_reader
 
     """
 
-    def __init__(self, fastaFile):
+    def __init__(self, family, tdType, insertionCoord, contigsPath, blatPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo, pseudogeneInfo, grInfo, sampleId):
         """
-            Initialize fasta object.
+            Initialize insertion object.
 
             Input:
-            1)
-
+            1) family. TE family (L1, Alu, SVA or ERVK)
+            2) tdType. Insertion type:  td0 (solo-insertion), td1 (partnered-transduccion), td2 (orphan-transduction) or psd (pseudogene insertion).
+            3) coordinates. TraFiC insertion range.
+            4) contigsPath. Fasta file containing the assembled contigs.
+            5) blatPath. psl file containing the blat aligments for the assembled contigs.
+            8) readPairsPlus. List of + cluster supporting reads.
+            9) readPairsMinus. List of - cluster supporting reads.
+            10) srcElement. Source element information in the format: cytobandId"_"srcElementType"_"chromSource"_"begSource"_"endSource"_"orientationSource. 
+            11) transductionInfo. Transduction information in the format: chromSource"_"transductBeg"_"transductEnd"_"transductRnaLen"_"transductLen.
+            12) pseudogeneInfo. Pseudogene information in the format: srcgene":"chrExonA"_"begExonA"-"endExonA":"chrExonB"_"begExonB"-"endExonB
+            13) grInfo. Insertion associated genomic rearrangement (DEL, DUP, TRANS or NA) 
+            14) sampleId. Sample identifier to be incorporated in the SL field of the output VCF. In PCAWG we use the normal_wgs_aliquot_id or tumor_wgs_aliquot_id.
+            
             Output:
-            -
+            - Insertion object variables initialized
         """
-        self.fastaDict = self.fasta_reader(fastaFile)
+        self.family = family
+        self.tdType = tdType
+        self.coordinates = insertionCoord
+        self.grInfo = grInfo
+        self.sampleId = sampleId
+        self.readPairIdsPlus = readPairsPlus
+        self.nbReadPairsPlus =  len(readPairsPlus.split(','))
+        self.readPairIdsMinus = readPairsMinus
+        self.nbReadPairsMinus =  len(readPairsMinus.split(','))
 
-    #### FUNCTIONS ####
-    def fasta_reader(self, fastaFile):
+        # Organize contigs into a dictionary
+        self.contigsDict = self.read_contigs(contigsPath)
+
+        # Add blat alignments to cluster object
+        self.add_contig_alignments(blatPath)
+
+        # Initialize insertion properties
+        self.cipos = "NA"
+        self.targetSiteLen = "NA"
+        self.mechanism = "NA"
+        self.orientation = "NA"
+        self.elementLength = "NA"
+        self.elementInterval = "NA"
+        self.structure = "NA"
+        self.score = "NA"
+        self.chrom = "NA"
+        self.bkpAPos = "NA"
+        self.bkpBPos = "NA"
+        self.bkpAContigSeq = "NA"
+        self.bkpBContigSeq = "NA"
+
+        ## Set transduction or pseudogene specific fields
+        # A) Solo insertion (TD0). Not applicable
+        if (self.tdType == "TD0"):
+            self.cytobandId = "NA"
+            self.sourceElementType = "NA"
+            self.sourceElementCoord = "NA"
+            self.tdCoord = "NA"
+            self.tdLen = "NA"
+            self.tdLenRna = "NA"
+            self.srcgene = "NA"
+
+        # B) Partnered or orphan transduction (TD1 and TD2)
+        elif (self.tdType in ["TD1", "TD2"]):
+
+            ### L1 source element information
+            srcElementList = srcElement.split("_")
+
+            self.cytobandId = srcElementList[0]
+            self.sourceElementType = srcElementList[1]
+            self.sourceElementCoord = srcElementList[2] + "_" + srcElementList[3] + "_" + srcElementList[4]
+            
+            status = srcElementList[5]
+
+            ### Mobilized region coord
+            transductionInfoList = transductionInfo.split("_")
+            self.tdCoord = transductionInfoList[0] + "_" + transductionInfoList[1] + "_" + transductionInfoList[2]
+            self.srcgene = "NA"
+
+            # a) Putative. Uncharacterized germline or somatic source element
+            if (status == "putative"):
+                self.tdLenRna = "NA"                
+                self.tdLen = "NA"
+              
+            # b) Characterized germline source element
+            else:
+                self.tdLenRna = transductionInfoList[3]                
+                self.tdLen = transductionInfoList[4]
+                
+        # C) pseudogene insertion (PSD)
+        elif (self.tdType == "PSD"):
+            self.cytobandId = "NA"
+            self.sourceElementType = "NA"
+            self.sourceElementCoord = "NA"
+            self.tdLen = "NA"
+            self.tdLenRna = "NA"
+
+            # parse pseudogene info, format:
+            # gene:chrA_begA-endA:chrB_begB-begB
+            regex = r'(?P<gene>\w+):(?P<chrA>\w+)_(?P<begA>\d+)-(?P<endA>\d+):(?P<chrB>\w+)_(?P<begB>\d+)-(?P<endB>\d+)'
+
+            m = re.search(regex, pseudogeneInfo)
+            srcgene = m.group("gene")
+            chrExonA = m.group("chrA")
+            begExonA = int(m.group("begA"))
+            endExonA = int(m.group("endA"))
+            chrExonB = m.group("chrB")
+            begExonB = int(m.group("begB"))
+            endExonB = int(m.group("endB"))
+
+            self.srcgene = srcgene
+
+            # construct source region from exon coordinates
+            minBeg = min(begExonA, begExonB)
+            maxEnd = max(endExonA, endExonB)
+            self.tdCoord = "%s_%d_%d" % (chrExonA, minBeg, maxEnd)
+
+    def read_contigs(self, contigsFasta):
         """
-
+            Read fasta file with the cluster's assembled contigs and produce a dictionary with
+            the contig ids as keys and the corresponding contig objects as values.
 
             Input:
-            1)
+            1) contigsFasta. Fasta file containing the assembled contigs for the given
+            cluster.
 
             Output:
-            1)
+            1) contigsDict. Dictionary containing the contig ids as keys and the corresponding
+            contig objects as values.
         """
-        fastaDict = {}
+        fastaObj = formats.fasta(contigsFasta)
 
-        subHeader("Fasta reader")
+        contigsDict = {}
 
-        fh = open(fastaFile)
-        # ditch the boolean (x[0]) and just keep the header or sequence since
-        # we know they alternate.
-        faiter = (x[1] for x in groupby(fh, lambda line: line[0] == ">"))
-        for header in faiter:
-            # drop the ">"
-            header = header.next()[1:].strip()
+        ### For each contig create a contig object and add it to the dictionary
+        # using the contig id as key
+        for contigId in fastaObj.fastaDict:
 
-            # drop the info
-            header = header.split(" ")[0]
+            print "MEEEN: ", contigId, contigId.split('_')[3], contigId.split('_')[4]
+            contigSeq = fastaObj.fastaDict[contigId]
 
-            info("Reading " + header + "...")
-            # join all sequence lines to one.
-            seq = "".join(s.strip() for s in faiter.next())
-            fastaDict[header] = seq
+            # Create contig object
+            contigObj = contig(contigId, contigSeq)
 
-        return fastaDict
+            # Add number of supporting reads
+            contigObj.nbReads = contigId.split('_')[4]
 
-def parse_args():
-    """Define and parse command line parameters."""
-    parser = argparse.ArgumentParser(description="Per MEI called by TraFiC: 1) Identifies informative contigs spanning 5' and/or 3' insertion ends if possible, 2) Use informative contigs for characterizing MEI in detail (exact breakpoints, length, strand...) and 3) Produce a VCF with the MAI plus all these information")
-    parser.add_argument('inputPaths', help='Text file containing, per MEI, the needed files')
-    parser.add_argument('sampleId', help='Sample identifier to be incorporated in the SL field of the output VCF. In PCAWG we use the normal_wgs_aliquot_id or tumor_wgs_aliquot_id.')
-    parser.add_argument('fileName', help='Output VCF name. In PCAWG we use the submitted_donor_id.')
-    parser.add_argument('genome', help='Reference genome in fasta format')
-    parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
+            # Clipping side
+            contigObj.clippedSide = contigId.split('_')[3]
 
-    args = parser.parse_args()
-    return args
+            # Add contig object to the dictionary
+            contigsDict[contigId] = contigObj
+
+        return contigsDict
+
+    def read_alignments(self, blatPath):
+        """
+            Read a psl file containing the contig blat aligments on the reference genome, generate a blat alignment
+            object per aligment and store all of them in a dictionary.
+
+            Input:
+            1) blatPath. Psl file containing blat aligments for the assembled contigs.
+
+            Output:
+            1) alignmentsDict. Dictionary containing the contig ids as keys and the list of alignment objects corresponding
+                               to each contig as value
+        """
+
+        blat = open(blatPath, 'r')
+        alignmentsDict = {}
+
+        for alignment in blat:
+
+            ## Create blat alignment object
+            alignmentObject = blat_alignment(alignment)
+
+            ## Initialize contig alignment list if it does not exists
+            if alignmentObject.qName not in alignmentsDict:
+                alignmentsDict[alignmentObject.qName] = []
+
+            ## Add alignment object to the list
+            alignmentsDict[alignmentObject.qName].append(alignmentObject)
+
+        return alignmentsDict
+
+    def add_contig_alignments(self, blatPath):
+        """
+            Read a psl file containing the contig blat alignments on the reference genome and TE sequences and associate
+            each alignment to the corresponding contig object.
+
+            Input:
+            1) blatPath. Psl file containing blat aligments for the assembled contigs.
+
+            Output:
+            1) For each contig object in the dictionary sets the 'alignmentObjList' variable.
+               This variable holds the list of alignment objects corresponding to the given contig.
+
+        """
+        alignmentsDict = self.read_alignments(blatPath)
+
+        ## Add the alignment lists to their respective contig objects
+        # Iterate over the alignments dictionary.
+        for contigId in alignmentsDict:
+            alignmentList = alignmentsDict[contigId]
+            self.contigsDict[contigId].alignmentObjList = alignmentList
+
+
+    def find_informative_contigs(self):
+        """
+        """
+
+        informativeContigsClippedEndList = []
+        informativeContigsClippedBegList = []
+
+        info(str(len(self.contigsDict)) + ' input contigs')
+
+        ## Check for each contig if it is informative or not. Make list of informative contigs
+        for contigId in self.contigsDict:
+            contigObj = self.contigsDict[contigId]
+
+            # Determine if informative contig:
+            contigObj.is_informative(self.tdType, self.coordinates)
+
+            print "INFORMATIVE-CONTIG?: ", contigObj.informative, contigObj.bkpDict, contigObj.clippedSide
+
+            # Add informative contig to the list
+            if contigObj.informative:
+
+                if (contigObj.clippedSide == "end"):
+                    informativeContigsClippedEndList.append(contigObj)
+                else:
+                    informativeContigsClippedBegList.append(contigObj)
+     
+
+            print "------------------"
+
+        return informativeContigsClippedEndList, informativeContigsClippedBegList
+
+
+    def select_best_informative_contig(self, informativeContigsList):
+        """
+        """
+        print "informativeContigsList: ", informativeContigsList
+
+        # Select clusters with the highest number of supporting reads
+        maxNbReads = max([ informativeContig.nbReads for informativeContig in informativeContigsList])
+        bestInformativeContigsList = [informativeContig for informativeContig in informativeContigsList if informativeContig.nbReads == maxNbReads]    
+
+        # a) Single cluster with the highest number of supporting reads 
+        if (len(bestInformativeContigsList) == 1):
+            print "maxNbReads: ", maxNbReads, len(bestInformativeContigsList), bestInformativeContigsList
+            bestInformativeContigObj = bestInformativeContigsList[0]
+        
+        # b)  Multiple possible clusters... use another criteria... NA is provisional...
+        else:
+            bestInformativeContigObj = "NA"
+       
+        return bestInformativeContigObj
+ 
+
+    def target_site(self, informativeContigClippedEndObj, informativeContigClippedBegObj):
+        """
+        """
+
+        # a) Unknown target site 
+        if (informativeContigClippedEndObj == "NA") or (informativeContigClippedBegObj == "NA"):
+            targetSiteLen = "NA"
+
+        # b) Known target site as both breakpoints characterized
+        else:
+
+            clippedEndPos = informativeContigClippedEndObj.bkpDict["pos"]
+            clippedBegPos = informativeContigClippedBegObj.bkpDict["pos"]
+            clippedEndAlignObj = informativeContigClippedEndObj.representativeAlignmentObj.alignmentList[0]
+            clippedBegAlignObj = informativeContigClippedBegObj.representativeAlignmentObj.alignmentList[-1]   
+        
+            overlapping, nbBases = overlap(clippedEndAlignObj.tBeg, clippedEndAlignObj.tEnd, clippedBegAlignObj.tBeg, clippedBegAlignObj.tEnd, 0)
+
+            ## a) Target Site Duplication
+            # ----------contig----------bkp
+            #             bkp-------contig-----------
+            if overlapping != "not":
+                targetSiteLen = abs(clippedEndPos - clippedBegPos) 
+                print 'TS DUP', self.coordinates, targetSiteLen
+
+
+            ## b) Target Site Deletion 
+            # ----------contig----------bkp
+            #                                       bkp-------contig-----------
+            else:
+                targetSiteLen = abs(clippedEndPos - clippedBegPos) * -1
+                print 'TS DEL', self.coordinates, targetSiteLen
+
+        return targetSiteLen
+
+
+    def insertion_orientation(self, clippedEndPolyA, clippedBegPolyA):
+        """
+        """
+        print "*** insertion_orientation ***"
+
+        ## Clipped end RT and clipped beg poly-A
+        # + orientation:
+        #    Clipped-end informative contig      --------------####TE####
+        #    Clipped-beg informative contig                              AAAAAAAAAA--------------
+        if (clippedEndPolyA == "NA") and (clippedBegPolyA != "NA"):
+            orientation = "+"
+
+        ## Clipped end poly-A and clipped beg RT
+        # - orientation 
+        #    Clipped-end informative contig      --------------AAAAAAAAAA
+        #    Clipped-beg informative contig                              ####TE####--------------
+        else:
+            orientation = "-"
+
+        return orientation
+
+
+    def element_length(self, alignmentObj):
+        """
+        """
+        print "*** element_length ***"
+            
+        ## A) Solo integration or partnered transduction
+        if (self.tdType == "TD0") or (self.tdType == "TD1"):
+            elementLength = alignmentObj.tSize - alignmentObj.tBeg
+
+        ## B) Orphan transduction:
+        else:
+            elementLength = 0
+
+        #print "** ELEMENT-LENGTH: ", self.tdType, alignmentObj.tName, alignmentObj.tSize, alignmentObj.tBeg, alignmentObj.tEnd, elementLength 
+        return elementLength
+
+
+    def insertion_structure(self, alignmentObjElement, orientation, elementLength):
+        """
+        """
+        print "*** insertion_structure ***"
+
+        percLength = float(elementLength) / alignmentObjElement.tSize * 100
+
+        ## A) Full length (>=98% consensus sequence):
+        if (percLength >= 98):
+            structure = "FULL"
+            #print "FULL: ", self.tdType, percLength, elementLength, alignmentObjElement.tSize, alignmentObjElement.tName, orientation, alignmentObjElement.strand
+
+        ## B) 5' inverted
+        elif (orientation != alignmentObjElement.strand):
+            structure = "INV"
+            #print "INV: ", self.tdType, percLength, elementLength, alignmentObjElement.tSize, alignmentObjElement.tName, orientation, alignmentObjElement.strand
+
+        ## C) 3' deleted
+        else:
+            structure = "DEL"
+            #print "DEL: ", self.tdType, percLength, elementLength, alignmentObjElement.tSize, alignmentObjElement.tName, orientation, alignmentObjElement.strand
+    
+        return structure
+
+
+    def insertion_orientation_noPolyA(self, alignmentObjClippedEnd, alignmentObjClippedBeg):
+        """
+        """
+        print "*** insertion_orientation_noPolyA ***"
+
+        ## a) + Orientation
+        if (alignmentObjClippedEnd.strand == "+") and (alignmentObjClippedBeg.strand == "+"):
+            orientation = "+"
+
+        ## b) - Orientation
+        elif (alignmentObjClippedEnd.strand == "-") and (alignmentObjClippedBeg.strand == "-"):
+            orientation = "-"
+        
+        ## c) Inconsistent orientation
+        else:
+            orientation = "inconsistent"
+
+        return orientation
+
+
+    def element_length_noPolyA(self, alignmentObjClippedEnd, alignmentObjClippedBeg, orientation):
+        """
+        """
+        print "*** element_length_noPolyA ***"
+
+        ## a) <--Clipped-End--> <--Clipped-Beg-->
+        #     ...#################TE#################...   
+        # Ejem:
+        # 10_58867421_58867517 TD0 L1 6019 5573 5649 + +
+        # 10_58867421_58867517 TD0 L1 6019 5605 5682 + +  
+        if (alignmentObjClippedEnd.tBeg < alignmentObjClippedBeg.tBeg):
+           
+            elementLength = alignmentObjClippedBeg.tEnd - alignmentObjClippedEnd.tBeg
+            elementInterval = str(alignmentObjClippedEnd.tBeg) + '-' + str(alignmentObjClippedBeg.tEnd)
+           
+        
+        ## b) <--Clipped-Beg--> <--Clipped-End-->
+        #     ...#################TE#################...     
+        # Ejem:        
+        # 1_57286341_57286435 TD0 L1 6019 5599 5678 - -
+        # 1_57286341_57286435 TD0 L1 6019 5538 5614 - -
+        else:
+            elementLength = alignmentObjClippedEnd.tEnd - alignmentObjClippedBeg.tBeg
+            elementInterval = str(alignmentObjClippedBeg.tBeg) + '-' + str(alignmentObjClippedEnd.tEnd)
+
+        return elementLength, elementInterval
+
+
+    def features(self, informativeContigClippedEndObj, informativeContigClippedBegObj):
+        """
+        """
+        print "*** features_function ***"
+
+        # A) At least one breakpoint not characterized
+        if (informativeContigClippedEndObj == "NA") or (informativeContigClippedBegObj == "NA"):
+            
+            mechanism = "NA"
+            orientation = "NA"
+            elementLength = "NA"
+            elementInterval = "NA"
+            structure = "NA"
+
+        # B) Both breakpoints characterized
+        else:
+            
+            # a) Two poly-A breakpoints
+            if (informativeContigClippedEndObj.bkpDict["polyA"] != "NA") and (informativeContigClippedBegObj.bkpDict["polyA"] != "NA"):
+
+                mechanism = "DPA"
+                orientation = "NA"
+                elementLength = "NA"
+                elementInterval = "NA"
+                structure = "NA"
+
+            # b) Two RT breakpoints
+            elif (informativeContigClippedEndObj.bkpDict["polyA"] == "NA") and (informativeContigClippedBegObj.bkpDict["polyA"] == "NA"):
+
+                mechanism = "EI"
+                structure = "NA"
+
+                ## 1. Orientation (+ or -)
+                orientation = self.insertion_orientation_noPolyA(informativeContigClippedEndObj.bkpDict["alignmentObjRT"], informativeContigClippedBegObj.bkpDict["alignmentObjRT"])
+
+                ## 2. Integrated element length
+                elementLength, elementInterval = self.element_length_noPolyA(informativeContigClippedEndObj.bkpDict["alignmentObjRT"], informativeContigClippedBegObj.bkpDict["alignmentObjRT"], orientation)
+
+            # c) One RT and one poly-A breakpoint 
+            else:
+                mechanism = "TPRT"
+                elementInterval = "NA"
+
+                ## 1. Orientation (+ or -)
+                orientation = self.insertion_orientation(informativeContigClippedEndObj.bkpDict["polyA"], informativeContigClippedBegObj.bkpDict["polyA"])
+                alignmentObjElement = informativeContigClippedEndObj.bkpDict["alignmentObjRT"] if (orientation == "+") else informativeContigClippedBegObj.bkpDict["alignmentObjRT"]
+
+                ## 2. Integrated element length
+                elementLength = self.element_length(alignmentObjElement)
+
+                ## 3. Structure (FULL, DEL or INV)
+                structure = self.insertion_structure(alignmentObjElement, orientation, elementLength)
+        
+        return mechanism, orientation, elementLength, elementInterval, structure
+ 
+
+    def insertion_score(self, informativeContigClippedEndObj, informativeContigClippedBegObj):
+        """
+        """
+        print "*** insertion_score_function ***"
+
+        ## a) Inconsistent features (score 1)
+        if ('inconsistent' in [self.targetSiteLen, self.orientation, self.elementLength, self.structure]):
+            score = '1'
+
+        ## b) No breakpoint identified (score 2)
+        elif (informativeContigClippedEndObj == "NA") and (informativeContigClippedBegObj == "NA"):
+            score = '2'
+
+        ## c) Both breakpoints identified (score 5)
+        elif (informativeContigClippedEndObj != "NA") and (informativeContigClippedBegObj != "NA"):
+            score = '5'        
+
+        ## d) PolyA breakpoint identified (score 4)
+        elif ((informativeContigClippedEndObj != "NA") and (informativeContigClippedEndObj.bkpDict["polyA"] != "NA")) or ((informativeContigClippedBegObj != "NA") and (informativeContigClippedBegObj.bkpDict["polyA"] != "NA")):
+            score = '4'
+
+        ## e) Element breakpoint identified (score 3)
+        else:
+            score = '3'
+ 
+        return score
+
+    def imprecise_bkp(self):
+        """
+            Compute confidence interval for imprecise breakpoints from + and - TraFiC cluster coordinates.
+
+            Imprecise breakpoints are those that do not have any
+            any informative contig associated
+
+              + cluster                      - cluster
+            -------------->              <---------------
+                          <-----Mean----->
+                          d/2    d      d/2
+
+            Input:
+            1) insertionCoord. TraFiC insertion coordinates. Format: ${chrom}_${beg}_${end}.
+                               Example: 10_108820680_108820678.
+
+            Output:
+            1) breakpoint. Three elements list (chromosome, mean_position and confidence interval)
+        """
+
+        insertionCoordList = self.coordinates.split("_")
+
+        chrom = str(insertionCoordList[0])
+        beg = int(insertionCoordList[1])
+        end = int(insertionCoordList[2])
+
+        bkpAPos = int(beg + end)/2
+        dist = abs(end - beg)
+        cipos = dist/2
+
+        return chrom, bkpAPos, cipos
+
+    def breakpoints(self, informativeContigClippedEndObj, informativeContigClippedBegObj):
+        """
+        """
+        print "*** breakpoints_function ***"
+
+        # a) Both breakpoints identified (inconsistent as well)
+        if (self.score == '5') or (self.score == '1'):
+            cipos = 0
+            chrom = informativeContigClippedEndObj.bkpDict["chrom"]
+
+            if (informativeContigClippedEndObj.bkpDict["pos"] < informativeContigClippedBegObj.bkpDict["pos"]):
+
+                bkpAPos = informativeContigClippedEndObj.bkpDict["pos"] 
+                bkpAContigSeq = informativeContigClippedEndObj.seq
+
+                bkpBPos = informativeContigClippedBegObj.bkpDict["pos"]
+                bkpBContigSeq = informativeContigClippedBegObj.seq
+                
+            else:
+
+                bkpAPos = informativeContigClippedBegObj.bkpDict["pos"] 
+                bkpAContigSeq = informativeContigClippedBegObj.seq
+
+                bkpBPos = informativeContigClippedEndObj.bkpDict["pos"]
+                bkpBContigSeq = informativeContigClippedEndObj.seq
+
+
+        # b) One breakpoint identified
+        elif (self.score == '4') or (self.score == '3'):
+            cipos = 0
+
+            if (informativeContigClippedEndObj != "NA"):
+                chrom = informativeContigClippedEndObj.bkpDict["chrom"]
+                bkpAPos = informativeContigClippedEndObj.bkpDict["pos"] 
+                bkpAContigSeq = informativeContigClippedEndObj.seq
+
+                bkpBPos = "NA"
+                bkpBContigSeq = "NA"
+    
+            else:
+                chrom = informativeContigClippedBegObj.bkpDict["chrom"]
+                bkpAPos = informativeContigClippedBegObj.bkpDict["pos"] 
+                bkpAContigSeq = informativeContigClippedBegObj.seq
+
+                bkpBPos = "NA"
+                bkpBContigSeq = "NA"               
+
+        # c) No breakpoint identified (Imprecise breakpoint)      
+        else:
+            chrom, bkpAPos, cipos = self.imprecise_bkp()
+            bkpAContigSeq = "NA"
+            bkpBPos = "NA"
+            bkpBContigSeq = "NA"
+
+        return chrom, bkpAPos, bkpBPos, bkpAContigSeq, bkpBContigSeq, cipos    
+                 
+    def find_insertionBkp(self):
+        """
+           
+        """
+        #### 1. Search for informative contigs
+        informativeContigsClippedEndList, informativeContigsClippedBegList = self.find_informative_contigs()
+        print "NUMBER-INFORMATIVE-CONTIGS: ", len(informativeContigsClippedEndList), len(informativeContigsClippedBegList)
+
+        nbInformativeEnd = len(informativeContigsClippedEndList)
+        nbInformativeBeg = len(informativeContigsClippedBegList)
+
+        ## Check if any informative cluster with reads clipped at the end
+        # a) Any informative
+        if (nbInformativeEnd == 0):
+            informativeContigClippedEndObj = "NA"
+
+        # b) One informative
+        elif (nbInformativeEnd == 1):
+            informativeContigClippedEndObj = informativeContigsClippedEndList[0]
+
+        # c) Multiple informative -> Select the best one
+        else:   
+            informativeContigClippedEndObj = self.select_best_informative_contig(informativeContigsClippedEndList)
+
+        ## Check if any informative cluster with reads clipped at the begin
+        # a) Any informative
+        if (nbInformativeBeg == 0): 
+            informativeContigClippedBegObj = "NA"
+
+        # b) One informative
+        elif (nbInformativeBeg == 1):
+            informativeContigClippedBegObj = informativeContigsClippedBegList[0]
+        
+        # c) Multiple informative -> Select the best one
+        else:
+            informativeContigClippedBegObj = self.select_best_informative_contig(informativeContigsClippedBegList)
+
+        #### 2. Define insertion properties
+        ## 2.1 Target site duplication or deletion
+        self.targetSiteLen = self.target_site(informativeContigClippedEndObj, informativeContigClippedBegObj)
+
+        ## 2.2 Insertion features: mechanism (TPRT, EI, 2POLYA), orientation, structure and length   
+        self.mechanism, self.orientation, self.elementLength, self.elementInterval, self.structure = self.features(informativeContigClippedEndObj, informativeContigClippedBegObj)
+
+        ## 2.3 Insertion score
+        self.score = self.insertion_score(informativeContigClippedEndObj, informativeContigClippedBegObj)
+
+        ## 2.4 Breakpoints
+        self.chrom, self.bkpAPos, self.bkpBPos, self.bkpAContigSeq, self.bkpBContigSeq, self.cipos = self.breakpoints(informativeContigClippedEndObj, informativeContigClippedBegObj)
+
+        print "FEATURES: ", self.tdType, self.coordinates, self.targetSiteLen, self.mechanism, self.orientation, self.elementLength, self.elementInterval, self.structure, self.score, self.bkpAPos, self.bkpBPos, self.bkpAContigSeq, self.bkpBContigSeq, self.cipos
+
+
+    def convert2VCFline(self, genomeObj):
+        """
+        """  
+        ## Define variables with VCF line fields
+        CHROM = self.chrom
+        POS = self.bkpAPos
+        ID = "."
+        REF = genomeObj.fastaDict[CHROM][POS - 1]  # Substract 1 since python string coordinates start in 0 while bkp position in 1.
+        ALT = "<MEI>"
+        QUAL = "."
+        FILTER = "."
+        INFO = "SVTYPE=<MEI>;CLASS=" + self.family + ";TYPE=" + self.tdType + ";MECHANISM=" + self.mechanism + ";SCORE=" + str(self.score) + ";BKPB=" + str(self.bkpBPos) + ";CIPOS=" + str(self.cipos) + ";STRAND=" + self.orientation + ";STRUCT=" + self.structure + ";LEN=" + str(self.elementLength) + ";TSLEN=" + str(self.targetSiteLen) + ";SRCID=" + self.cytobandId + ";SRCTYPE=" + self.sourceElementType + ";SRC=" + self.sourceElementCoord + ";TDC=" + self.tdCoord + ";TDLEN=" + self.tdLen + ";TDLENR=" + self.tdLenRna + ";SRCGENE=" + self.srcgene + ";GR=" + self.grInfo + ";CONTIGA=" + self.bkpAContigSeq + ";CONTIGB=" + self.bkpBContigSeq + ";RP=" + self.readPairIdsPlus + ";RN=" + self.readPairIdsMinus    
+        FORMAT = "RCP:RCN:SL"
+        RP = str(self.nbReadPairsPlus)
+        RN = str(self.nbReadPairsMinus)
+        GENOTYPE = RP + ":" + RN + ":" + self.sampleId
+
+        ## Generate VCF line object
+        VCFlineList = [CHROM, POS, ID, REF, ALT, QUAL, FILTER, INFO, FORMAT, GENOTYPE]
+        VCFlineObj = formats.VCFline(VCFlineList)
+        
+        ## Generate info string again without NAs
+        VCFlineObj.info = VCFlineObj.make_info()
+
+        return VCFlineObj
+
 
 #### MAIN ####
 
@@ -2336,24 +1538,18 @@ if __name__ == "__main__":
     print "***** Executing ", scriptName, " *****"
     print
 
-
     ## Start ## 
 
-    outFilePath = outDir + '/' + fileName + '.vcf'
-
     ## 0. Create reference genome fasta object
-
     header("Creating reference genome fasta object")
-    genomeObj = fasta(genome)
+    genomeObj = formats.fasta(genome)
 
     ## 1. Create VCF object and print VCF header
-
     header("Creating VCF object and printing VCF header into the output file")
-    VCFObj = VCF()
-    VCFObj.print_header(outFilePath)
+    VCFObj = formats.VCF()
+    VCFObj.create_header()
 
     ## 2. Per each insertion perform breakpoint analysis
-
     inputFile = open(inputPaths, 'r')
 
     # Analyze one insertion per iteration
@@ -2361,13 +1557,11 @@ if __name__ == "__main__":
         line = line.rstrip('\n')
         line = line.split("\t")
 
-        print "HOLAAA: ", line
-
-        # Get TE insertion info and files
+        # Get MEI info and files
         insertionInfo = line[0]
-        TEClass, tdType, insertionCoord = insertionInfo.split(":")
-        contigsPlusPath, contigsMinusPath = line[1].split(",")
-        blatPlusPath, blatMinusPath = line[2].split(",")
+        family, tdType, insertionCoord = insertionInfo.split(":")
+        contigsPath = line[1]
+        blatPath = line[2]
         readPairsPlus = line[3]
         readPairsMinus = line[4]
         srcElement = line[5]
@@ -2376,31 +1570,37 @@ if __name__ == "__main__":
         grInfo = line[8]            # genomic rearrangement info
 
         # Perform breakpoint analysis for the TE insertion
-        header("Tranposable Element Insertion Breakpoint Analysis (TEIBA) for: " + insertionCoord)
+        # A) All the input files exist. 
+        if (contigsPath != "NA" and os.path.isfile(contigsPath)) and (blatPath != "NA" or os.path.isfile(blatPath)):
 
-        # A) All the input files exist or they are not applicable (NA)
-        if (contigsPlusPath == "NA" or os.path.isfile(contigsPlusPath)) and (blatPlusPath == "NA" or os.path.isfile(blatPlusPath)) and (contigsMinusPath == "NA" or os.path.isfile(contigsMinusPath)) and (blatMinusPath == "NA" or os.path.isfile(blatMinusPath)):
+            header("Tranposable Element Insertion Breakpoint Analysis (TEIBA) for: " + insertionInfo)
 
             ## Create insertion object and identify breakpoints from assembled contigs
-            insertionObj = insertion(TEClass, tdType, insertionCoord, contigsPlusPath, blatPlusPath, contigsMinusPath, blatMinusPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo, pseudogeneInfo, grInfo, sampleId)
+            insertionObj = insertion(family, tdType, insertionCoord, contigsPath, blatPath, readPairsPlus, readPairsMinus, srcElement, transductionInfo, pseudogeneInfo, grInfo, sampleId)
 
-            insertionObj.find_insertionBkp(genomeObj, outDir)
+            ## Characterize insertion breakpoints
+            insertionObj.find_insertionBkp()
 
             ## Create VCFline object
-            VCFlineObj = VCFline(insertionObj, genomeObj)
+            VCFlineObj = insertionObj.convert2VCFline(genomeObj)
 
             ## Add VCFline to the list in VCF object
             VCFObj.addLine(VCFlineObj)
 
+        # B) Some input file do not exist
         else:
             message = "Input files for " + insertionCoord + " insertion do not exist"
             log("ERROR", message)
 
-    ## 3. Write lines describing the TE insertions into the VCF file
-    VCFObj.print_lines(outFilePath)
 
+    ## 3. Write output VCF
+    outFilePath = outDir + '/' + fileName + '.vcf'
+    VCFObj.write_header(outFilePath)
+    VCFObj.write_variants(outFilePath)
 
     ## Finish ##
     print
     print "***** Finished! *****"
     print
+
+
