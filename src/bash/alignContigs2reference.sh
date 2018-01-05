@@ -163,7 +163,7 @@ targetRegionPath=$outDir/insertion_region.fa
 
 echo "1. Make fasta with target dna region for blat alignment" >&1
 
-read family tdType chr beg end cluster <<<$(echo $insertionId | awk '{split($1, info, ":"); family=info[1]; tdType=info[2]; cluster=info[4]; split(info[3], coord, "_"); chr=coord[1]; beg=coord[2]; end=coord[3]; print family, tdType, chr, beg, end, cluster;}')
+read family tdType chr beg end <<<$(echo $insertionId | awk '{split($1, info, ":"); family=info[1]; tdType=info[2]; split(info[3], coord, "_"); chr=coord[1]; beg=coord[2]; end=coord[3]; print family, tdType, chr, beg, end;}')
 
 if [ $beg != "UNK" ]; then targetBeg=`expr $beg - $windowSize`; else targetBeg=`expr $end - $windowSize`; fi
 if [ $end != "UNK" ]; then targetEnd=`expr $end + $windowSize`; else targetEnd=`expr $beg + $windowSize`; fi
@@ -189,7 +189,7 @@ echo "2. Blat contigs into the consensus TE sequence and in the target region" >
 
 # 1) Alignment on the TE sequence (Allow gaps in the alignment)
 echo "blat -t=dna -q=dna -stepSize=5 -minScore=20 -out=psl -noHead $TEseq $contigs $blatTEPath" >&1
-blat -t=dna -q=dna -stepSize=5 -minScore=20 -out=psl -noHead $TEseq $contigs $blatTEPath
+blat -t=dna -q=dna -tileSize=6 -stepSize=3 -minMatch=1 -repMatch=1000000 -minScore=10 -out=psl -noHead $TEseq $contigs $blatTEPath
 
 # 2) Alignment on the target region (do not allow gaps)
 echo "blat -t=dna -q=dna -stepSize=5 -minScore=20 -maxIntron=0 -out=psl -noHead $outDir/insertion_region.fa $contigs $blatTargetRegionPath" >&1
