@@ -62,6 +62,7 @@ for line in repeatAnnotFile:
     line = line.rstrip('\n')
 
     lineList = line.split('\t')
+
     chrom = lineList[0]
     beg = lineList[1]
     end = lineList[2]
@@ -85,11 +86,16 @@ for line in repeatAnnotFile:
 
     # B) Already annotation appearance for a given insertion
     else:
-        # B.1) Overlapping satellite region or repeat of the same family while previus not
-        if (DIV == "na") or ((category == REP) and (category != repeatDict[insertionId]["REP"])):
+
+        # B.1) Previous satellite region
+        if (repeatDict[insertionId]["REP"] in ["ALR/Alpha", "BSR/Beta", "HSATII"]):
+            repeatDict[insertionId]["REP"] = repeatDict[insertionId]["REP"]
+
+        # B.2) Overlapping satellite region or repeat of the same family while previus not
+        elif (DIV == "na") or ((category == REP) and (category != repeatDict[insertionId]["REP"])):
             repeatDict[insertionId] = annotDict
 
-        # B.2) Overlapping repeat with higher millidivergence than previous one
+        # B.3) Overlapping repeat with higher millidivergence than previous one
         elif (int(DIV) > int(repeatDict[insertionId]["DIV"])):
             repeatDict[insertionId] = annotDict
 
