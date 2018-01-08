@@ -185,30 +185,6 @@ class cluster():
                 print "maxAlignment: ", maxAlignmentObj.is_reverse, maxAlignmentObj.reference_length, maxAlignmentSeq, seqB
                 print "consensusSeq: ", self.consensusSeq
 
-
-    def makeConsensusSeq2(self):
-        """
-        """
-            
-        fastaDict =     
-        for readId in self.clippedReadDict.keys():
-            print "HOLA: ", readId, self.clippedReadDict[readId]["seq"]
-    
-        #readIdAlignmentLenTupleList = [(readId, self.clippedReadDict[readId]["alignmentObj"].reference_length) for readId in self.clippedReadDict.keys()]
-        
-        # A) Single clipped read composing the cluster
-        #if len(readIdAlignmentLenTupleList) == 1:
-        #    readId = readIdAlignmentLenTupleList[0][0]
-        #    self.consensusSeq = self.clippedReadDict[readId]["seq"] 
-
-        #    print "CONSENSUS-1: ", self.consensusSeq
-
-        # B) Multiple clipped reads composing the cluster
-        #else:  
-            
-        #    print "TIOO: ", readIdAlignmentLenTupleList
-
-
            
 #### FUNCTIONS ####
 def log(label, string):
@@ -573,10 +549,13 @@ for readPairId in allReadPairIdList:
 readPairsFile.close()
 
 ## 2. Extract clipped read sequences with picard and generate fasta containing all the reads supporting the clusters
-PICARD = "java -jar /Users/brodriguez/Research/Apps/Picard/2.12.1/picard.jar"
+# PICARD = "java -jar /Users/brodriguez/Research/Apps/Picard/2.12.1/picard.jar"
+# PICARD="java -Xms10G -Xmx10G -jar /software/CGP/external-apps/picard-tools-1.80/lib/FilterSamReads.jar" # Sanger
+PICARD = "java -jar /Users/brodriguez/Research/Apps/Picard/2.12.1/picard.jar FilterSamReads" # Laptop
+
 readPairsFasta = outDir + '/allReadPairs.fa'
 
-command = PICARD + ' FilterSamReads I=' + bam + ' O=/dev/stdout READ_LIST_FILE=' + readPairsPath + ' FILTER=includeReadList WRITE_READS_FILES=false VALIDATION_STRINGENCY=SILENT QUIET=true | samtools fasta - > '  + readPairsFasta
+command = PICARD + ' I=' + bam + ' O=/dev/stdout READ_LIST_FILE=' + readPairsPath + ' FILTER=includeReadList WRITE_READS_FILES=false VALIDATION_STRINGENCY=SILENT QUIET=true | samtools fasta - > '  + readPairsFasta
 print command
 os.system(command) # returns the exit status
 
@@ -598,17 +577,15 @@ for insertionId in clustersDict:
     for clusterObj in clusterBegList:
         clusterObj.addReadSeqs(fastaObj) 
         print "TIO: ", clusterObj.clippedReadDict
-        clusterObj.makeConsensusSeq2()
+        clusterObj.makeConsensusSeq()
         print "......"
 
-#    print "--- clusterEnd ---"
-#    for clusterObj in clusterEndList:
-#        clusterObj.addReadSeqs(fastaObj) 
-#        print "TIO: ", clusterObj.clippedReadDict
-#        clusterObj.makeConsensusSeq()
-#        print "......"
-
-sys.exit(1)
+    print "--- clusterEnd ---"
+    for clusterObj in clusterEndList:
+        clusterObj.addReadSeqs(fastaObj) 
+        print "TIO: ", clusterObj.clippedReadDict
+        clusterObj.makeConsensusSeq()
+        print "......"
 
 ## 4) For each insertion generate a fasta containing the consensus sequences for each cluster
 ##############################################################################################
