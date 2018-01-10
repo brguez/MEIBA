@@ -209,6 +209,11 @@ header("3. Intersect input somatic candidate MEI with the germline database")
 ## For each input MEI
 for MEIobj in VCFObj.lineList:
 
+    # Skip germline MEI annotation if pseudogene insertion or L1-mediated deletion. Only applicable to L1, Alu, SVA and ERVK insertions
+    if (VCFlineObj.infoDict["TYPE"] == "PSD") or (VCFlineObj.infoDict["TYPE"] == "DEL"):
+        print "[WARNING] Skip germline MEI annotation since " + VCFlineObj.infoDict["TYPE"] + " insertion"
+        continue
+
     chrom = MEIobj.chrom
     beg = int(MEIobj.pos) - int(MEIobj.infoDict["CIPOS"]) 
     end = int(MEIobj.infoDict["BKPB"]) if "BKPB" in MEIobj.infoDict else int(MEIobj.pos) + int(MEIobj.infoDict["CIPOS"]) 
