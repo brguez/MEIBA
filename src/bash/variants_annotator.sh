@@ -263,7 +263,7 @@ python $ADD_DRIVER2VCF $outDir/$donorId.repeatAnnot.vcf $driverDb $donorId --out
 ## Output:
 # -  $outDir/$donorId".germlineDbAnnot.vcf"
 
-echo "4. Assess for each MEI if it is a germline variant already reported by 1k genomes project" >&1
+echo "4. Assess for each somatic MEI if it has been already reported as germline in a database" >&1
 
 echo "python $ADD_GERMLINEDB2VCF $outDir/$donorId.driverAnnot.vcf $germlineMEIdb $donorId --outDir $outDir 1> $outDir/MEIinGermlineDb.out 2> $outDir/MEIinGermlineDb.err" >&1
 

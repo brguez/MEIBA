@@ -376,7 +376,7 @@ function cleanupFunc {
 ############################
 
 # TEIBA version
-version=0.7.0
+version=0.7.1
 
 # Enable extended pattern matching
 shopt -s extglob
@@ -635,7 +635,7 @@ FILTER=$pyDir/filterVCF.MEI.py
 
 # references
 driverDb=$refDir/cancerGenes_COSMIC_CPG.tsv
-germlineMEIdb=$refDir/germline_MEI_1KGENOMES.bed
+germlineMEIdb=$refDir/germlineMEI_db.sorted.bed
 consensusL1=$refDir/L1_consensus.fa
 consensusAlu=$refDir/Alu_consensus.fa
 consensusSVA=$refDir/SVA_consensus.fa

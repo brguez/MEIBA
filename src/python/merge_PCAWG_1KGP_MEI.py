@@ -186,21 +186,21 @@ print
 ############################################
 ## 1. Create VCF object and read input VCF #
 ############################################
-header("Read input VCF")
+header("1. Create VCF object and read input VCF")
 VCFObj = formats.VCF()
 VCFObj.read_VCF(VCF)
 
 ###########################################
 ## 2. Create germline MEI database object #
 ###########################################
-header("Read germline MEI database")
+header("2. Create germline MEI database object")
 MEIdb1KGP = MEIdb()
 MEIdb1KGP.read_bed(oneKGPdb)
 
 ######################################
 ## 3. Intersect PCAWG MEI with 1KGP ##
 ######################################
-header("Intersect PCAWG MEI with 1KGP")
+header("3. Intersect PCAWG MEI with 1KGP")
 
 mergedMEIdbObj = MEIdb()
 
