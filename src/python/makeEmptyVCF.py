@@ -52,7 +52,7 @@ if __name__ == "__main__":
     ## 1. Create VCF object and print VCF header    
     header("Creating VCF object and printing VCF header into the output file")
     VCFObj = formats.VCF()
-    VCFObj.print_header(outFilePath)
+    VCFObj.write_header(outFilePath)
 
     ## Finish ##
     print
