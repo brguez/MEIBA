@@ -297,19 +297,19 @@ class VCF():
 ##contig=<ID=NC_007605,assembly=GRCh37,length=171823,species=human>
 ##contig=<ID=X,assembly=GRCh37,length=155270560,species=human>
 ##contig=<ID=Y,assembly=GRCh37,length=59373566,species=human>
-##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant. (All sequence is on the plus strand and in the forward direction).">
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant.">
 ##INFO=<ID=CLASS,Number=1,Type=String,Description="Mobile element class (L1, ALU, SVA or ERVK)">
 ##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction, PSD: processed-pseudogene)>
 ##INFO=<ID=MECHANISM,Number=1,Type=String,Description="Insertion mechanism (TPRT: target primed reverse transcription, EI: endonuclease independent, DPA: double poly-A)>
 ##INFO=<ID=SCORE,Number=1,Type=Integer,Description="Insertion score (5: 5' and 3' breakpoints (bkp) identified, 4: 3'bkp identified, 3: 5'bkp identified, 2: no bkp identified, 1: inconsistent (contradictory insertion features))">
-##INFO=<ID=MANUAL,Number=0,Type=Flag,Description="MEI manually verified and curated through BAM inspection (Only used for PSD)">
+##INFO=<ID=MANUAL,Number=0,Type=Flag,Description="MEI manually verified through BAM inspection">
 ##INFO=<ID=BKPB,Number=1,Type=Integer,Description="MEI right-most breakpoint position (bkp B). Left-most breakpoint position (bkp A) represented in the POS field">
 ##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoint">
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
 ##INFO=<ID=STRUCT,Number=1,Type=String,Description="Mobile element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
 ##INFO=<ID=LEN,Number=1,Type=Integer,Description="Mobile element length">
 ##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site duplication (+_value) or deletion (-_value) length">
-##INFO=<ID=SRCID,Number=1,Type=String,Description="Source element cytoband identifier. Only for gemline source elements">
+##INFO=<ID=SRCID,Number=1,Type=String,Description="Germline source element cytoband identifier">
 ##INFO=<ID=SRCTYPE,Number=1,Type=String,Description="Source element type (GERMLINE or SOMATIC)">
 ##INFO=<ID=SRC,Number=1,Type=String,Description="Coordinates of the source element that mediated the transduction in the format: chrom_beg_end">
 ##INFO=<ID=TDC,Number=1,Type=String,Description="Begin and end coordinates of the integrated transduced or pseudogene sequence in the format: chrom_beg_end">
@@ -317,7 +317,7 @@ class VCF():
 ##INFO=<ID=TDLENR,Number=1,Type=Integer,Description="Transduced region length at RNA level">
 ##INFO=<ID=SRCGENE,Number=1,Type=String,Description="Source gene of the processed pseudogene insertion">
 ##INFO=<ID=GR,Number=1,Type=String,Description="L1-mediated genomic rearrangement (DEL: deletion, DUP: duplication or TRANS: translocation)">
-##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI reported as germinal in a database">
+##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI reported as germline in a database">
 ##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the mobile element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
 ##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
 ##INFO=<ID=ROLE,Number=1,Type=String,Description="Role in cancer (oncogene, TSG: tumor suppressor gene, oncogene/TSG: both roles)">
@@ -327,8 +327,8 @@ class VCF():
 ##INFO=<ID=DIV,Number=1,Type=Integer,Description="Millidivergence of the overlapping repetitive element with respect a consensus sequence">
 ##INFO=<ID=CONTIGA,Number=1,Type=String,Description="Assembled contig sequence spanning 1st bkp (lowest genomic position)">
 ##INFO=<ID=CONTIGB,Number=1,Type=String,Description="Assembled contig sequence spanning 2nd bkp (highest genomic position)">
-##INFO=<ID=RP,Number=.,Type=String,Description="Reads from the tumour sample and positive cluster that support this insertion">
-##INFO=<ID=RN,Number=.,Type=String,Description="Reads from the tumour sample and negative cluster that support this insertion">
+##INFO=<ID=RP,Number=.,Type=String,Description="Positive cluster supporting read-pairs">
+##INFO=<ID=RN,Number=.,Type=String,Description="Negative cluster supporting read-pairs">
 ##FILTER=<ID=SCORE,Description="Insertion with an score < threshold">
 ##FILTER=<ID=FPSOURCE,Description="Transduction mediated by a false somatic source element">
 ##FILTER=<ID=REP,Description="Insertion overlapping a satellite region or a repetitive element of the same class">
@@ -337,13 +337,13 @@ class VCF():
 ##FILTER=<ID=TD,Description="L1 transduction incorrectly identified as a processed pseudogene insertion">
 ##FILTER=<ID=COUNT,Description="Allele count < threshold">
 ##FILTER=<ID=MISSGT,Description="Genotype missing-ness rate > threshold ">
-##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting reads">
-##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting reads">
-##FORMAT=<ID=SL,Number=1,Type=String,Description="List of samples where the variant was found (specially relevant for multi-tumor donors)">
-##FORMAT=<ID=REPR,Number=1,Type=String,Description="Sample selected as representative among all the samples where the variant was found (specially relevant for multi-sample VCF).">
+##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting read-pairs">
+##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting read-pairs">
+##FORMAT=<ID=SL,Number=1,Type=String,Description="List of samples where the variant was found">
+##FORMAT=<ID=REPR,Number=1,Type=String,Description="Representative sample among all the samples where the variant is identified">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Unphased genotypes">
-##FORMAT=<ID=NV,Number=1,Type=Integer,Description="Number of reads supporting the variant in this sample">
-##FORMAT=<ID=NR,Number=1,Type=Integer,Description="Number of reads covering variant location in this sample">
+##FORMAT=<ID=NV,Number=1,Type=Integer,Description="Number of reads supporting the variant">
+##FORMAT=<ID=NR,Number=1,Type=Integer,Description="Number of reads supporting the reference allele">
 #CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  
 """
 
