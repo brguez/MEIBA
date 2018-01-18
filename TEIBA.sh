@@ -376,7 +376,7 @@ function cleanupFunc {
 ############################
 
 # TEIBA version
-version=0.7.1
+version=0.7.2
 
 # Enable extended pattern matching
 shopt -s extglob
