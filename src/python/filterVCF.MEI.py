@@ -166,6 +166,7 @@ def clusterMEI(MEIList):
 
     # Iterate over the dictionary picking a MEI list in each iteration:
     for MEIclass in MEIDict:
+
         for chrom in MEIDict[MEIclass]:
         
             MEIlist = MEIDict[MEIclass][chrom]
@@ -206,9 +207,8 @@ def clusterMEI(MEIList):
                     msg = "cluster_range,MEI_range: " + str(begClusterRange) + " " + str(endClusterRange) + " " + str(begMEIrange) + " " + str(endMEIrange)
                     log("CLUSTER", msg) 
 
-    
-                    ## A) Overlapping ranges, so current MEI within previous cluster interval -> add MEI to the cluster                                
-                    if overlapping:
+                    ## A) MEI in the same chromosome than the current cluster and overlapping the cluster interval -> add MEI to the cluster                                
+                    if (chrom == lastClusterObj.chrom) and (overlapping):
                         msg = "MEI within cluster -> add MEI to the cluster"
                         log("CLUSTER", msg) 
                         lastClusterObj.addMEI(MEIObj, 5) # Allow up to 5 nucleotides of margin 
@@ -790,7 +790,6 @@ if "DUP" in filterList:
     dupList = findDuplicates(VCFObj.lineList)
 
     print "number_duplicates: ", len(dupList), dupList
-
 
 #### 3. Organize somatic MEI into a dictionary. 
 # False positive somatic source element filtering flag provided
