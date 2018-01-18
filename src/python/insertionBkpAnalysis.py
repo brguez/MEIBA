@@ -741,7 +741,6 @@ class contig():
         ## B) Contig aligning in different sequences -> Informative with or without poly-A
         else:
             print "B) Contig aligning in different sequences"    
-            informative = True
 
             ### 1. Identify the alignment pair spanning the insertion breakpoint
             alignmentPairList = [] 
@@ -755,6 +754,9 @@ class contig():
                     ## Select next alignment
                     alignmentObjB = alignmentList[index + 1]
 
+                    print "alignmentObjA: ", alignmentObjA.tName, alignmentObjA.qBeg, alignmentObjA.qEnd, alignmentObjA.tBeg, alignmentObjA.tEnd
+                    print "alignmentObjB: ", alignmentObjB.tName, alignmentObjB.qBeg, alignmentObjB.qEnd, alignmentObjB.tBeg, alignmentObjB.tEnd
+
                     ## Current and next alignment in a different template. Possible combinations: 
                     # target_region -> L1
                     # target_region -> TD2 (I think I should include an alignment step for TD1 as well)
@@ -764,8 +766,10 @@ class contig():
                             
                         # A) End clipped
                         # ------target_region------[....TE....]
-                        if (self.clippedSide  == "end"):
+                        if (self.clippedSide  == "end") and (alignmentObjA.tName != "L1") and (alignmentObjA.tName != "PSD"):
                             #print "A) Inserted sequence on the right"
+                            informative = True
+
                             bkpDict["chrom"] = alignmentObjA.tName
                             bkpDict["pos"] = alignmentObjA.tEnd
                             bkpDict["alignmentObjRT"] = alignmentObjB
@@ -782,10 +786,15 @@ class contig():
                                 print "targetSeq-TIO-2: ", targetSeq, self.is_complete_polyA(targetSeq)
                                 bkpDict["polyA"] = self.is_complete_polyA(targetSeq)
                    
+                            # Once breakpoint found stop iterating
+                            break
+
                         # B) Beg clipped
                         # [....TE....]------target_region------
-                        else:
+                        elif (self.clippedSide  == "beg") and (alignmentObjB.tName != "L1") and (alignmentObjB.tName != "PSD"):
                             #print "B) Inserted sequence on the left"
+                            informative = True
+
                             bkpDict["chrom"] = alignmentObjB.tName
                             bkpDict["pos"] = alignmentObjB.tBeg
                             bkpDict["alignmentObjRT"] = alignmentObjA
@@ -802,8 +811,14 @@ class contig():
                                 print "targetSeq-TIO-4: ", targetSeq, self.is_complete_polyA(targetSeq)
                                 bkpDict["polyA"] = self.is_complete_polyA(targetSeq)
                     
-                        # Once breakpoint found stop iterating
-                        break
+                            # Once breakpoint found stop iterating
+                            break
+                        
+                        # C)
+                        else:
+                            informative = False
+
+                       
                            
         return informative, bkpDict           
                 
@@ -1559,6 +1574,8 @@ if __name__ == "__main__":
 
         # Get MEI info and files
         insertionInfo = line[0]
+
+        print "HEIII: ", insertionInfo
         family, tdType, insertionCoord = insertionInfo.split(":")
         contigsPath = line[1]
         blatPath = line[2]
@@ -1592,8 +1609,10 @@ if __name__ == "__main__":
             message = "Input files for " + insertionCoord + " insertion do not exist"
             log("ERROR", message)
 
+    ## 3. Sort MEI
+    VCFObj.sort()
 
-    ## 3. Write output VCF
+    ## 4. Write output VCF
     outFilePath = outDir + '/' + fileName + '.vcf'
     VCFObj.write_header(outFilePath)
     VCFObj.write_variants(outFilePath)
