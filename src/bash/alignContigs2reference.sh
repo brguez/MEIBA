@@ -45,7 +45,66 @@ authors
 # 286    0    0    0    0    0    0    0    +    NODE_2_length_614_cov_6.804560    634    0    286    L1    na    37127581    37127867    1    286,    0,    37127581,
 # 330    0    0    0    0    0    0    0    +    NODE_2_length_614_cov_6.804560    634    304    634    8    na    37122889    37123219    1    330,    304,    37122889,
 
+# FUNCTIONS
+############
 
+
+## Function 1. Positive and negative cluster close to each other. 
+##################################################################
+# Extract a single sequence
+############################
+function targetRegion {
+
+    chr=$1
+    beg=$2
+    end=$3
+    windowSize=$4 
+    genome=$5      
+    targetRegionPath=$6
+    
+    targetBeg=$(($beg - $windowSize))
+    targetEnd=$(($end + $windowSize))
+    
+    if [ "$targetBeg" -lt 0 ]; then targetBeg=0; fi # Set lower-bound to 0 (avoid negative coordinates)
+    targetInterval=$chr":"$targetBeg"-"$targetEnd
+
+    echo $chr $beg $end $windowSize $genome $targetRegionPath $targetInterval 
+    echo "samtools faidx $genome $targetInterval > $targetRegionPath" >&1
+    samtools faidx $genome $targetInterval > $targetRegionPath
+}
+
+## Function 2. Positive and negative cluster far away from each other 
+#####################################################################
+# Extract two different sequences (for + and - clusters, respectively) 
+######################################################################
+function targetRegions {
+
+    chr=$1
+    posA=$2
+    posB=$3
+    windowSize=$4 
+    genome=$5      
+    targetRegionPath=$6
+
+    ## A region    
+    targetBegA=$(($posA - $windowSize))
+    targetEndA=$(($posA + $windowSize))   
+    if [ "$targetBegA" -lt 0 ]; then targetBegA=0; fi # Set lower-bound to 0 (avoid negative coordinates)
+    targetIntervalA=$chr":"$targetBegA"-"$targetEndA
+
+    ## B region
+    targetBegB=$(($posB - $windowSize))
+    targetEndB=$(($posB + $windowSize))   
+    if [ "$targetBegB" -lt 0 ]; then targetBegB=0; fi # Set lower-bound to 0 (avoid negative coordinates)
+    targetIntervalB=$chr":"$targetBegB"-"$targetEndB
+
+    echo "samtools faidx $genome $targetIntervalA $targetIntervalB > $targetRegionPath" >&1
+    samtools faidx $genome $targetIntervalA $targetIntervalB > $targetRegionPath
+}
+
+
+# CORE
+#######
 ### will exit if there is an error or in a pipe
 set -e -o pipefail
 
@@ -162,22 +221,26 @@ printf "\n\n"
 targetRegionPath=$outDir/insertion_region.fa
 
 echo "1. Make fasta with target dna region for blat alignment" >&1
-
+ 
 read family tdType chr beg end <<<$(echo $insertionId | awk '{split($1, info, ":"); family=info[1]; tdType=info[2]; split(info[3], coord, "_"); chr=coord[1]; beg=coord[2]; end=coord[3]; print family, tdType, chr, beg, end;}')
 
-if [ $beg != "UNK" ]; then targetBeg=`expr $beg - $windowSize`; else targetBeg=`expr $end - $windowSize`; fi
-if [ $end != "UNK" ]; then targetEnd=`expr $end + $windowSize`; else targetEnd=`expr $beg + $windowSize`; fi
-    
-if [ "$targetBeg" -lt 0 ]; then targetBeg=0; fi # Set lower-bound to 0 (avoid negative coordinates)
-targetInterval=$chr":"$targetBeg"-"$targetEnd
+## Compute the distance between + and - clusters
+tmp=$(($end - $beg))
+if [ $tmp -lt 0 ]; then dist=$((0 - $tmp)); else dist=$tmp;fi
 
-echo "samtools faidx $genome $targetInterval > $targetRegionPath" >&1
-samtools faidx $genome $targetInterval > $targetRegionPath
+## a) Positive and negative cluster close to each other. Extract a single sequence
+if [ $dist -lt 3000 ]; 
+then 
+    targetRegion $chr $beg $end $windowSize $genome $targetRegionPath  
 
+## b) Positive and negative cluster far away from each other. Extract two different sequences (for + and - clusters, respectively) 
+else
+    targetRegions $chr $beg $end $windowSize $genome $targetRegionPath          
+fi
 
-##########################################################
-# 2. BLAT CONTIGS INTO THE TE SEQUENCE AND TARGET REGION #
-##########################################################
+############################################################################
+# 2. BLAT CONTIGS INTO THE MOBILE ELEMENT SEQUENCE AND THE TARGET REGION/S #
+############################################################################
 ## Output:
 # - $outDir/$insertionId".targetRegion.psl"
 # - $outDir/$insertionId".consensusTE.psl"
