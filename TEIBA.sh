@@ -344,8 +344,8 @@ function extractRegion {
     tdType=$6  # insertion type
     outPath=$7 # output file path
 
-    targetBeg=`expr $beg - $extend`
-    targetEnd=`expr $end + $extend`
+    targetBeg=$(($beg - $extend))
+    targetEnd=$(($end + $extend))
     if [ "$targetBeg" -lt 0 ]; then targetBeg=0; fi # Set lower-bound to 0 (avoid negative coordinates)
     targetInterval=$seq":"$targetBeg"-"$targetEnd
     echo "samtools faidx $ref $targetInterval | sed -E s/>[0-9]+:/>$tdType:/g > $outPath" >&1
@@ -872,6 +872,7 @@ if [[ "$cleanup" == "TRUE" ]]; then rm -r $srcRegDir; fi
 
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
+
 
 # 3) MEI breakpoint analysis of aligned consensus sequence
 ###########################################################
