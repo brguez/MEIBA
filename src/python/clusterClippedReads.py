@@ -110,11 +110,11 @@ class cluster():
             
             ## Make the reverse complementary of reads aligned on the reverse strand
             if (alignmentObj.is_reverse == True):
-                print "SEQ: ", fastaObj.fastaDict[readId]
 
                 readSeq = rev_complement(fastaObj.fastaDict[readId])
 
-                print "REV-SEQ: ", readSeq
+                #print "SEQ: ", fastaObj.fastaDict[readId]
+                #print "REV-SEQ: ", readSeq
             else:
                 readSeq = fastaObj.fastaDict[readId]
             
@@ -130,8 +130,7 @@ class cluster():
         if len(readIdAlignmentLenTupleList) == 1:
             readId = readIdAlignmentLenTupleList[0][0]
             self.consensusSeq = self.clippedReadDict[readId]["seq"] 
-
-            print "CONSENSUS-1: ", self.consensusSeq
+            #print "CONSENSUS-1: ", self.consensusSeq
 
         # B) Multiple clipped reads composing the cluster
         else:  
@@ -158,9 +157,9 @@ class cluster():
                 seqB = minAlignmentSeq[minAlignmentObj.reference_length:]
                 self.consensusSeq = seqA + seqB
 
-                print "maxAlignment: ", maxAlignmentObj.is_reverse, maxAlignmentObj.reference_length, maxAlignmentSeq, seqA
-                print "minAlignment: ", minAlignmentObj.is_reverse, minAlignmentObj.reference_length, minAlignmentSeq, seqB
-                print "consensusSeq: ", self.consensusSeq
+                #print "maxAlignment: ", maxAlignmentObj.is_reverse, maxAlignmentObj.reference_length, maxAlignmentSeq, seqA
+                #print "minAlignment: ", minAlignmentObj.is_reverse, minAlignmentObj.reference_length, minAlignmentSeq, seqB
+                #print "consensusSeq: ", self.consensusSeq
 
             ## b) Cluster composed by reads clipped at the beg      
             #                 maxAlignment
@@ -180,10 +179,10 @@ class cluster():
                 seqB = maxAlignmentSeq[clippedLenB:]               
                 self.consensusSeq = seqA + seqB
 
-                print "TIOO: ", readLenA, clippedLenA, readLenB, clippedLenB
-                print "minAlignment: ", minAlignmentObj.is_reverse, minAlignmentObj.reference_length, minAlignmentSeq, seqA
-                print "maxAlignment: ", maxAlignmentObj.is_reverse, maxAlignmentObj.reference_length, maxAlignmentSeq, seqB
-                print "consensusSeq: ", self.consensusSeq
+                #print "TIOO: ", readLenA, clippedLenA, readLenB, clippedLenB
+                #print "minAlignment: ", minAlignmentObj.is_reverse, minAlignmentObj.reference_length, minAlignmentSeq, seqA
+                #print "maxAlignment: ", maxAlignmentObj.is_reverse, maxAlignmentObj.reference_length, maxAlignmentSeq, seqB
+                #print "consensusSeq: ", self.consensusSeq
 
            
 #### FUNCTIONS ####
@@ -461,8 +460,9 @@ for line in insertions:
         familyMinus = fieldsList[10]
         readPairListMinus = fieldsList[11].split(",")
         insertionType = fieldsList[12]
+        rgType = fieldsList[30]
 
-        print "###### INSERTION: ", chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus
+        print "###### INSERTION: ", chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType
 
         ## Define an insertion id (insertion coordinates defined by the end
         # of + cluster and beg of - cluster)
@@ -472,16 +472,31 @@ for line in insertions:
         ### 1. Search for clipped reads
         ## Positive cluster
         chrom = chrPlus
-        beg = int(endPlus) + 100 - 50
-        end = int(endPlus) + 100 + 50
+
+        if (rgType == "DUP"):
+            beg = int(begPlus) - 200
+            end = int(begPlus) + 200
+        else:
+            beg = int(endPlus) + 100 - 200
+            end = int(endPlus) + 100 + 200
+
+        print "range_+: ", chrom, beg, end
         clippedBegPlusList, clippedEndPlusList = getClipped(chrom, beg, end, bamFile)
 
         #print "clipped-Reads-Plus: ", len(clippedBegPlusList), len(clippedEndPlusList), clippedBegPlusList, clippedEndPlusList
 
         ## Negative cluster
         chrom = chrMinus
-        beg = int(begMinus) - 50
-        end = int(begMinus) + 50
+
+        if (rgType == "DUP"):
+            beg = int(endMinus) + 100 - 200
+            end = int(endMinus) + 100 + 200
+
+        else:
+            beg = int(begMinus) - 200
+            end = int(begMinus) + 200
+        
+        print "range_-: ", chrom, beg, end
         clippedBegMinusList, clippedEndMinusList = getClipped(chrom, beg, end, bamFile)
 
         #print "clipped-Reads-Minus: ", len(clippedBegMinusList), len(clippedEndMinusList), clippedBegMinusList, clippedEndMinusList
@@ -566,26 +581,24 @@ os.system(command) # returns the exit status
 fastaObj = fasta()
 fastaObj.fasta_reader(readPairsFasta)
 
-print "fastaObj: ", fastaObj
-
 for insertionId in clustersDict:
-    print "********** ", insertionId, " *************"
+    #print "********** ", insertionId, " *************"
     clusterBegList = clustersDict[insertionId]["beg"] 
     clusterEndList = clustersDict[insertionId]["end"]   
 
-    print "--- clusterBeg ---"
+    #print "--- clusterBeg ---"
     for clusterObj in clusterBegList:
         clusterObj.addReadSeqs(fastaObj) 
-        print "TIO: ", clusterObj.clippedReadDict
+        #print "TIO: ", clusterObj.clippedReadDict
         clusterObj.makeConsensusSeq()
-        print "......"
+        #print "......"
 
-    print "--- clusterEnd ---"
+    #print "--- clusterEnd ---"
     for clusterObj in clusterEndList:
         clusterObj.addReadSeqs(fastaObj) 
-        print "TIO: ", clusterObj.clippedReadDict
+        #print "TIO: ", clusterObj.clippedReadDict
         clusterObj.makeConsensusSeq()
-        print "......"
+        #print "......"
 
 ## 4) For each insertion generate a fasta containing the consensus sequences for each cluster
 ##############################################################################################
