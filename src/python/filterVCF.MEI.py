@@ -12,7 +12,7 @@ class MEIcluster():
 
                        cluster_range
             <------------------------------------>
-            beg [bkpA - CIPOS - offset]        end [(bkpB or bkpA) - CIPOS - offset] 
+            beg [bkpA - offset]        end [(bkpB or bkpA) - offset] 
         """
 
         self.chrom = MEIObj.chrom
@@ -63,13 +63,12 @@ def insertionRange(MEIObj, offset):
                 
                       range
        <------------------------------------>
-       beg [bkpA - CIPOS - offset]        end [(bkpB or bkpA) - CIPOS - offset]  
+       beg [bkpA - offset]        end [(bkpB or bkpA)- offset]  
     """
     bkpA = MEIObj.pos
     bkpB = int(MEIObj.infoDict["BKPB"]) if "BKPB" in MEIObj.infoDict else MEIObj.pos 
-    CIPOS = int(MEIObj.infoDict["CIPOS"])
-    begRange = bkpA - CIPOS - offset
-    endRange = bkpB + CIPOS + offset
+    begRange = bkpA - offset
+    endRange = bkpB + offset
 
     return (begRange, endRange)
 
@@ -176,7 +175,7 @@ def clusterMEI(MEIList):
 
                 bkpB = int(MEIObj.infoDict["BKPB"]) if "BKPB" in MEIObj.infoDict else "UNK"
         
-                msg = "MEI: " + chrom + " " + str(MEIObj.pos) + " " + str(bkpB) + " " + MEIObj.infoDict["TYPE"] + " " + MEIObj.infoDict["CLASS"] + " " + MEIObj.infoDict["SCORE"] + " " + MEIObj.infoDict["CIPOS"] 
+                msg = "MEI: " + chrom + " " + str(MEIObj.pos) + " " + str(bkpB) + " " + MEIObj.infoDict["TYPE"] + " " + MEIObj.infoDict["CLASS"] + " " + MEIObj.infoDict["SCORE"] 
                 log("CLUSTER", msg)    
         
                 # A) No cluster in the list -> Create first cluster
@@ -581,7 +580,7 @@ def falseSomaticSrcFilter(VCFlineObj, somaticMEIDict):
     MEItype = VCFlineObj.infoDict["TYPE"]
         
     ## A) Insertion is a partnered or an orphan transduction mediated by a putative somatic source element:
-    if ((MEItype == "TD1") or (MEItype == "TD2")) and (VCFlineObj.infoDict["SRCTYPE"] == "SOMATIC"):
+    if ((MEItype == "TD1") or (MEItype == "TD2")) and (("SRCTYPE" in VCFlineObj.infoDict) and (VCFlineObj.infoDict["SRCTYPE"] == "SOMATIC")):
         tdMEIObj = VCFlineObj 
         srcChrom, srcBeg, srcEnd  = tdMEIObj.infoDict["SRC"].split("_")   
 

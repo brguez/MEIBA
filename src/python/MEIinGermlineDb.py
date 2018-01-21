@@ -215,8 +215,8 @@ for MEIobj in VCFObj.lineList:
         continue
 
     chrom = MEIobj.chrom
-    beg = int(MEIobj.pos) - int(MEIobj.infoDict["CIPOS"]) 
-    end = int(MEIobj.infoDict["BKPB"]) if "BKPB" in MEIobj.infoDict else int(MEIobj.pos) + int(MEIobj.infoDict["CIPOS"]) 
+    beg = int(MEIobj.pos) 
+    end = int(MEIobj.infoDict["BKPB"]) if "BKPB" in MEIobj.infoDict else MEIobj.pos
     iClass = MEIobj.infoDict["CLASS"]
 
     info("Checking if " + chrom + ":" + str(beg) + "-" +  str(end) + ":" + iClass + " MEI is in the germline database..." )

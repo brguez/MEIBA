@@ -376,7 +376,7 @@ function cleanupFunc {
 ############################
 
 # TEIBA version
-version=0.7.2
+version=0.7.3
 
 # Enable extended pattern matching
 shopt -s extglob
@@ -636,10 +636,7 @@ FILTER=$pyDir/filterVCF.MEI.py
 # references
 driverDb=$refDir/cancerGenes_COSMIC_CPG.tsv
 germlineMEIdb=$refDir/germlineMEI_db.sorted.bed
-consensusL1=$refDir/L1_consensus.fa
-consensusAlu=$refDir/Alu_consensus.fa
-consensusSVA=$refDir/SVA_consensus.fa
-consensusERVK=$refDir/ERVK_consensus.fa
+
 
 ## DISPLAY PIPELINE CONFIGURATION
 ##################################
@@ -830,25 +827,8 @@ do
     bkpId=${bkpContig%.fa}
     read family tdType <<<$(echo $bkpId | awk '{split($1, info, ":"); family=info[1]; tdType=info[2]; print family, tdType;}')
 
-    # For each insertion, select the corresponding consensus MEI sequence to align the contigs into
-    case $family in
-
-        L1)
-            consensusMEI=$consensusL1
-        ;;
-
-        Alu)
-            consensusMEI=$consensusAlu
-        ;;
-
-        SVA)
-            consensusMEI=$consensusSVA
-        ;;
-
-        ERVK)
-            consensusMEI=$consensusERVK
-        ;;
-    esac
+    # For each insertion, select the corresponding consensus mobile element sequence to align the contigs into
+    consensusMEI=$refDir/${family}_consensus.fa    
 
     # When processing an orphan transduction (TD2) event,
     #   use genomic DNA downstream of source element
@@ -856,7 +836,7 @@ do
     # as BLAT target.
     if [[ $tdType == "TD2" ]] || [[ $tdType == "PSD" ]]; then
         # remove +/- from breakpoint ID to get source region filename
-        srcTarget=$srcRegDir/${bkpId/:[+-]/}".src.fa"
+        srcTarget=$srcRegDir/${bkpId}".src.fa"
     else
         srcTarget=$consensusMEI
     fi

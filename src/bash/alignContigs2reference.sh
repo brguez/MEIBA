@@ -224,19 +224,29 @@ echo "1. Make fasta with target dna region for blat alignment" >&1
  
 read family tdType chr beg end <<<$(echo $insertionId | awk '{split($1, info, ":"); family=info[1]; tdType=info[2]; split(info[3], coord, "_"); chr=coord[1]; beg=coord[2]; end=coord[3]; print family, tdType, chr, beg, end;}')
 
-## Compute the distance between + and - clusters
-tmp=$(($end - $beg))
-if [ $tmp -lt 0 ]; then dist=$((0 - $tmp)); else dist=$tmp;fi
-
-## a) Positive and negative cluster close to each other. Extract a single sequence
-if [ $dist -lt 3000 ]; 
+## A) Paired cluster
+if [ $end != "NA" ]; 
 then 
-    targetRegion $chr $beg $end $windowSize $genome $targetRegionPath  
 
-## b) Positive and negative cluster far away from each other. Extract two different sequences (for + and - clusters, respectively) 
+    ## Compute the distance between + and - clusters
+    tmp=$(($end - $beg))
+    if [ $tmp -lt 0 ]; then dist=$((0 - $tmp)); else dist=$tmp;fi
+
+    ## a) Positive and negative cluster close to each other. Extract a single sequence
+    if [ $dist -lt 3000 ]; 
+    then 
+        targetRegion $chr $beg $end $windowSize $genome $targetRegionPath  
+
+    ## b) Positive and negative cluster far away from each other. Extract two different sequences (for + and - clusters, respectively) 
+    else
+        targetRegions $chr $beg $end $windowSize $genome $targetRegionPath          
+    fi
+
+## B) Unpaired cluster
 else
-    targetRegions $chr $beg $end $windowSize $genome $targetRegionPath          
+        targetRegion $chr $beg $beg $windowSize $genome $targetRegionPath  
 fi
+
 
 ############################################################################
 # 2. BLAT CONTIGS INTO THE MOBILE ELEMENT SEQUENCE AND THE TARGET REGION/S #

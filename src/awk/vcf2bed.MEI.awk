@@ -48,6 +48,10 @@ function abs(v) {
     pos = $2;
     info = $8;
     
+    class = "NA"
+    bkpB = "NA"
+    CIPOS = "NA" 
+
     # Parse info field and select class and CIPOS fields
     split(info, infoList, ";");
 
@@ -58,44 +62,33 @@ function abs(v) {
         tag = fieldList[1];
         value = fieldList[2];
 
-        # A) Class
+        # a) Class
         if (tag == "CLASS")
         {
             class = value
         }
 
-        # B) Score
-        else if (tag == "SCORE")
+        # b) Breakpoint B
+        else if (tag == "BKPB")
         {
-            score = value
+            bkpB = value
         }        
     
-        # C) CIPOS (confindence interval around position)
-        else if (tag == "CIPOS")
-        {
-            CIPOS = value;    
-        }
-
-        # C) TSLEN (target site length)
-        else if (tag == "TSLEN")
-        {
-            targetSiteLen = abs(value); # Absolute value (deletion length -> positive integer)    
-        }
     }    
 
-    # A) Target site identified
-    if ( score == "5")
+    # a) bkpB identified
+    if ( bkpB != "NA")
     {
         # Compute beg and end
         beg = pos - 1;    # Substract 1 to convert from 1-based (VCF) to 0-based (bed) coordinate system
-        end = pos + targetSiteLen;                
+        end = bkpB;                
     }
-    # B) Target site not identified
+    # b) bkpB not identified
     else
     {
         # Compute beg and end
-        beg = pos - CIPOS - 1;    # Substract 1 to convert from 1-based (VCF) to 0-based (bed) coordinate system
-        end = pos + CIPOS;
+        beg = pos - 1;    # Substract 1 to convert from 1-based (VCF) to 0-based (bed) coordinate system
+        end = pos;
     }
 
     # Print bed row

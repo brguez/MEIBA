@@ -1382,13 +1382,24 @@ class insertion():
 
         insertionCoordList = self.coordinates.split("_")
 
-        chrom = str(insertionCoordList[0])
-        beg = int(insertionCoordList[1])
-        end = int(insertionCoordList[2])
+        chrom = insertionCoordList[0]
+        beg = insertionCoordList[1]
+        end = insertionCoordList[2]
 
-        bkpAPos = int(beg + end)/2
-        dist = abs(end - beg)
-        cipos = dist/2
+        ## a) Paired clusters
+        if (beg != "NA") and (end != "NA"):
+
+            beg = int(beg)
+            end = int(end)
+            bkpAPos = int((beg + end)/2)
+            dist = abs(end - beg)
+            cipos = int(dist/2)
+
+        ## b) Independent cluster:
+        else:
+            bkpAPos = int(beg)
+            cipos = "NA"
+
 
         return chrom, bkpAPos, cipos
 

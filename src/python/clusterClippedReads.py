@@ -259,7 +259,70 @@ def overlap(begA, endA, begB, endB):
     return overlap
 
 
-def getClipped(chrom, beg, end, bamFile):
+def getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, bamFile):
+    """
+    """
+    ## 1. Extract clipped reads for positive cluster
+    chrom = chrPlus
+
+    if (rgType == "DUP"):
+        beg = int(begPlus) - 50
+        end = int(begPlus) + 50
+    else:
+        beg = int(endPlus) + 100 - 50
+        end = int(endPlus) + 100 + 50
+
+    print "range_+: ", chrom, beg, end
+    clippedBegPlusList, clippedEndPlusList = getClippedInterval(chrom, beg, end, bamFile)
+
+    ## 2. Extract clipped reads for negative cluster
+    chrom = chrMinus
+
+    if (rgType == "DUP"):
+        beg = int(endMinus) + 100 - 50
+        end = int(endMinus) + 100 + 50
+
+    else:
+        beg = int(begMinus) - 50
+        end = int(begMinus) + 50
+        
+    print "range_-: ", chrom, beg, end
+    clippedBegMinusList, clippedEndMinusList = getClippedInterval(chrom, beg, end, bamFile)
+
+    ## 3. Merge clipped read lists:
+    clippedBegList = list(set(clippedBegPlusList + clippedBegMinusList))
+    clippedEndList = list(set(clippedEndPlusList + clippedEndMinusList))
+
+    return clippedBegList, clippedEndList
+
+
+def getClippedUnpairedCluster(chrPlus, begPlus, endPlus, bamFile):
+    """
+    """
+    ## 1. Extract clipped reads for cluster beginning
+    chrom = chrPlus
+    beg = int(begPlus) - 50
+    end = int(begPlus) + 50
+    
+    print "range_beg: ", chrom, beg, end
+    clippedBegClusterBegList, clippedEndClusterBegList = getClippedInterval(chrom, beg, end, bamFile)
+
+    ## 2. Extract clipped reads for cluster ending
+    chrom = chrPlus
+    beg = int(endPlus) + 100 - 50
+    end = int(endPlus) + 100 + 50
+
+    print "range_end: ", chrom, beg, end
+    clippedBegClusterEndList, clippedEndClusterEndList = getClippedInterval(chrom, beg, end, bamFile)
+
+    ## 3. Merge clipped read lists:
+    clippedBegList = list(set(clippedBegClusterBegList + clippedBegClusterEndList))
+    clippedEndList = list(set(clippedEndClusterBegList + clippedEndClusterEndList))
+
+    return clippedBegList, clippedEndList
+
+
+def getClippedInterval(chrom, beg, end, bamFile):
     '''
     '''
     #print "** pickClipped function **"
@@ -424,9 +487,6 @@ print
 
 ## Start ## 
 
-## 1) 
-##############################
-
 ## Open input files
 insertions = open(insertionsPath, 'r')
 
@@ -444,6 +504,8 @@ for line in insertions:
         
     line = line.rstrip('\n')
     fieldsList = line.split("\t")
+
+    print "TEST: ", fieldsList
 
     ## Insertion line with the expected number of columns
     if (int(len(fieldsList)) == 31):
@@ -468,44 +530,17 @@ for line in insertions:
         # of + cluster and beg of - cluster)
         insertionId = familyPlus + ":" + insertionType + ":" + chrPlus + "_" + endPlus + "_" + begMinus 
 
-
         ### 1. Search for clipped reads
-        ## Positive cluster
-        chrom = chrPlus
-
-        if (rgType == "DUP"):
-            beg = int(begPlus) - 200
-            end = int(begPlus) + 200
+        ## A) Paired cluster
+        if (chrMinus != "NA"):
+            clippedBegList, clippedEndList = getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, bamFile)
+            
+        ## B) Unpaired cluster
         else:
-            beg = int(endPlus) + 100 - 200
-            end = int(endPlus) + 100 + 200
+            clippedBegList, clippedEndList = getClippedUnpairedCluster(chrPlus, begPlus, endPlus, bamFile)
 
-        print "range_+: ", chrom, beg, end
-        clippedBegPlusList, clippedEndPlusList = getClipped(chrom, beg, end, bamFile)
 
-        #print "clipped-Reads-Plus: ", len(clippedBegPlusList), len(clippedEndPlusList), clippedBegPlusList, clippedEndPlusList
-
-        ## Negative cluster
-        chrom = chrMinus
-
-        if (rgType == "DUP"):
-            beg = int(endMinus) + 100 - 200
-            end = int(endMinus) + 100 + 200
-
-        else:
-            beg = int(begMinus) - 200
-            end = int(begMinus) + 200
-        
-        print "range_-: ", chrom, beg, end
-        clippedBegMinusList, clippedEndMinusList = getClipped(chrom, beg, end, bamFile)
-
-        #print "clipped-Reads-Minus: ", len(clippedBegMinusList), len(clippedEndMinusList), clippedBegMinusList, clippedEndMinusList
-
-        ### 2. Merge clipped read lists:
-        clippedBegList = list(set(clippedBegPlusList + clippedBegMinusList))
-        clippedEndList = list(set(clippedEndPlusList + clippedEndMinusList))
-
-        ### 3. Cluster clipped reads:
+        ### 2. Cluster clipped reads:
         ## CLipping at the beginn
         clusterBegList = clusterCLipped(clippedBegList, "beg")
 
@@ -516,10 +551,10 @@ for line in insertions:
          
         print "clusterEndList: ", len(clusterEndList), clusterEndList
 
-        ### 4. Filter clusters:
+        ### 3. Filter clusters:
         #filterClusters(clusterBegList)
         
-        ### 5. Add the 2 cluster lists to the dictionary:
+        ### 4. Add the 2 cluster lists to the dictionary:
         clustersDict[insertionId] = {}
         clustersDict[insertionId]["beg"] = clusterBegList
         clustersDict[insertionId]["end"] = clusterEndList

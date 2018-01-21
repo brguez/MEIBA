@@ -109,19 +109,19 @@ for VCFlineObj in VCFObj.lineList:
         print "[WARNING] Skip repeat annotation since " + VCFlineObj.infoDict["TYPE"] + " insertion"
         continue
 
-    # A) Target site identified
-    if ( VCFlineObj.infoDict["SCORE"] == "5"):
+    # a) bkpB identified
+    if ("BKPB" in VCFlineObj.infoDict):
 
         # Compute expected beg and end
         exBeg = VCFlineObj.pos - 1
-        exEnd = VCFlineObj.pos + abs(int(VCFlineObj.infoDict["TSLEN"]))
+        exEnd = VCFlineObj.infoDict["BKPB"]
 
-    # B) Target site not identified
+    # b) bkpB not identified
     else:
 
         # Compute expected beg and end
-        exBeg = VCFlineObj.pos - int(VCFlineObj.infoDict["CIPOS"]) - 1
-        exEnd = VCFlineObj.pos + int(VCFlineObj.infoDict["CIPOS"])
+        exBeg = VCFlineObj.pos - 1;    # Substract 1 to convert from 1-based (VCF) to 0-based (bed) coordinate system
+        exEnd = VCFlineObj.pos;
 
     insertionId = VCFlineObj.infoDict["CLASS"] + ":" + VCFlineObj.chrom + "_" + str(exBeg) + "_" + str(exEnd)
 
