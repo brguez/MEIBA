@@ -1006,15 +1006,13 @@ class insertion():
         ### For each contig create a contig object and add it to the dictionary
         # using the contig id as key
         for contigId in fastaObj.fastaDict:
-
-            print "MEEEN: ", contigId, contigId.split('_')[3], contigId.split('_')[4]
             contigSeq = fastaObj.fastaDict[contigId]
 
             # Create contig object
             contigObj = contig(contigId, contigSeq)
 
             # Add number of supporting reads
-            contigObj.nbReads = contigId.split('_')[4]
+            contigObj.nbReads = int(contigId.split('_')[4])
 
             # Clipping side
             contigObj.clippedSide = contigId.split('_')[3]
@@ -1125,7 +1123,7 @@ class insertion():
         # b)  Multiple possible clusters... use another criteria... NA is provisional...
         else:
             bestInformativeContigObj = "NA"
-       
+ 
         return bestInformativeContigObj
  
 
