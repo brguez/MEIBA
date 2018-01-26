@@ -376,7 +376,7 @@ function cleanupFunc {
 ############################
 
 # TEIBA version
-version=0.7.3
+version=0.7.4
 
 # Enable extended pattern matching
 shopt -s extglob
@@ -821,7 +821,7 @@ startTime=$(date +%s)
 
 printHeader "Aligning the assembled bkp contigs into the reference genome with blat"
 
-ls $clippedDir | grep '.*fa' | grep -v 'allReadPairs' | while read bkpContig;
+ls $clippedDir | grep -v 'tmp' | while read bkpContig;
 do
     bkpContigPath=${clippedDir}/${bkpContig}
     bkpId=${bkpContig%.fa}
@@ -870,7 +870,7 @@ if [[ ! -d $bkpAnalysisDir ]]; then mkdir $bkpAnalysisDir; fi
 # - $outDir/insertions_list.txt
 insertionList=$bkpAnalysisDir/insertionList.txt
 
-ls $clippedDir | grep '.*fa' | grep -v 'allReadPairs' | awk '{split($1,a,".fa"); print a[1];}' > $insertionList
+ls $clippedDir | grep -v 'tmp' | awk '{split($1,a,".fa"); print a[1];}' > $insertionList
 
 ## 3.2 For each insertion add the list of read pairs supporting the clusters, the source element, transduction and rearrangement info 
 # Output:

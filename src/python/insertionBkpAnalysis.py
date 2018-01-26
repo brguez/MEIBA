@@ -333,20 +333,21 @@ class contig():
 
             print status, nbBases
 
-            ## Partial overlap with a maximum of 50 overlapping bp (it would be 20, as 15*2 overhang) 
-            if (status == 'partial') and (nbBases <= 50):    
+            ## Partial overlap
+            if (status == 'partial'):    
         
+
                 pairedAlignmentObj = chained_alignment([alignmentObjA, alignmentObjB])     
                 percQueryCoveredA = alignmentObjA.perc_query_covered()
                 percQueryCoveredB = alignmentObjB.perc_query_covered()
                 percQueryCoveredPaired = pairedAlignmentObj.perc_query_covered()
+                print "TEST: ", percQueryCoveredA, percQueryCoveredB, percQueryCoveredPaired
 
                 ## Paired alignments covers more % of contig sequence than individual alignments:
                 if (percQueryCoveredPaired > percQueryCoveredA) and (percQueryCoveredPaired > percQueryCoveredB):
                         
                     ## Add paired alignment to the list
                     pairedAlignmentObjList.append(pairedAlignmentObj)
-
 
         ## A) No paired alignment
         if (len(pairedAlignmentObjList) == 0):
@@ -631,13 +632,6 @@ class contig():
     def is_polyA_informative(self, alignmentObj):
         """
         """
-                
-        #print "* is_polyA function *" 
-        #print "alignmentObj: ", alignmentObj.tName, alignmentObj.qSize, alignmentObj.qBeg, alignmentObj.qEnd, alignmentObj.perc_query_covered() 
-
-        # Initialize bkp dictionary
-        bkpDict = {}
-
         ## Begin clipped
         #    #########-----------
         if (self.clippedSide  == "beg"):
@@ -646,10 +640,8 @@ class contig():
 
             if (polyASeq != "NA"):
                 polyA = True
-                bkpDict["chrom"] = alignmentObj.tName
-                bkpDict["pos"] = alignmentObj.tBeg
-                bkpDict["polyA"] = polyASeq
-                bkpDict["alignmentObjRT"] = "NA"
+                self.bkpDict["polyA"] = polyASeq
+                self.bkpDict["alignmentObjRT"] = "NA"
             else:
                 polyA = False
                 
@@ -661,23 +653,17 @@ class contig():
 
             if (polyASeq != "NA"):
                 polyA = True  
-                bkpDict["chrom"] = alignmentObj.tName
-                bkpDict["pos"] = alignmentObj.tEnd
-                bkpDict["polyA"] = polyASeq
-                bkpDict["alignmentObjRT"] = "NA"
+                self.bkpDict["polyA"] = polyASeq
+                self.bkpDict["alignmentObjRT"] = "NA"
             else:
                 polyA = False
 
-        print "GUAPOO: ", self.clippedSide, self.seq, targetSeq, polyASeq, bkpDict
-
-
-        return polyA, bkpDict 
+        return polyA
 
 
     def is_single_informative(self, chrom):
         """
         """                
-        bkpDict = {}
         alignmentObj = self.representativeAlignmentObj.alignmentList[0]
 
         # A) Contig does not align on the target region
@@ -692,17 +678,15 @@ class contig():
 
         ## C) Single partial alignment -> Poly-A contig candidate
         else:
-            informative, bkpDict = self.is_polyA_informative(alignmentObj)
+            informative = self.is_polyA_informative(alignmentObj)
 
-        return informative, bkpDict
+        return informative
   
 
     def is_chained_informative(self, chrom):
         """
 
         """
-        bkpDict = {}
-
         alignmentList = self.representativeAlignmentObj.alignmentList
         diffSeqList = list(set([ alignmentObj.tName for alignmentObj in alignmentList ]))
         nbDiffSeq = len(diffSeqList)
@@ -736,7 +720,7 @@ class contig():
                 else:
                     alignmentObj = alignmentList[len(alignmentList) - 1]
 
-                informative, bkpDict = self.is_polyA_informative(alignmentObj)
+                informative = self.is_polyA_informative(alignmentObj)
             
         ## B) Contig aligning in different sequences -> Informative with or without poly-A
         else:
@@ -769,22 +753,17 @@ class contig():
                         if (self.clippedSide  == "end") and (alignmentObjA.tName != "L1") and (alignmentObjA.tName != "PSD"):
                             #print "A) Inserted sequence on the right"
                             informative = True
-
-                            bkpDict["chrom"] = alignmentObjA.tName
-                            bkpDict["pos"] = alignmentObjA.tEnd
-                            bkpDict["alignmentObjRT"] = alignmentObjB
+                            self.bkpDict["alignmentObjRT"] = alignmentObjB
 
                             ## Check for poly-A breakpoint
                             nbBases = alignmentObjB.qBeg - alignmentObjA.qEnd
 
                             if (nbBases > 0):
                                 targetSeq = self.seq[alignmentObjA.qEnd : (alignmentObjA.qEnd + nbBases)].upper()
-                                bkpDict["polyA"] = self.is_complete_polyA(targetSeq)
-                                print "targetSeq-TIO-1: ", targetSeq, self.is_complete_polyA(targetSeq)
+                                self.bkpDict["polyA"] = self.is_complete_polyA(targetSeq)
                             else:
                                 targetSeq = self.seq[alignmentObjA.qEnd: ].upper()
-                                print "targetSeq-TIO-2: ", targetSeq, self.is_complete_polyA(targetSeq)
-                                bkpDict["polyA"] = self.is_complete_polyA(targetSeq)
+                                self.bkpDict["polyA"] = self.is_complete_polyA(targetSeq)
                    
                             # Once breakpoint found stop iterating
                             break
@@ -794,22 +773,17 @@ class contig():
                         elif (self.clippedSide  == "beg") and (alignmentObjB.tName != "L1") and (alignmentObjB.tName != "PSD"):
                             #print "B) Inserted sequence on the left"
                             informative = True
-
-                            bkpDict["chrom"] = alignmentObjB.tName
-                            bkpDict["pos"] = alignmentObjB.tBeg
-                            bkpDict["alignmentObjRT"] = alignmentObjA
+                            self.bkpDict["alignmentObjRT"] = alignmentObjA
 
                             ## Check for poly-A breakpoint
                             nbBases = alignmentObjB.qBeg - alignmentObjA.qEnd
 
                             if (nbBases > 0):
                                 targetSeq = self.seq[(alignmentObjB.qBeg - nbBases) : alignmentObjB.qBeg].upper()
-                                bkpDict["polyA"] = self.is_complete_polyA(targetSeq)
-                                print "targetSeq-TIO-3: ", targetSeq, targetSeq
+                                self.bkpDict["polyA"] = self.is_complete_polyA(targetSeq)
                             else:
                                 targetSeq = self.seq[: alignmentObjB.qBeg].upper()
-                                print "targetSeq-TIO-4: ", targetSeq, self.is_complete_polyA(targetSeq)
-                                bkpDict["polyA"] = self.is_complete_polyA(targetSeq)
+                                self.bkpDict["polyA"] = self.is_complete_polyA(targetSeq)
                     
                             # Once breakpoint found stop iterating
                             break
@@ -818,9 +792,7 @@ class contig():
                         else:
                             informative = False
 
-                       
-                           
-        return informative, bkpDict           
+        return informative           
                 
     def is_informative(self, tdType, coordinates):
 
@@ -832,18 +804,12 @@ class contig():
         print "*** ANALYZING CONTIG: ", tdType, coordinates, chrom, beg, end, self.ID, self.seq, len(self.alignmentObjList), "***"
 
         ## 1. Obtain contig representative alignment (can be a single alignment or a set of complementary alignments)
-        #print "** 1. Obtain contig representative alignment (can be a single alignment or a set of complementary alignments) **"        
         self.representative_alignment()
         
         ## 2. Reverse contig if the reverse complementary of the contig is aligning on the insertion region
-        #print "** 2. Reverse contig if the reverse complementary of the contig is aligning on the insertion region **"
         self.fix_contig_orientation(chrom)
 
-        #print self.representativeAlignmentObj.alignmentList
-
-        ## 2. Determine if informative contig based on the representative alignment
-        #print "** 3. Determine if informative contig based on the representative alignment **" 
-
+        ## 3. Determine if informative contig based on the representative alignment
         nbAlignments = len(self.representativeAlignmentObj.alignmentList)
         
         ## A) Not informative -> Contig without blat hits 
@@ -853,11 +819,11 @@ class contig():
 
         ## B) Contig with single alignment
         elif (nbAlignments == 1):
-            self.informative, self.bkpDict = self.is_single_informative(chrom)    
+            self.informative = self.is_single_informative(chrom)    
 
         ## C) Contig with chained alignment
         else:
-            self.informative, self.bkpDict = self.is_chained_informative(chrom)
+            self.informative = self.is_chained_informative(chrom)
 
  
 class insertion():
@@ -1011,11 +977,16 @@ class insertion():
             # Create contig object
             contigObj = contig(contigId, contigSeq)
 
-            # Add number of supporting reads
-            contigObj.nbReads = int(contigId.split('_')[4])
+            # breakpoint position (cluster_X_9823493_end_1)
+            contigIdList = contigId.split('_')
+            contigObj.bkpDict["chrom"] = contigIdList[1]
+            contigObj.bkpDict["pos"] = int(contigIdList[2])
 
             # Clipping side
-            contigObj.clippedSide = contigId.split('_')[3]
+            contigObj.clippedSide = contigIdList[3]
+
+            # Add number of supporting reads 
+            contigObj.nbReads = int(contigIdList[4])
 
             # Add contig object to the dictionary
             contigsDict[contigId] = contigObj

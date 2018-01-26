@@ -260,13 +260,19 @@ blatTargetRegionPath=$outDir/$insertionId".targetRegion.psl"
 
 echo "2. Blat contigs into the consensus TE sequence and in the target region" >&1
 
-# 1) Alignment on the TE sequence (Allow gaps in the alignment)
-echo "blat -t=dna -q=dna -stepSize=5 -minScore=20 -out=psl -noHead $TEseq $contigs $blatTEPath" >&1
-blat -t=dna -q=dna -tileSize=6 -stepSize=3 -minMatch=1 -repMatch=1000000 -minScore=10 -out=psl -noHead $TEseq $contigs $blatTEPath
+### 1) Alignment on the TE sequence 
+## Blat configuration:
+# - Align short sequences (up to ~13bp). -tileSize=6 -stepSize=3
 
-# 2) Alignment on the target region (do not allow gaps)
-echo "blat -t=dna -q=dna -stepSize=5 -minScore=20 -maxIntron=0 -out=psl -noHead $outDir/insertion_region.fa $contigs $blatTargetRegionPath" >&1
-blat -t=dna -q=dna -stepSize=5 -minScore=20 -maxIntron=0 -out=psl -noHead $outDir/insertion_region.fa $contigs $blatTargetRegionPath
+echo "blat -t=dna -q=dna -tileSize=6 -stepSize=3 -minScore=10 -out=psl -noHead $TEseq $contigs $blatTEPath" >&1
+blat -t=dna -q=dna -tileSize=6 -stepSize=3 -minScore=10 -out=psl -noHead $TEseq $contigs $blatTEPath
+
+## 2) Alignment on the target region (allow small gaps)
+## Blat configuration:
+# - Allow short gaps (-maxIntron=10) 
+
+echo "blat -t=dna -q=dna -stepSize=5 -minScore=10 -maxIntron=10 -out=psl -noHead $outDir/insertion_region.fa $contigs $blatTargetRegionPath" >&1
+blat -t=dna -q=dna -stepSize=5 -minScore=10 -maxIntron=10 -out=psl -noHead $outDir/insertion_region.fa $contigs $blatTargetRegionPath
 
 
 ##################################################

@@ -12,24 +12,10 @@
 #### CLASSES ####
 class fasta():
     """
-    .... class.
-
-    .....
-
-    Methods:
-    - fasta_reader
-
     """
 
     def __init__(self):
         """
-            Initialize fasta object.
-
-            Input:
-            1)
-
-            Output:
-            -
         """
         self.fastaDict = {}
 
@@ -73,6 +59,37 @@ class fasta():
         # Close output fasta file
         outFile.close()
 
+
+class slide():
+    """
+    """
+    def __init__(self):
+        """
+        """
+        self.beg = ""
+        self.end = ""
+        self.seq = ""
+        self.percN = ""
+
+
+class polyNcluster():
+    """
+    """
+    def __init__(self, slideObj):
+        """
+        """
+        self.beg = slideObj.beg
+        self.end = slideObj.end
+        self.slideObjList = [slideObj]
+
+    def addSlide(self, slideObj):
+        self.end = slideObj.end
+        self.slideObjList.append(slideObj)
+        
+    def nbSlides(self):
+        return len(self.slideObjList)
+
+
 class cluster():
     """
     """
@@ -82,19 +99,23 @@ class cluster():
         self.chrom = alignmentObj.reference_name      
         self.clippedSide = clippedSide
         self.bkpPos = alignmentObj.reference_start if clippedSide == "beg" else alignmentObj.reference_end
-        self.clippedReadDict = {}       
+        self.clippedReadDict = {}  
+        self.filteredClippedReadDict = {}       
         self.consensusSeq = ""
 
     def addClippedRead(self, alignmentObj):
         """
         """
         mate = '/1' if alignmentObj.is_read1 else '/2'
-        readId = alignmentObj.query_name + mate
-            
+        readId = alignmentObj.query_name + mate            
         self.bkpPos = alignmentObj.reference_start if self.clippedSide == "beg" else alignmentObj.reference_end        
+
+        operation = alignmentObj.cigartuples[0][0] if self.clippedSide == "beg" else alignmentObj.cigartuples[-1][0]
+        clipType = "soft" if operation == 4 else "hard"
 
         self.clippedReadDict[readId] = {}
         self.clippedReadDict[readId]["alignmentObj"] = alignmentObj
+        self.clippedReadDict[readId]["clipType"] = clipType
 
     def nbReads(self):
         """
@@ -120,71 +141,252 @@ class cluster():
             
             self.clippedReadDict[readId]["seq"]= readSeq
 
-    def makeConsensusSeq(self):
+    def makeConsensusSeq(self, outDir):
         """
+        assembly based
         """
-                
-        readIdAlignmentLenTupleList = [(readId, self.clippedReadDict[readId]["alignmentObj"].reference_length) for readId in self.clippedReadDict.keys()]
-        
-        # A) Single clipped read composing the cluster
-        if len(readIdAlignmentLenTupleList) == 1:
-            readId = readIdAlignmentLenTupleList[0][0]
-            self.consensusSeq = self.clippedReadDict[readId]["seq"] 
-            #print "CONSENSUS-1: ", self.consensusSeq
 
-        # B) Multiple clipped reads composing the cluster
-        else:  
+        nbReads = len(self.clippedReadDict.keys())
+
+        ## A) Single sequence
+        if (nbReads == 1):    
+            contigsFastaObj = fasta() 
+            readId = self.clippedReadDict.keys()[0]       
+            contigsFastaObj.fastaDict["seq"] = self.clippedReadDict[readId]["seq"]
+
+        ## B) Multiple sequence -> attempt to assemble them
+        else:
+            command = 'mkdir -p ' + outDir 
+            os.system(command) # returns the exit status
             
-            readIdAlignmentLenTupleSortedList =  sorted(readIdAlignmentLenTupleList, key=lambda x: x[1])
-            lastElementIndex = len(readIdAlignmentLenTupleSortedList) - 1 
+            ### 1. Create fasta file containing cluster supporting reads
+            fastaObj = fasta()        
+            fastaDict = {}
+    
+            for readId in self.clippedReadDict.keys():
+                fastaDict[readId] = self.clippedReadDict[readId]["seq"]
 
-            minAlignmentSeq = self.clippedReadDict[readIdAlignmentLenTupleSortedList[0][0]]["seq"]  
-            maxAlignmentSeq = self.clippedReadDict[readIdAlignmentLenTupleSortedList[lastElementIndex][0]]["seq"] 
+            fastaObj.fastaDict = fastaDict
+            fastaPath = outDir + '/supportingReads.fa'
+            fastaObj.write_fasta(fastaPath)
+        
+            ### 2. Preparing files for assembly
+            VELVETH = '/Users/brodriguez/Research/Apps/velvet/1.2.10/velveth'
+            kmerLen = '15'
+            command = VELVETH + ' ' + outDir + ' ' + kmerLen + ' -fasta -short ' + fastaPath + ' 1>> ' + outDir + '/assembly_setup.out 2>> ' + outDir + '/assembly_setup.err' 
+            print command
+            os.system(command) # returns the exit status
 
-            minAlignmentObj = self.clippedReadDict[readIdAlignmentLenTupleSortedList[0][0]]["alignmentObj"]  
-            maxAlignmentObj = self.clippedReadDict[readIdAlignmentLenTupleSortedList[lastElementIndex][0]]["alignmentObj"] 
+            ### 3. Breakpoint assembly
+            VELVETG = '/Users/brodriguez/Research/Apps/velvet/1.2.10/velvetg'
+            command = VELVETG + ' ' + outDir + ' -exp_cov auto -cov_cutoff auto 1>> ' + outDir + '/assembly.out 2>> ' + outDir + '/assembly.err'
+            
+            print command
+            os.system(command) # returns the exit status
 
-            ## a) Cluster composed by reads clipped at the end      
-            #  maxAlignment
-            # <-------------###
-            #    <----------#####
-            #         <-----##########
-            #            <--##############
-            #                minAlignment
-            if (self.clippedSide == "end"):
-                
-                seqA = maxAlignmentSeq[:maxAlignmentObj.reference_length - 1]
-                seqB = minAlignmentSeq[minAlignmentObj.reference_length:]
-                self.consensusSeq = seqA + seqB
+            ### Read contigs
+            contigsPath = outDir + '/contigs.fa'
+            contigsFastaObj = fasta() 
+            contigsFastaObj.fasta_reader(contigsPath)
 
-                #print "maxAlignment: ", maxAlignmentObj.is_reverse, maxAlignmentObj.reference_length, maxAlignmentSeq, seqA
-                #print "minAlignment: ", minAlignmentObj.is_reverse, minAlignmentObj.reference_length, minAlignmentSeq, seqB
-                #print "consensusSeq: ", self.consensusSeq
+            ## If no contig assembled pick raw cluster supporting reads
+            nbContigs = len(contigsFastaObj.fastaDict)
 
-            ## b) Cluster composed by reads clipped at the beg      
-            #                 maxAlignment
-            #             ###-------------->
-            #           #####---------->
-            #      ##########----->
-            #  ##############-->
-            #   minAlignment              
-            else:
-                readLenA = len(minAlignmentSeq)
-                clippedLenA = readLenA - minAlignmentObj.reference_length 
-                
-                readLenB = len(maxAlignmentSeq)
-                clippedLenB = readLenB - maxAlignmentObj.reference_length 
+            if (nbContigs == 0):
+                print "NO-CONTIG!!!!"   
+                contigsFastaObj = fastaObj
+        
 
-                seqA = minAlignmentSeq[:clippedLenA - 1]
-                seqB = maxAlignmentSeq[clippedLenB:]               
-                self.consensusSeq = seqA + seqB
+            ### Do cleanup
 
-                #print "TIOO: ", readLenA, clippedLenA, readLenB, clippedLenB
-                #print "minAlignment: ", minAlignmentObj.is_reverse, minAlignmentObj.reference_length, minAlignmentSeq, seqA
-                #print "maxAlignment: ", maxAlignmentObj.is_reverse, maxAlignmentObj.reference_length, maxAlignmentSeq, seqB
-                #print "consensusSeq: ", self.consensusSeq
+        return contigsFastaObj
 
-           
+
+    def makeConsensusSeq2(self, outDir):
+        """
+        multiple sequence alignment based
+        """
+
+
+        ## A) Single sequence
+        if len(self.clippedReadDict.keys()) == 1:    
+            consensusSeq = list(self.clippedReadDict.values())[0]["seq"].upper()
+
+        ## B) Multiple sequence
+        else:
+            command = 'mkdir -p ' + outDir 
+            os.system(command) # returns the exit status
+            
+            ### 1. Create fasta file containing cluster supporting reads
+            fastaObj = fasta()        
+            fastaDict = {}
+    
+            for readId in self.clippedReadDict.keys():
+                fastaDict[readId] = self.clippedReadDict[readId]["seq"]
+
+            fastaObj.fastaDict = fastaDict
+            fastaPath = outDir + '/supportingReads.fa'
+            fastaObj.write_fasta(fastaPath)
+        
+            ### 2. Make multiple sequence alignment
+            CLUSTALW2 = '/Users/brodriguez/Research/Apps/Clustal/clustalw-2.1/clustalw2'
+            msfPath = outDir + '/supportingReads.msf'
+            dndPath = outDir + '/supportingReads.dnd'
+            command = 'tcoffee ' + fastaPath + ' -method=mafft_msa -quiet -output=msf_aln -outfile=' + msfPath
+            print command
+            os.system(command) # returns the exit status
+
+            ### 3. Generate consensus sequence (cons tool from EMBOSS packagge)
+            CONS = '/Users/brodriguez/Research/Apps/EMBOSS/EMBOSS-6.6.0/emboss/cons'
+            consensusPath = outDir + '/consensus.fa'
+    
+            command = CONS + ' -sequence ' + msfPath + ' -outseq ' + consensusPath + ' -identity 1 -plurality 1'
+            print command
+            os.system(command) # returns the exit status
+
+            ### Read consensus sequence 
+            fastaObj = fasta() 
+            fastaObj.fasta_reader(consensusPath)
+            consensusSeq = fastaObj.fastaDict["EMBOSS_001"].upper()
+
+            ### Do cleanup
+            #command = 'rm ' + fastaPath + ' ' + msfPath + ' ' + dndPath + ' ' + consensusPath     
+            #os.system(command) # returns the exit status
+
+        ### Trim consensus sequence to remove polyN rich boundaries
+        #trimmedSeq = self.trimConsensusSeq(consensusSeq)
+        trimmedSeq = consensusSeq
+
+        return trimmedSeq
+
+    def trimConsensusSeq(self, consensusSeq):
+        """
+        """
+
+        ### 1. Split the consensus sequence into slides of 4bp
+        windowSize = 4
+        consensusSeqLen = len(consensusSeq)
+        slideObjList = []
+
+        print "trim_consensus: ", windowSize, consensusSeqLen, consensusSeq
+
+        for pos in range(0, consensusSeqLen, windowSize):
+ 
+            # Take slice
+            beg = pos
+            end = beg + windowSize
+            seq = consensusSeq[beg:end] 
+     
+            # Compute percentage of N in the given slice
+            nbN = seq.count("N")       
+            percN = float(nbN) / (windowSize) * 100
+
+            # Create slide object and add to the list
+            slideObj = slide()
+            slideObj.beg, slideObj.end, slideObj.seq, slideObj.percN = [beg, end, seq, percN]
+            slideObjList.append(slideObj)
+
+        ### 2. Identify regions enriched in Ns (polyNclusters)
+        index = 0
+        nbSlides = len(slideObjList)
+        polyNclusterObjList = []
+        
+        # Iterate over the slides
+        while index < nbSlides:
+            slideObj = slideObjList[index]
+
+            ## Current slide is enriched in Ns
+            if (slideObj.percN >= 50):
+            
+                polyNclusterObj = polyNcluster(slideObj)
+                        
+                ## Look into the next slides
+                for nextIndex in range(index + 1, nbSlides):
+                    index += 1
+                    nextSlideObj = slideObjList[nextIndex]            
+
+                    ## Poly-N as well. Add to the polyNcluster and look into the next slide 
+                    if (nextSlideObj.percN >= 25):
+                        polyNclusterObj.addSlide(nextSlideObj)
+
+                    ## Not poly-NA. Stop and close the polyNcluster
+                    else:
+                        break
+        
+                ## Add polyNcluster to the list:
+                polyNclusterObjList.append(polyNclusterObj)
+        
+            index += 1
+              
+        ### 3. Select those polyNclusters composed by at least two slides:
+        filteredpolyNclusterObjList = []
+        
+        for polyNclusterObj in polyNclusterObjList: 
+            if (polyNclusterObj.nbSlides() > 3):
+                filteredpolyNclusterObjList.append(polyNclusterObj)
+        
+        ### 4. Select polyNclusters for trimming. 
+        # Trimming will be done based on those polyNclusters located in the first and last quarter of the consensus sequence. 
+        # If multiple possible polyNclusters, the inner one will be selected. 
+        
+        ### 4.1 Select first quarter polyNcluster
+        beg = 0
+        end = consensusSeqLen/4
+        polyNclusterObjListFirstQuarter = []
+        
+        for polyNclusterObj in filteredpolyNclusterObjList:
+            if overlap(beg, end, polyNclusterObj.beg, polyNclusterObj.end):
+                polyNclusterObjListFirstQuarter.append(polyNclusterObj)
+        
+        ## a) No polyNcluster 
+        if len(polyNclusterObjListFirstQuarter) == 0:
+            polyNclusterObjFirstQuarter = "NA"
+        
+        ## b) polyNcluster
+        else:
+            polyNclusterObjFirstQuarter = polyNclusterObjListFirstQuarter[len(polyNclusterObjListFirstQuarter)-1]
+          
+        
+        ## 4.2 Select last quarter polyNcluster
+        beg = consensusSeqLen - (consensusSeqLen/4)
+        end = consensusSeqLen
+        polyNclusterObjListLastQuarter = []
+        
+        for polyNclusterObj in filteredpolyNclusterObjList:
+        
+            if overlap(beg, end, polyNclusterObj.beg, polyNclusterObj.end):
+                polyNclusterObjListLastQuarter.append(polyNclusterObj)
+        
+        ## a) No polyNcluster 
+        if len(polyNclusterObjListLastQuarter) == 0:
+            polyNclusterObjLastQuarter = "NA"
+        
+        ## b) polyNcluster
+        else:
+            polyNclusterObjLastQuarter = polyNclusterObjListLastQuarter[0]
+        
+        
+        ### 5. Trim consensus sequence on those boundaries it has a poly-N cluster
+        ## a) Not trim consensus sequence as there are not N-rich clusters  
+        if (polyNclusterObjFirstQuarter == "NA") and (polyNclusterObjLastQuarter == "NA"): 
+            trimmedSeq = consensusSeq
+        
+        ## b) Trim both sides
+        elif (polyNclusterObjFirstQuarter != "NA") and (polyNclusterObjLastQuarter != "NA"):
+            trimmedSeq = consensusSeq[polyNclusterObjFirstQuarter.end:polyNclusterObjLastQuarter.beg]   
+        
+        ## c) Trim at the begin
+        elif (polyNclusterObjFirstQuarter != "NA"):
+            trimmedSeq = consensusSeq[polyNclusterObjFirstQuarter.end:] 
+        
+        ## d) Trim at the end
+        else:
+            trimmedSeq = consensusSeq[:polyNclusterObjLastQuarter.beg]
+            
+        print "TRIMMED: ", polyNclusterObjFirstQuarter, polyNclusterObjLastQuarter, trimmedSeq
+        
+        return trimmedSeq        
+                  
 #### FUNCTIONS ####
 def log(label, string):
     """
@@ -390,8 +592,6 @@ def clusterCLipped(clippedList, clippedSide):
             clusterObj.addClippedRead(alignmentObj)
             clusterList.append(clusterObj)
 
-            #print "TEST: ", clusterObj.chrom, clusterObj.clippedSide, clusterObj.bkpPos, clusterObj.clippedReadDict
-
         # B) There is already at least one cluster in the list -> Check if current clipped read within the latest cluster
         else:
                     
@@ -435,15 +635,6 @@ def clusterCLipped(clippedList, clippedSide):
             #log("CLUSTER", msg) 
 
     return clusterList
-
-        
-def filterClusters(clusterList):
-    '''
-    '''
-    print "** filterClusters  function **"
-
-    for clusterObj in clusterList:
-        print clusterObj, len(clusterObj.clippedReadDict), clusterObj.nbReads()
 
 
 
@@ -505,8 +696,6 @@ for line in insertions:
     line = line.rstrip('\n')
     fieldsList = line.split("\t")
 
-    print "TEST: ", fieldsList
-
     ## Insertion line with the expected number of columns
     if (int(len(fieldsList)) == 31):
         chrPlus = fieldsList[0]
@@ -552,8 +741,9 @@ for line in insertions:
         print "clusterEndList: ", len(clusterEndList), clusterEndList
 
         ### 3. Filter clusters:
-        #filterClusters(clusterBegList)
-        
+        #refineClusters(clusterBegList)
+        #refineClusters(clusterEndList)
+
         ### 4. Add the 2 cluster lists to the dictionary:
         clustersDict[insertionId] = {}
         clustersDict[insertionId]["beg"] = clusterBegList
@@ -617,23 +807,26 @@ fastaObj = fasta()
 fastaObj.fasta_reader(readPairsFasta)
 
 for insertionId in clustersDict:
-    #print "********** ", insertionId, " *************"
+    print "********** ", insertionId, " *************"
     clusterBegList = clustersDict[insertionId]["beg"] 
     clusterEndList = clustersDict[insertionId]["end"]   
 
-    #print "--- clusterBeg ---"
+    print "--- clusterBeg ---"
     for clusterObj in clusterBegList:
+        clusterId = clusterObj.chrom + "_" + str(clusterObj.bkpPos) + "_" + clusterObj.clippedSide + "_" + str(clusterObj.nbReads())        
+        consensusDir = outDir + '/tmp/' + clusterId
         clusterObj.addReadSeqs(fastaObj) 
-        #print "TIO: ", clusterObj.clippedReadDict
-        clusterObj.makeConsensusSeq()
-        #print "......"
+        clusterObj.consensusSeq = clusterObj.makeConsensusSeq2(consensusDir)
+        print "......"
 
     #print "--- clusterEnd ---"
     for clusterObj in clusterEndList:
+        clusterId = clusterObj.chrom + "_" + str(clusterObj.bkpPos) + "_" + clusterObj.clippedSide + "_" + str(clusterObj.nbReads())        
+        consensusDir = outDir + '/tmp/' + clusterId
         clusterObj.addReadSeqs(fastaObj) 
-        #print "TIO: ", clusterObj.clippedReadDict
-        clusterObj.makeConsensusSeq()
-        #print "......"
+        clusterObj.consensusSeq = clusterObj.makeConsensusSeq2(consensusDir)
+        print "......"
+
 
 ## 4) For each insertion generate a fasta containing the consensus sequences for each cluster
 ##############################################################################################
@@ -643,18 +836,25 @@ for insertionId in clustersDict:
     fastaDict = {}
     clusterList = clustersDict[insertionId]["beg"] + clustersDict[insertionId]["end"]
 
+    ## For each cluster
     for clusterObj in clusterList:
+
         header = "cluster" + "_" + clusterObj.chrom + "_" + str(clusterObj.bkpPos) + "_" + clusterObj.clippedSide + "_" + str(clusterObj.nbReads())
-        seq = clusterObj.consensusSeq
-        fastaDict[header] = seq
+        fastaDict[header] = clusterObj.consensusSeq
 
     fastaObj = fasta()
     fastaObj.fastaDict = fastaDict
     print insertionId, fastaObj.fastaDict
 
+    ## Write into the output file
     fileName = insertionId + ".fa"
     outFilePath = outDir + "/" + fileName
     fastaObj.write_fasta(outFilePath)
+
+
+### Make cleanup and finish
+command = 'rm ' + readPairsPath + ' ' + readPairsFasta 
+os.system(command) # returns the exit status
 
 
 print "***** Finished! *****"
