@@ -229,7 +229,6 @@ class cluster():
             fastaObj.write_fasta(fastaPath)
         
             ### 2. Make multiple sequence alignment
-            CLUSTALW2 = '/Users/brodriguez/Research/Apps/Clustal/clustalw-2.1/clustalw2'
             msfPath = outDir + '/supportingReads.msf'
             dndPath = outDir + '/supportingReads.dnd'
             command = 'tcoffee ' + fastaPath + ' -method=mafft_msa -quiet -output=msf_aln -outfile=' + msfPath
@@ -237,10 +236,9 @@ class cluster():
             os.system(command) # returns the exit status
 
             ### 3. Generate consensus sequence (cons tool from EMBOSS packagge)
-            CONS = '/Users/brodriguez/Research/Apps/EMBOSS/EMBOSS-6.6.0/emboss/cons'
             consensusPath = outDir + '/consensus.fa'
     
-            command = CONS + ' -sequence ' + msfPath + ' -outseq ' + consensusPath + ' -identity 1 -plurality 1'
+            command = 'cons -sequence ' + msfPath + ' -outseq ' + consensusPath + ' -identity 1 -plurality 1'
             print command
             os.system(command) # returns the exit status
 
