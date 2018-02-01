@@ -877,7 +877,7 @@ class insertion():
         self.mechanism = "NA"
         self.orientation = "NA"
         self.elementLength = "NA"
-        self.elementInterval = "NA"
+        self.elementRange = "NA"
         self.structure = "NA"
         self.score = "NA"
         self.chrom = "NA"
@@ -1164,13 +1164,14 @@ class insertion():
         ## A) Solo integration or partnered transduction
         if (self.tdType == "TD0") or (self.tdType == "TD1"):
             elementLength = alignmentObj.tSize - alignmentObj.tBeg
+            elementRange = str(alignmentObj.tBeg) + '-' + str(alignmentObj.tSize)
 
         ## B) Orphan transduction:
         else:
             elementLength = 0
+            elementRange = "NA"
 
-        #print "** ELEMENT-LENGTH: ", self.tdType, alignmentObj.tName, alignmentObj.tSize, alignmentObj.tBeg, alignmentObj.tEnd, elementLength 
-        return elementLength
+        return elementLength, elementRange
 
 
     def insertion_structure(self, alignmentObjElement, orientation, elementLength):
@@ -1231,7 +1232,7 @@ class insertion():
         if (alignmentObjClippedEnd.tBeg < alignmentObjClippedBeg.tBeg):
            
             elementLength = alignmentObjClippedBeg.tEnd - alignmentObjClippedEnd.tBeg
-            elementInterval = str(alignmentObjClippedEnd.tBeg) + '-' + str(alignmentObjClippedBeg.tEnd)
+            elementRange = str(alignmentObjClippedEnd.tBeg) + '-' + str(alignmentObjClippedBeg.tEnd)
            
         
         ## b) <--Clipped-Beg--> <--Clipped-End-->
@@ -1241,9 +1242,9 @@ class insertion():
         # 1_57286341_57286435 TD0 L1 6019 5538 5614 - -
         else:
             elementLength = alignmentObjClippedEnd.tEnd - alignmentObjClippedBeg.tBeg
-            elementInterval = str(alignmentObjClippedBeg.tBeg) + '-' + str(alignmentObjClippedEnd.tEnd)
+            elementRange = str(alignmentObjClippedBeg.tBeg) + '-' + str(alignmentObjClippedEnd.tEnd)
 
-        return elementLength, elementInterval
+        return elementLength, elementRange
 
 
     def features(self, informativeContigClippedEndObj, informativeContigClippedBegObj):
@@ -1257,7 +1258,7 @@ class insertion():
             mechanism = "NA"
             orientation = "NA"
             elementLength = "NA"
-            elementInterval = "NA"
+            elementRange = "NA"
             structure = "NA"
 
         # B) Both breakpoints characterized
@@ -1269,7 +1270,7 @@ class insertion():
                 mechanism = "DPA"
                 orientation = "NA"
                 elementLength = "NA"
-                elementInterval = "NA"
+                elementRange = "NA"
                 structure = "NA"
 
             # b) Two RT breakpoints
@@ -1282,24 +1283,24 @@ class insertion():
                 orientation = self.insertion_orientation_noPolyA(informativeContigClippedEndObj.bkpDict["alignmentObjRT"], informativeContigClippedBegObj.bkpDict["alignmentObjRT"])
 
                 ## 2. Integrated element length
-                elementLength, elementInterval = self.element_length_noPolyA(informativeContigClippedEndObj.bkpDict["alignmentObjRT"], informativeContigClippedBegObj.bkpDict["alignmentObjRT"], orientation)
+                elementLength, elementRange = self.element_length_noPolyA(informativeContigClippedEndObj.bkpDict["alignmentObjRT"], informativeContigClippedBegObj.bkpDict["alignmentObjRT"], orientation)
 
             # c) One RT and one poly-A breakpoint 
             else:
                 mechanism = "TPRT"
-                elementInterval = "NA"
+                elementRange = "NA"
 
                 ## 1. Orientation (+ or -)
                 orientation = self.insertion_orientation(informativeContigClippedEndObj.bkpDict["polyA"], informativeContigClippedBegObj.bkpDict["polyA"])
                 alignmentObjElement = informativeContigClippedEndObj.bkpDict["alignmentObjRT"] if (orientation == "+") else informativeContigClippedBegObj.bkpDict["alignmentObjRT"]
 
                 ## 2. Integrated element length
-                elementLength = self.element_length(alignmentObjElement)
+                elementLength, elementRange = self.element_length(alignmentObjElement)
 
                 ## 3. Structure (FULL, DEL or INV)
                 structure = self.insertion_structure(alignmentObjElement, orientation, elementLength)
         
-        return mechanism, orientation, elementLength, elementInterval, structure
+        return mechanism, orientation, elementLength, elementRange, structure
  
 
     def insertion_score(self, informativeContigClippedEndObj, informativeContigClippedBegObj):
@@ -1470,7 +1471,7 @@ class insertion():
         self.targetSiteLen = self.target_site(informativeContigClippedEndObj, informativeContigClippedBegObj)
 
         ## 2.2 Insertion features: mechanism (TPRT, EI, 2POLYA), orientation, structure and length   
-        self.mechanism, self.orientation, self.elementLength, self.elementInterval, self.structure = self.features(informativeContigClippedEndObj, informativeContigClippedBegObj)
+        self.mechanism, self.orientation, self.elementLength, self.elementRange, self.structure = self.features(informativeContigClippedEndObj, informativeContigClippedBegObj)
 
         ## 2.3 Insertion score
         self.score = self.insertion_score(informativeContigClippedEndObj, informativeContigClippedBegObj)
@@ -1478,7 +1479,7 @@ class insertion():
         ## 2.4 Breakpoints
         self.chrom, self.bkpAPos, self.bkpBPos, self.bkpAContigSeq, self.bkpBContigSeq, self.cipos = self.breakpoints(informativeContigClippedEndObj, informativeContigClippedBegObj)
 
-        print "FEATURES: ", self.tdType, self.coordinates, self.targetSiteLen, self.mechanism, self.orientation, self.elementLength, self.elementInterval, self.structure, self.score, self.bkpAPos, self.bkpBPos, self.bkpAContigSeq, self.bkpBContigSeq, self.cipos
+        print "FEATURES: ", self.tdType, self.coordinates, self.targetSiteLen, self.mechanism, self.orientation, self.elementLength, self.elementRange, self.structure, self.score, self.bkpAPos, self.bkpBPos, self.bkpAContigSeq, self.bkpBContigSeq, self.cipos
 
 
     def convert2VCFline(self, genomeObj):
@@ -1492,7 +1493,7 @@ class insertion():
         ALT = "<MEI>"
         QUAL = "."
         FILTER = "."
-        INFO = "SVTYPE=<MEI>;CLASS=" + self.family + ";TYPE=" + self.tdType + ";MECHANISM=" + self.mechanism + ";SCORE=" + str(self.score) + ";BKPB=" + str(self.bkpBPos) + ";CIPOS=" + str(self.cipos) + ";STRAND=" + self.orientation + ";STRUCT=" + self.structure + ";LEN=" + str(self.elementLength) + ";TSLEN=" + str(self.targetSiteLen) + ";SRCID=" + self.cytobandId + ";SRCTYPE=" + self.sourceElementType + ";SRC=" + self.sourceElementCoord + ";TDC=" + self.tdCoord + ";TDLEN=" + self.tdLen + ";TDLENR=" + self.tdLenRna + ";SRCGENE=" + self.srcgene + ";GR=" + self.grInfo + ";CONTIGA=" + self.bkpAContigSeq + ";CONTIGB=" + self.bkpBContigSeq + ";RP=" + self.readPairIdsPlus + ";RN=" + self.readPairIdsMinus    
+        INFO = "SVTYPE=<MEI>;CLASS=" + self.family + ";TYPE=" + self.tdType + ";MECHANISM=" + self.mechanism + ";SCORE=" + str(self.score) + ";BKPB=" + str(self.bkpBPos) + ";CIPOS=" + str(self.cipos) + ";STRAND=" + self.orientation + ";STRUCT=" + self.structure + ";LEN=" + str(self.elementLength) + ";RANGE=" + str(self.elementRange) + ";TSLEN=" + str(self.targetSiteLen) + ";SRCID=" + self.cytobandId + ";SRCTYPE=" + self.sourceElementType + ";SRC=" + self.sourceElementCoord + ";TDC=" + self.tdCoord + ";TDLEN=" + self.tdLen + ";TDLENR=" + self.tdLenRna + ";SRCGENE=" + self.srcgene + ";GR=" + self.grInfo + ";CONTIGA=" + self.bkpAContigSeq + ";CONTIGB=" + self.bkpBContigSeq + ";RP=" + self.readPairIdsPlus + ";RN=" + self.readPairIdsMinus    
         FORMAT = "RCP:RCN:SL"
         RP = str(self.nbReadPairsPlus)
         RN = str(self.nbReadPairsMinus)

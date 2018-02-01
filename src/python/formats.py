@@ -308,6 +308,7 @@ class VCF():
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
 ##INFO=<ID=STRUCT,Number=1,Type=String,Description="Mobile element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
 ##INFO=<ID=LEN,Number=1,Type=Integer,Description="Mobile element length">
+##INFO=<ID=RANGE,Number=1,Type=Integer,Description="Begin and end position of the piece of mobile element integrated">
 ##INFO=<ID=TSLEN,Number=1,Type=Integer,Description="Target site duplication (+_value) or deletion (-_value) length">
 ##INFO=<ID=SRCID,Number=1,Type=String,Description="Germline source element cytoband identifier">
 ##INFO=<ID=SRCTYPE,Number=1,Type=String,Description="Source element type (GERMLINE or SOMATIC)">
@@ -405,7 +406,7 @@ class VCFline():
         """
 
         ## Create list containing the order of info fields 
-        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "MECHANISM", "SCORE", "MANUAL", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "TSLEN", "SRCID", "SRCTYPE", "SRC", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GR", "GERMDB", "POLYMORPHIC", "NOVEL", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "RP", "RN" ]
+        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "MECHANISM", "SCORE", "MANUAL", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "RANGE", "TSLEN", "SRCID", "SRCTYPE", "SRC", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GR", "GERMDB", "POLYMORPHIC", "NOVEL", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "RP", "RN" ]
 
         flagList = ["POLYMORPHIC", "NOVEL", "COSMIC", "CPG" , "MANUAL"]
 
