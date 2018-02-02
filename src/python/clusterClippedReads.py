@@ -141,68 +141,8 @@ class cluster():
             
             self.clippedReadDict[readId]["seq"]= readSeq
 
+
     def makeConsensusSeq(self, outDir):
-        """
-        assembly based
-        """
-
-        nbReads = len(self.clippedReadDict.keys())
-
-        ## A) Single sequence
-        if (nbReads == 1):    
-            contigsFastaObj = fasta() 
-            readId = self.clippedReadDict.keys()[0]       
-            contigsFastaObj.fastaDict["seq"] = self.clippedReadDict[readId]["seq"]
-
-        ## B) Multiple sequence -> attempt to assemble them
-        else:
-            command = 'mkdir -p ' + outDir 
-            os.system(command) # returns the exit status
-            
-            ### 1. Create fasta file containing cluster supporting reads
-            fastaObj = fasta()        
-            fastaDict = {}
-    
-            for readId in self.clippedReadDict.keys():
-                fastaDict[readId] = self.clippedReadDict[readId]["seq"]
-
-            fastaObj.fastaDict = fastaDict
-            fastaPath = outDir + '/supportingReads.fa'
-            fastaObj.write_fasta(fastaPath)
-        
-            ### 2. Preparing files for assembly
-            VELVETH = '/Users/brodriguez/Research/Apps/velvet/1.2.10/velveth'
-            kmerLen = '15'
-            command = VELVETH + ' ' + outDir + ' ' + kmerLen + ' -fasta -short ' + fastaPath + ' 1>> ' + outDir + '/assembly_setup.out 2>> ' + outDir + '/assembly_setup.err' 
-            print command
-            os.system(command) # returns the exit status
-
-            ### 3. Breakpoint assembly
-            VELVETG = '/Users/brodriguez/Research/Apps/velvet/1.2.10/velvetg'
-            command = VELVETG + ' ' + outDir + ' -exp_cov auto -cov_cutoff auto 1>> ' + outDir + '/assembly.out 2>> ' + outDir + '/assembly.err'
-            
-            print command
-            os.system(command) # returns the exit status
-
-            ### Read contigs
-            contigsPath = outDir + '/contigs.fa'
-            contigsFastaObj = fasta() 
-            contigsFastaObj.fasta_reader(contigsPath)
-
-            ## If no contig assembled pick raw cluster supporting reads
-            nbContigs = len(contigsFastaObj.fastaDict)
-
-            if (nbContigs == 0):
-                print "NO-CONTIG!!!!"   
-                contigsFastaObj = fastaObj
-        
-
-            ### Do cleanup
-
-        return contigsFastaObj
-
-
-    def makeConsensusSeq2(self, outDir):
         """
         multiple sequence alignment based
         """
@@ -248,142 +188,10 @@ class cluster():
             consensusSeq = fastaObj.fastaDict["EMBOSS_001"].upper()
 
             ### Do cleanup
-            #command = 'rm ' + fastaPath + ' ' + msfPath + ' ' + dndPath + ' ' + consensusPath     
-            #os.system(command) # returns the exit status
+            command = 'rm ' + fastaPath + ' ' + msfPath + ' ' + dndPath + ' ' + consensusPath     
+            os.system(command) # returns the exit status
 
-        ### Trim consensus sequence to remove polyN rich boundaries
-        #trimmedSeq = self.trimConsensusSeq(consensusSeq)
-        trimmedSeq = consensusSeq
-
-        return trimmedSeq
-
-    def trimConsensusSeq(self, consensusSeq):
-        """
-        """
-
-        ### 1. Split the consensus sequence into slides of 4bp
-        windowSize = 4
-        consensusSeqLen = len(consensusSeq)
-        slideObjList = []
-
-        print "trim_consensus: ", windowSize, consensusSeqLen, consensusSeq
-
-        for pos in range(0, consensusSeqLen, windowSize):
- 
-            # Take slice
-            beg = pos
-            end = beg + windowSize
-            seq = consensusSeq[beg:end] 
-     
-            # Compute percentage of N in the given slice
-            nbN = seq.count("N")       
-            percN = float(nbN) / (windowSize) * 100
-
-            # Create slide object and add to the list
-            slideObj = slide()
-            slideObj.beg, slideObj.end, slideObj.seq, slideObj.percN = [beg, end, seq, percN]
-            slideObjList.append(slideObj)
-
-        ### 2. Identify regions enriched in Ns (polyNclusters)
-        index = 0
-        nbSlides = len(slideObjList)
-        polyNclusterObjList = []
-        
-        # Iterate over the slides
-        while index < nbSlides:
-            slideObj = slideObjList[index]
-
-            ## Current slide is enriched in Ns
-            if (slideObj.percN >= 50):
-            
-                polyNclusterObj = polyNcluster(slideObj)
-                        
-                ## Look into the next slides
-                for nextIndex in range(index + 1, nbSlides):
-                    index += 1
-                    nextSlideObj = slideObjList[nextIndex]            
-
-                    ## Poly-N as well. Add to the polyNcluster and look into the next slide 
-                    if (nextSlideObj.percN >= 25):
-                        polyNclusterObj.addSlide(nextSlideObj)
-
-                    ## Not poly-NA. Stop and close the polyNcluster
-                    else:
-                        break
-        
-                ## Add polyNcluster to the list:
-                polyNclusterObjList.append(polyNclusterObj)
-        
-            index += 1
-              
-        ### 3. Select those polyNclusters composed by at least two slides:
-        filteredpolyNclusterObjList = []
-        
-        for polyNclusterObj in polyNclusterObjList: 
-            if (polyNclusterObj.nbSlides() > 3):
-                filteredpolyNclusterObjList.append(polyNclusterObj)
-        
-        ### 4. Select polyNclusters for trimming. 
-        # Trimming will be done based on those polyNclusters located in the first and last quarter of the consensus sequence. 
-        # If multiple possible polyNclusters, the inner one will be selected. 
-        
-        ### 4.1 Select first quarter polyNcluster
-        beg = 0
-        end = consensusSeqLen/4
-        polyNclusterObjListFirstQuarter = []
-        
-        for polyNclusterObj in filteredpolyNclusterObjList:
-            if overlap(beg, end, polyNclusterObj.beg, polyNclusterObj.end):
-                polyNclusterObjListFirstQuarter.append(polyNclusterObj)
-        
-        ## a) No polyNcluster 
-        if len(polyNclusterObjListFirstQuarter) == 0:
-            polyNclusterObjFirstQuarter = "NA"
-        
-        ## b) polyNcluster
-        else:
-            polyNclusterObjFirstQuarter = polyNclusterObjListFirstQuarter[len(polyNclusterObjListFirstQuarter)-1]
-          
-        
-        ## 4.2 Select last quarter polyNcluster
-        beg = consensusSeqLen - (consensusSeqLen/4)
-        end = consensusSeqLen
-        polyNclusterObjListLastQuarter = []
-        
-        for polyNclusterObj in filteredpolyNclusterObjList:
-        
-            if overlap(beg, end, polyNclusterObj.beg, polyNclusterObj.end):
-                polyNclusterObjListLastQuarter.append(polyNclusterObj)
-        
-        ## a) No polyNcluster 
-        if len(polyNclusterObjListLastQuarter) == 0:
-            polyNclusterObjLastQuarter = "NA"
-        
-        ## b) polyNcluster
-        else:
-            polyNclusterObjLastQuarter = polyNclusterObjListLastQuarter[0]
-        
-        
-        ### 5. Trim consensus sequence on those boundaries it has a poly-N cluster
-        ## a) Not trim consensus sequence as there are not N-rich clusters  
-        if (polyNclusterObjFirstQuarter == "NA") and (polyNclusterObjLastQuarter == "NA"): 
-            trimmedSeq = consensusSeq
-        
-        ## b) Trim both sides
-        elif (polyNclusterObjFirstQuarter != "NA") and (polyNclusterObjLastQuarter != "NA"):
-            trimmedSeq = consensusSeq[polyNclusterObjFirstQuarter.end:polyNclusterObjLastQuarter.beg]   
-        
-        ## c) Trim at the begin
-        elif (polyNclusterObjFirstQuarter != "NA"):
-            trimmedSeq = consensusSeq[polyNclusterObjFirstQuarter.end:] 
-        
-        ## d) Trim at the end
-        else:
-            trimmedSeq = consensusSeq[:polyNclusterObjLastQuarter.beg]
-            
-        print "TRIMMED: ", polyNclusterObjFirstQuarter, polyNclusterObjLastQuarter, trimmedSeq
-        
-        return trimmedSeq        
+        return consensusSeq
                   
 #### FUNCTIONS ####
 def log(label, string):
@@ -715,6 +523,9 @@ for line in insertions:
 
         ## Define an insertion id (insertion coordinates defined by the end
         # of + cluster and beg of - cluster)
+        if familyPlus == 'Other': # temporary fix
+            familyPlus = 'SVA'
+
         insertionId = familyPlus + ":" + insertionType + ":" + chrPlus + "_" + endPlus + "_" + begMinus 
 
         ### 1. Search for clipped reads
@@ -814,7 +625,7 @@ for insertionId in clustersDict:
         clusterId = clusterObj.chrom + "_" + str(clusterObj.bkpPos) + "_" + clusterObj.clippedSide + "_" + str(clusterObj.nbReads())        
         consensusDir = outDir + '/tmp/' + clusterId
         clusterObj.addReadSeqs(fastaObj) 
-        clusterObj.consensusSeq = clusterObj.makeConsensusSeq2(consensusDir)
+        clusterObj.consensusSeq = clusterObj.makeConsensusSeq(consensusDir)
         print "......"
 
     #print "--- clusterEnd ---"
@@ -822,7 +633,7 @@ for insertionId in clustersDict:
         clusterId = clusterObj.chrom + "_" + str(clusterObj.bkpPos) + "_" + clusterObj.clippedSide + "_" + str(clusterObj.nbReads())        
         consensusDir = outDir + '/tmp/' + clusterId
         clusterObj.addReadSeqs(fastaObj) 
-        clusterObj.consensusSeq = clusterObj.makeConsensusSeq2(consensusDir)
+        clusterObj.consensusSeq = clusterObj.makeConsensusSeq(consensusDir)
         print "......"
 
 
