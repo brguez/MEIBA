@@ -599,9 +599,12 @@ readPairsFile.close()
 
 ## 2. Extract clipped read sequences with picard and generate fasta containing all the reads supporting the clusters
 readPairsFasta = outDir + '/allReadPairs.fa'
-PICARD = '/Users/brodriguez/Research/Apps/Picard/2.12.1/picard.jar'
-print command
+PICARD = '/Users/brodriguez/Research/Apps/Picard/2.12.1/picard.jar' # Laptop
+#PICARD = '/lustre/scratch117/casm/cancer/Pancancer/jt14/old_scratch109/Berni/Apps/Picard/2.12.1/picard.jar' # Sanger
+
 command = 'java -jar ' + PICARD + ' FilterSamReads I=' + bam + ' O=/dev/stdout READ_LIST_FILE=' + readPairsPath + ' FILTER=includeReadList WRITE_READS_FILES=false VALIDATION_STRINGENCY=SILENT QUIET=true | samtools fasta - > '  + readPairsFasta
+print command
+
 os.system(command)
 
 
