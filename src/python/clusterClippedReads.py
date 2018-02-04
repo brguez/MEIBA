@@ -449,7 +449,7 @@ def clusterCLipped(clippedList, clippedSide):
 ## Import modules ##
 import argparse
 import sys
-import os.path
+import os
 import time
 from operator import itemgetter, attrgetter, methodcaller
 import pysam
@@ -598,15 +598,12 @@ for readPairId in allReadPairIdList:
 readPairsFile.close()
 
 ## 2. Extract clipped read sequences with picard and generate fasta containing all the reads supporting the clusters
-# PICARD = "java -jar /Users/brodriguez/Research/Apps/Picard/2.12.1/picard.jar"
-# PICARD="java -Xms10G -Xmx10G -jar /software/CGP/external-apps/picard-tools-1.80/lib/FilterSamReads.jar" # Sanger
-PICARD = "java -jar /Users/brodriguez/Research/Apps/Picard/2.12.1/picard.jar FilterSamReads" # Laptop
-
 readPairsFasta = outDir + '/allReadPairs.fa'
-
-command = PICARD + ' I=' + bam + ' O=/dev/stdout READ_LIST_FILE=' + readPairsPath + ' FILTER=includeReadList WRITE_READS_FILES=false VALIDATION_STRINGENCY=SILENT QUIET=true | samtools fasta - > '  + readPairsFasta
+PICARD = '/Users/brodriguez/Research/Apps/Picard/2.12.1/picard.jar'
 print command
-os.system(command) # returns the exit status
+command = 'java -jar ' + PICARD + ' FilterSamReads I=' + bam + ' O=/dev/stdout READ_LIST_FILE=' + readPairsPath + ' FILTER=includeReadList WRITE_READS_FILES=false VALIDATION_STRINGENCY=SILENT QUIET=true | samtools fasta - > '  + readPairsFasta
+os.system(command)
+
 
 ## 3) Add to the reads supporting the clusters its complete sequence from fasta and 
 ####################################################################################
