@@ -459,6 +459,9 @@ import subprocess
 # Global variables:
 global debugBool ## debug logging mode. Boolean.
 
+# Environmental variables:
+PICARD = os.environ['PICARD']
+
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= "")
 parser.add_argument('insertions', help='')
@@ -549,16 +552,10 @@ for line in insertions:
          
         print "clusterEndList: ", len(clusterEndList), clusterEndList
 
-        ### 3. Filter clusters:
-        #refineClusters(clusterBegList)
-        #refineClusters(clusterEndList)
-
-        ### 4. Add the 2 cluster lists to the dictionary:
+        ### 3. Add the 2 cluster lists to the dictionary:
         clustersDict[insertionId] = {}
         clustersDict[insertionId]["beg"] = clusterBegList
         clustersDict[insertionId]["end"] = clusterEndList
-
-#print "clustersDict: ", clustersDict
 
 bamFile.close()
 
@@ -599,12 +596,9 @@ readPairsFile.close()
 
 ## 2. Extract clipped read sequences with picard and generate fasta containing all the reads supporting the clusters
 readPairsFasta = outDir + '/allReadPairs.fa'
-PICARD = '/Users/brodriguez/Research/Apps/Picard/2.12.1/picard.jar' # Laptop
-#PICARD = '/lustre/scratch117/casm/cancer/Pancancer/jt14/old_scratch109/Berni/Apps/Picard/2.12.1/picard.jar' # Sanger
 
-command = 'java -jar ' + PICARD + ' FilterSamReads I=' + bam + ' O=/dev/stdout READ_LIST_FILE=' + readPairsPath + ' FILTER=includeReadList WRITE_READS_FILES=false VALIDATION_STRINGENCY=SILENT QUIET=true | samtools fasta - > '  + readPairsFasta
+command = PICARD + ' FilterSamReads I=' + bam + ' O=/dev/stdout READ_LIST_FILE=' + readPairsPath + ' FILTER=includeReadList WRITE_READS_FILES=false VALIDATION_STRINGENCY=SILENT QUIET=true | samtools fasta - > '  + readPairsFasta
 print command
-
 os.system(command)
 
 
