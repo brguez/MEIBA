@@ -8,10 +8,10 @@
 
     Transposable Element Insertion Breakpoint Analyzer (TEIBA)
 
-    Copyright (c) 2016 Bernardo Rodríguez-Martín
+    Copyright (c) 2016-2018 Bernardo Rodríguez-Martín
 
     Mobile Genomes & Disease Lab.
-    Universidad de Vigo (Spain)
+    Universidad de Vigo & Universidad Santiago de Compostela (Spain)
 
     Licenced under the GNU General Public License 3.0 license.
 ******************************************************************************
@@ -79,26 +79,26 @@ cat <<help
 Execute TEIBA on one dataset (sample).
 
 *** USAGE
-    $0 -i <insertions> -f <insertions_fasta> -g <genome> -d <driver_db> --sample-id <sample_identifier> --file-name <output_fileName>[OPTIONS]
+    $0 -i <insertions> -b <bam> --ref-dir <path> --sample-id <sample_identifier> --file-name <output_fileName> [OPTIONS]
 
 *** MANDATORY
-    -i|--insertions     <TSV>              TraFiC mobile element insertion (MEI) candidate calls for a given sample.
-    -b|--bam            <BAM>              BAM file containing MEI insertions supporting reads.
-    -g|--genome         <FASTA>            Reference Genome in fasta format (RG). Make sure the same RG version is used than for running TraFiC.
-                                           Also, make sure the same chromosome naming conventions are used.
-    -d|--repeats-db     <BED>              Database of repetitive sequences according to RepeatMasker in BED format.
-    --sample-id	        <STRING>           Sample identifier to be incorporated in the SL field of the output VCF. 
-                                           In PCAWG is used the normal_wgs_aliquot_id or tumor_wgs_aliquot_id.
-    --file-name	        <STRING>           Output VCF name. In PCAWG we use the submitted_donor_id.
+    -i|--insertions     <TSV>                           TraFiC insertions file for a given sample.
+    -b|--bam            <BAM>                           Sample BAM file.
+    --ref-dir           <PATH>                          Path to the directory where TEIBA reference files are located.
+    --sample-id	        <STRING>                        Sample identifier to be incorporated in the SL field of the output VCF. 
+    --file-name	        <STRING>                        Output VCF name.
 
 *** [OPTIONS] can be:
 * General:
-    -o|--output-dir     <PATH>             Output directory. Default current working directory.
-    --tmp-dir		<PATH>		   Temporary directory. Default /tmp.
-    --no-annotation	                   Skip MEI annotation step.
-    --no-cleanup	                   Keep intermediate files.
-    -h|--help			           Display usage information
+    -o|--out-dir        <PATH>                          Output directory. Default current working directory.
+    --tmp-dir		<PATH>		                Temporary directory. Default /tmp.
+    --no-cleanup	                                Keep intermediate files.
+    -h|--help			                        Display usage information
 
+
+* Annotation:
+    --annotation-steps  <(STEP_1)>, ... ,<(STEP_N)>	List of annotation steps to be executed. 6 different steps can be enabled:
+                                                        GENE, REPEATS, DRIVERS AND/OR GERMLINE. 'NONE' will disable any annotation.
 
 * Filters:
     --filters           <(FILTER_1)>, ... ,<(FILTER_N)>	List of filters to be applied out of 6 possible filtering criteria: 
@@ -114,7 +114,7 @@ Execute TEIBA on one dataset (sample).
 
 * Files:
     --germline-VCF      <VCF>                           VCF with germline MEI calls for a given donor. If provided, input insertions are considered to be somatic.
-                                                        Necesary for GERMLINE filtering.
+                                                        Used in GERMLINE filtering.
 help
 }
 
@@ -123,7 +123,7 @@ help
 ################################
 function getoptions {
 
-ARGS=`getopt -o "i:b:g:d:o:h" -l "insertions:,bam:,genome:,repeats-db:,sample-id:,file-name:,output-dir:,tmp-dir:,no-annotation,no-cleanup,help,filters:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,score-GR:,germline-VCF:" \
+ARGS=`getopt -o "i:b:g:d:o:h" -l "insertions:,bam:,ref-dir:,sample-id:,file-name:,out-dir:,tmp-dir:,no-cleanup,help,annotation-steps:,filters:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,score-GR:,germline-VCF:" \
       -n "$0" -- "$@"`
 
 #Bad arguments
@@ -155,17 +155,10 @@ do
             fi
             shift 2;;
 
-        -g|--genome)
+        --ref-dir)
             if [ -n "$2" ];
             then
-                genome=$2
-            fi
-            shift 2;;
-
-        -d|--repeats-db)
-            if [ -n "$2" ];
-            then
-                repeatsDb=$2
+                refDir=$2
             fi
             shift 2;;
 
@@ -185,7 +178,7 @@ do
 
         ## OPTIONS
         # General:
-        -o|--output-dir)
+        -o|--out-dir)
             if [ -n "$2" ];
             then
                 outDir=$2
@@ -199,10 +192,6 @@ do
       	  fi
       	  shift 2;;
 
-        --no-annotation)
-            annot="FALSE";
-            shift;;
-
         --no-cleanup)
             cleanup="FALSE";
             shift;;
@@ -211,6 +200,14 @@ do
             usagedoc;
             exit 1
             shift;;
+
+        # Annotation: 
+        --annotation-steps)
+            if [ -n "$2" ];
+            then
+                annotSteps=$2
+            fi
+            shift 2;;
 
         # Filters:
         --filters)
@@ -376,7 +373,7 @@ function cleanupFunc {
 ############################
 
 # TEIBA version
-version=0.7.4
+version=0.7.5
 
 # Enable extended pattern matching
 shopt -s extglob
@@ -421,11 +418,10 @@ fi
 
 ## Check that everything is ok:
 if [[ ! -s $insertions ]]; then log "TraFiC MEI calls file does not exist or is empty. Mandatory argument -i|--insertions" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -s $bam ]]; then log "MEI supporting reads BAM file does not exist or is empty. Mandatory argument -b|--bam" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -s $genome ]]; then log "The reference genome fasta file does not not exist or is empty. Mandatory argument -g|--genome" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -s $repeatsDb ]]; then log "The RepeatMasker repeats database does not exist or is empty. Mandatory argument -d|--repeats-db" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ $sampleId == "" ]]; then log "Sample id does not provided. Mandatory argument --sample-id" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ $fileName == "" ]]; then log "Output file name does not provided. Mandatory argument --file-name" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -s $bam ]]; then log "Sample BAM file does not exist or is empty. Mandatory argument -b|--bam" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -e $refDir ]]; then log "TEIBA reference dir does not exist. Mandatory argument --ref-dir" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ $sampleId == "" ]]; then log "Sample id not provided. Mandatory argument --sample-id" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ $fileName == "" ]]; then log "Output file name not provided. Mandatory argument --file-name" "ERROR" >&2; usageDoc; exit -1; fi
 
 
 #### Optional arguments
@@ -458,18 +454,17 @@ else
 	fi
 fi
 
-## Annotation
-if [[ "$annot" != "FALSE" ]];
-then
-    annot="TRUE";
-fi
-
 ## Clean up
 if [[ "$cleanup" != "FALSE" ]];
 then
     cleanup='TRUE';
 fi
 
+##### Annotation (skip annotation if no step provided)
+if [[ "$annotSteps" == "" ]];
+then
+    annotSteps="NONE";
+fi
 
 #### Filters:
 
@@ -583,16 +578,12 @@ else
     fi
 fi
 
-
-
 #### Files:
-
 ## VCF with germline MEI calls for filtering out GERMLINE insertions miscalled as SOMATIC
 if [[ "$germlineVCF" == "" ]]
 then
     germlineVCF="NOT_PROVIDED";
 fi
-
 
 # 4. Directories
 ################
@@ -601,10 +592,6 @@ srcDir=$rootDir/src
 pyDir=$srcDir/python
 bashDir=$srcDir/bash
 awkDir=$srcDir/awk
-
-
-## references:
-refDir=$rootDir/ref
 
 ## Output files directories
 logsDir=$outDir/Logs
@@ -633,9 +620,10 @@ BKP_ANALYSIS=$pyDir/insertionBkpAnalysis.py
 ANNOTATOR=$bashDir/variants_annotator.sh
 FILTER=$pyDir/filterVCF.MEI.py
 
-# references
-driverDb=$refDir/cancerGenes_COSMIC_CPG.tsv
-germlineMEIdb=$refDir/germlineMEI_db.sorted.bed
+# reference genome
+# $specie_$build_$version_genome.fa
+gemomeFileName=`ls $refDir | grep '.*_genome.fa$'`
+genome=$refDir/$gemomeFileName
 
 
 ## DISPLAY PIPELINE CONFIGURATION
@@ -650,17 +638,18 @@ printf "  %-34s %s\n\n" "TEIBA Version $version"
 printf "  %-34s %s\n" "***** MANDATORY ARGUMENTS *****"
 printf "  %-34s %s\n" "insertions:" "$insertions"
 printf "  %-34s %s\n" "bam:" "$bam"
-printf "  %-34s %s\n" "genome:" "$genome"
-printf "  %-34s %s\n" "repeatsDb:" "$repeatsDb"
+printf "  %-34s %s\n" "ref-dir:" "$refDir"
 printf "  %-34s %s\n" "sample-id:" "$sampleId"
 printf "  %-34s %s\n\n" "file-name:" "$fileName"
 
 printf "  %-34s %s\n" "***** OPTIONAL ARGUMENTS *****"
 printf "  %-34s %s\n" "*** General ***"
-printf "  %-34s %s\n" "output-dir:" "$outDir"
+printf "  %-34s %s\n" "out-dir:" "$outDir"
 printf "  %-34s %s\n" "tmp-dir:" "$TMPDIR"
-printf "  %-34s %s\n" "MEI-annotation:" "$annot"
 printf "  %-34s %s\n\n" "cleanup:" "$cleanup"
+
+printf "  %-34s %s\n" "*** Annotation ***"
+printf "  %-34s %s\n\n" "annotation-steps:" "$annotSteps"
 
 printf "  %-34s %s\n" "*** Filters ***"
 printf "  %-34s %s\n" "filters:" "$filterList"
@@ -675,7 +664,6 @@ printf "  %-34s %s\n\n" "score-GR:" "$scoreGR"
 
 printf "  %-34s %s\n" "*** Files ***"
 printf "  %-34s %s\n\n" "germline-VCF:" "$germlineVCF"
-
 
 ##########
 ## START #
@@ -946,7 +934,7 @@ if [[ ! -d $annotDir ]]; then mkdir $annotDir; fi
 
 ## If annot disabled copy the previously generated VCF as annot output VCF. 
 # Then, annotation step will be skipped as file already exits 
-if [[ "$annot" == "FALSE" ]]; then cp $rawVCF $annotVCF; fi
+if [[ "$annotSteps" == "NONE" ]]; then cp $rawVCF $annotVCF; fi
 
 printHeader "Performing MEI breakpoint annotation"
 
@@ -957,7 +945,7 @@ then
     startTime=$(date +%s)
 
     log "Annotating MEI" $step
-    run "bash $ANNOTATOR $rawVCF $repeatsDb $driverDb $germlineMEIdb $fileName $annotDir 1>> $logsDir/5_annotation.out 2>> $logsDir/5_annotation.err" "$ECHO"
+    run "bash $ANNOTATOR $rawVCF $annotSteps $refDir $fileName $annotDir 1>> $logsDir/5_annotation.out 2>> $logsDir/5_annotation.err" "$ECHO"
 
     if [ ! -s $annotVCF ];
     then
