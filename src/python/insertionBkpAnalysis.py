@@ -1543,7 +1543,7 @@ if __name__ == "__main__":
     ## 1. Create VCF object and print VCF header
     header("Creating VCF object and printing VCF header into the output file")
     VCFObj = formats.VCF()
-    VCFObj.create_header()
+    VCFObj.create_header(genome, genomeObj)
 
     ## 2. Per each insertion perform breakpoint analysis
     inputFile = open(inputPaths, 'r')
@@ -1555,8 +1555,6 @@ if __name__ == "__main__":
 
         # Get MEI info and files
         insertionInfo = line[0]
-
-        print "HEIII: ", insertionInfo
         family, tdType, insertionCoord = insertionInfo.split(":")
         contigsPath = line[1]
         blatPath = line[2]

@@ -4,6 +4,7 @@
 import re
 import time
 import itertools 
+import os 
 
 def header(string):
     """
@@ -193,110 +194,66 @@ class VCF():
             outFile.write(row)
 
 
-    def create_header(self):
+    def create_header(self, genome, genomeObj):
         """
         """
 
-        ## Define variables
+        ### 1. Define variables
+        ## 1.1 date
         date = time.strftime("%Y%m%d")
 
-        context = {
-         "date": date,
-         "source": "TraFiCv2.0",
-         "reference": "hs37d5"
-         }
+        ## 1.2 Extract species, build and version from genome file name
+        species, build, version, nan = os.path.basename(genome).split("_")
 
-        ## Header template
+        if species == "":
+            species = "unknown"
+
+        if build == "":
+            build = "unknown"
+
+        if version == "":
+            version = "unknown"
+       
+        context = {
+            "date": date,
+            "source": "TraFiC-MEMv1.0",
+            "reference": version
+        }
+
+        ### 2. Generate header
+        ## 2.1 Header chunk 1
         template = """##fileformat=VCFv4.2
 ##fileDate={date}
 ##source={source}
-##reference={reference}
-##contig=<ID=1,assembly=GRCh37,length=249250621,species=human>
-##contig=<ID=2,assembly=GRCh37,length=243199373,species=human>
-##contig=<ID=3,assembly=GRCh37,length=198022430,species=human>
-##contig=<ID=4,assembly=GRCh37,length=191154276,species=human>
-##contig=<ID=5,assembly=GRCh37,length=180915260,species=human>
-##contig=<ID=6,assembly=GRCh37,length=171115067,species=human>
-##contig=<ID=7,assembly=GRCh37,length=159138663,species=human>
-##contig=<ID=8,assembly=GRCh37,length=146364022,species=human>
-##contig=<ID=9,assembly=GRCh37,length=141213431,species=human>
-##contig=<ID=10,assembly=GRCh37,length=135534747,species=human>
-##contig=<ID=11,assembly=GRCh37,length=135006516,species=human>
-##contig=<ID=12,assembly=GRCh37,length=133851895,species=human>
-##contig=<ID=13,assembly=GRCh37,length=115169878,species=human>
-##contig=<ID=14,assembly=GRCh37,length=107349540,species=human>
-##contig=<ID=15,assembly=GRCh37,length=102531392,species=human>
-##contig=<ID=16,assembly=GRCh37,length=90354753,species=human>
-##contig=<ID=17,assembly=GRCh37,length=81195210,species=human>
-##contig=<ID=18,assembly=GRCh37,length=78077248,species=human>
-##contig=<ID=19,assembly=GRCh37,length=59128983,species=human>
-##contig=<ID=20,assembly=GRCh37,length=63025520,species=human>
-##contig=<ID=21,assembly=GRCh37,length=48129895,species=human>
-##contig=<ID=22,assembly=GRCh37,length=51304566,species=human>
-##contig=<ID=hs37d5,assembly=GRCh37,length=35477943,species=human>
-##contig=<ID=GL000191.1,assembly=GRCh37,length=106433,species=human>
-##contig=<ID=GL000192.1,assembly=GRCh37,length=547496,species=human>
-##contig=<ID=GL000193.1,assembly=GRCh37,length=189789,species=human>
-##contig=<ID=GL000194.1,assembly=GRCh37,length=191469,species=human>
-##contig=<ID=GL000195.1,assembly=GRCh37,length=182896,species=human>
-##contig=<ID=GL000196.1,assembly=GRCh37,length=38914,species=human>
-##contig=<ID=GL000197.1,assembly=GRCh37,length=37175,species=human>
-##contig=<ID=GL000198.1,assembly=GRCh37,length=90085,species=human>
-##contig=<ID=GL000199.1,assembly=GRCh37,length=169874,species=human>
-##contig=<ID=GL000200.1,assembly=GRCh37,length=187035,species=human>
-##contig=<ID=GL000201.1,assembly=GRCh37,length=36148,species=human>
-##contig=<ID=GL000202.1,assembly=GRCh37,length=40103,species=human>
-##contig=<ID=GL000203.1,assembly=GRCh37,length=37498,species=human>
-##contig=<ID=GL000204.1,assembly=GRCh37,length=81310,species=human>
-##contig=<ID=GL000205.1,assembly=GRCh37,length=174588,species=human>
-##contig=<ID=GL000206.1,assembly=GRCh37,length=41001,species=human>
-##contig=<ID=GL000207.1,assembly=GRCh37,length=4262,species=human>
-##contig=<ID=GL000208.1,assembly=GRCh37,length=92689,species=human>
-##contig=<ID=GL000209.1,assembly=GRCh37,length=159169,species=human>
-##contig=<ID=GL000210.1,assembly=GRCh37,length=27682,species=human>
-##contig=<ID=GL000211.1,assembly=GRCh37,length=166566,species=human>
-##contig=<ID=GL000212.1,assembly=GRCh37,length=186858,species=human>
-##contig=<ID=GL000213.1,assembly=GRCh37,length=164239,species=human>
-##contig=<ID=GL000214.1,assembly=GRCh37,length=137718,species=human>
-##contig=<ID=GL000215.1,assembly=GRCh37,length=172545,species=human>
-##contig=<ID=GL000216.1,assembly=GRCh37,length=172294,species=human>
-##contig=<ID=GL000217.1,assembly=GRCh37,length=172149,species=human>
-##contig=<ID=GL000218.1,assembly=GRCh37,length=161147,species=human>
-##contig=<ID=GL000219.1,assembly=GRCh37,length=179198,species=human>
-##contig=<ID=GL000220.1,assembly=GRCh37,length=161802,species=human>
-##contig=<ID=GL000221.1,assembly=GRCh37,length=155397,species=human>
-##contig=<ID=GL000222.1,assembly=GRCh37,length=186861,species=human>
-##contig=<ID=GL000223.1,assembly=GRCh37,length=180455,species=human>
-##contig=<ID=GL000224.1,assembly=GRCh37,length=179693,species=human>
-##contig=<ID=GL000225.1,assembly=GRCh37,length=211173,species=human>
-##contig=<ID=GL000226.1,assembly=GRCh37,length=15008,species=human>
-##contig=<ID=GL000227.1,assembly=GRCh37,length=128374,species=human>
-##contig=<ID=GL000228.1,assembly=GRCh37,length=129120,species=human>
-##contig=<ID=GL000229.1,assembly=GRCh37,length=19913,species=human>
-##contig=<ID=GL000230.1,assembly=GRCh37,length=43691,species=human>
-##contig=<ID=GL000231.1,assembly=GRCh37,length=27386,species=human>
-##contig=<ID=GL000232.1,assembly=GRCh37,length=40652,species=human>
-##contig=<ID=GL000233.1,assembly=GRCh37,length=45941,species=human>
-##contig=<ID=GL000234.1,assembly=GRCh37,length=40531,species=human>
-##contig=<ID=GL000235.1,assembly=GRCh37,length=34474,species=human>
-##contig=<ID=GL000236.1,assembly=GRCh37,length=41934,species=human>
-##contig=<ID=GL000237.1,assembly=GRCh37,length=45867,species=human>
-##contig=<ID=GL000238.1,assembly=GRCh37,length=39939,species=human>
-##contig=<ID=GL000239.1,assembly=GRCh37,length=33824,species=human>
-##contig=<ID=GL000240.1,assembly=GRCh37,length=41933,species=human>
-##contig=<ID=GL000241.1,assembly=GRCh37,length=42152,species=human>
-##contig=<ID=GL000242.1,assembly=GRCh37,length=43523,species=human>
-##contig=<ID=GL000243.1,assembly=GRCh37,length=43341,species=human>
-##contig=<ID=GL000244.1,assembly=GRCh37,length=39929,species=human>
-##contig=<ID=GL000245.1,assembly=GRCh37,length=36651,species=human>
-##contig=<ID=GL000246.1,assembly=GRCh37,length=38154,species=human>
-##contig=<ID=GL000247.1,assembly=GRCh37,length=36422,species=human>
-##contig=<ID=GL000248.1,assembly=GRCh37,length=39786,species=human>
-##contig=<ID=GL000249.1,assembly=GRCh37,length=38502,species=human>
-##contig=<ID=MT,assembly=GRCh37,length=16569,species=human>
-##contig=<ID=NC_007605,assembly=GRCh37,length=171823,species=human>
-##contig=<ID=X,assembly=GRCh37,length=155270560,species=human>
-##contig=<ID=Y,assembly=GRCh37,length=59373566,species=human>
+##reference={reference}"""
+
+        chunk1 = template.format(**context)
+        
+        ## 2.2 Header chunk 2
+        chromList = genomeObj.fastaDict.keys()
+        chromListSorted = sorted(chromList)
+
+        chromList = []
+
+        ## Create header chromosome rows one by one
+        for chrom in chromListSorted:
+
+            context = {
+                "chrom": chrom,
+                "build": build,
+                "length": len(genomeObj.fastaDict[chrom]),
+                "species": species
+            }
+            
+            template = """
+##contig=<ID={chrom},assembly={build},length={length},species={species}>"""
+            chromRow = template.format(**context)
+            chromList.append(chromRow)
+
+        chunk2 = "".join(chromList)
+
+        ## 2.3 Header chunk 3
+        chunk3 = """
 ##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant.">
 ##INFO=<ID=CLASS,Number=1,Type=String,Description="Mobile element class (L1, ALU, SVA or ERVK)">
 ##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction, PSD: processed-pseudogene)>
@@ -345,10 +302,10 @@ class VCF():
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Unphased genotypes">
 ##FORMAT=<ID=NV,Number=1,Type=Integer,Description="Number of reads supporting the variant">
 ##FORMAT=<ID=NR,Number=1,Type=Integer,Description="Number of reads supporting the reference allele">
-#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT  
-"""
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT"""
 
-        self.header = template.format(**context)
+        ## Create complete header:
+        self.header = ''.join([chunk1, chunk2, chunk3])
 
 
 class VCFline():
@@ -504,6 +461,12 @@ class fasta():
 
         return fastaDict
 
+    def sequences_lenght(self):
+        """
+        """
+        
+
+        
 
 class annovar():
     """
