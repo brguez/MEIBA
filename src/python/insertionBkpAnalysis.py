@@ -511,15 +511,10 @@ class contig():
     
                 ### Make reverse complementary
                 ## Contig sequence
-
-                #print "CONTIG-BEFORE: ", self.seq
                 self.seq = self.rev_complement(self.seq)
-                #print "CONTIG-AFTER: ", self.seq
 
                 ## Blat alignments
-                #print "BLAT-BEFORE: ", self.representativeAlignmentObj.alignmentList
                 self.representativeAlignmentObj.alignmentList = self.representativeAlignmentObj.rev_complement()
-                #print "BLAT-AFTER: ", self.representativeAlignmentObj.alignmentList
 
 
     def is_complete_polyA(self, targetSeq):
@@ -550,7 +545,6 @@ class contig():
             polyASeq = "NA"
 
         return polyASeq
-
 
 
     def is_partial_polyA(self, targetSeq, side):
@@ -633,7 +627,8 @@ class contig():
         """
         """
         ## Begin clipped
-        #    #########-----------
+        # [....MEI....]------target_region------
+        #           qBeg
         if (self.clippedSide  == "beg"):
             targetSeq = self.seq[:alignmentObj.qBeg].upper()
             polyASeq = self.is_polyA(targetSeq, 'end')
@@ -642,11 +637,18 @@ class contig():
                 polyA = True
                 self.bkpDict["polyA"] = polyASeq
                 self.bkpDict["alignmentObjRT"] = "NA"
+            
+                ## Generate sequence with bkp position
+                seqA = self.seq[:alignmentObj.qBeg].upper()
+                seqB = self.seq[alignmentObj.qBeg:].upper()
+                self.bkpDict["bkpSeq"] = seqA + "<[MEI]" + seqB
+        
             else:
                 polyA = False
                 
-        ## End clipped 
-        #    ---------#########
+        ## End clipped
+        # ------target_region------[....MEI....]
+        #                         qEnd
         else:
             targetSeq = self.seq[alignmentObj.qEnd:].upper()
             polyASeq = self.is_polyA(targetSeq, 'beg')
@@ -655,6 +657,12 @@ class contig():
                 polyA = True  
                 self.bkpDict["polyA"] = polyASeq
                 self.bkpDict["alignmentObjRT"] = "NA"
+
+                ## Generate sequence with bkp position
+                seqA = self.seq[:alignmentObj.qEnd].upper()
+                seqB = self.seq[alignmentObj.qEnd:].upper()
+                self.bkpDict["bkpSeq"] = seqA + "[MEI]>" + seqB
+
             else:
                 polyA = False
 
@@ -738,9 +746,6 @@ class contig():
                     ## Select next alignment
                     alignmentObjB = alignmentList[index + 1]
 
-                    print "alignmentObjA: ", alignmentObjA.tName, alignmentObjA.qBeg, alignmentObjA.qEnd, alignmentObjA.tBeg, alignmentObjA.tEnd
-                    print "alignmentObjB: ", alignmentObjB.tName, alignmentObjB.qBeg, alignmentObjB.qEnd, alignmentObjB.tBeg, alignmentObjB.tEnd
-
                     ## Current and next alignment in a different template. Possible combinations: 
                     # target_region -> L1
                     # target_region -> TD2 (I think I should include an alignment step for TD1 as well)
@@ -750,10 +755,16 @@ class contig():
                             
                         # A) End clipped
                         # ------target_region------[....TE....]
+                        #                         qEnd
                         if (self.clippedSide  == "end") and (alignmentObjA.tName != "L1") and (alignmentObjA.tName != "PSD"):
-                            #print "A) Inserted sequence on the right"
+
                             informative = True
                             self.bkpDict["alignmentObjRT"] = alignmentObjB
+
+                            ## Generate sequence with bkp position
+                            seqA = self.seq[:alignmentObjA.qEnd].upper()
+                            seqB = self.seq[alignmentObjA.qEnd:].upper()
+                            self.bkpDict["bkpSeq"] = seqA + "[MEI]>" + seqB
 
                             ## Check for poly-A breakpoint
                             nbBases = alignmentObjB.qBeg - alignmentObjA.qEnd
@@ -770,10 +781,16 @@ class contig():
 
                         # B) Beg clipped
                         # [....TE....]------target_region------
+                        #           qBeg
                         elif (self.clippedSide  == "beg") and (alignmentObjB.tName != "L1") and (alignmentObjB.tName != "PSD"):
-                            #print "B) Inserted sequence on the left"
+
                             informative = True
                             self.bkpDict["alignmentObjRT"] = alignmentObjA
+
+                            ## Generate sequence with bkp position
+                            seqA = self.seq[:alignmentObjB.qBeg].upper()
+                            seqB = self.seq[alignmentObjB.qBeg:].upper()
+                            self.bkpDict["bkpSeq"] = seqA + "<[MEI]" + seqB
 
                             ## Check for poly-A breakpoint
                             nbBases = alignmentObjB.qBeg - alignmentObjA.qEnd
@@ -1163,6 +1180,8 @@ class insertion():
             
         ## A) Solo integration or partnered transduction
         if (self.tdType == "TD0") or (self.tdType == "TD1"):
+            print "LOROLOO: ", self.tdType, alignmentObj.tSize, alignmentObj.tBeg, alignmentObj.tName
+   
             elementLength = alignmentObj.tSize - alignmentObj.tBeg
             elementRange = str(alignmentObj.tBeg) + '-' + str(alignmentObj.tSize)
 
@@ -1243,6 +1262,8 @@ class insertion():
         else:
             elementLength = alignmentObjClippedEnd.tEnd - alignmentObjClippedBeg.tBeg
             elementRange = str(alignmentObjClippedBeg.tBeg) + '-' + str(alignmentObjClippedEnd.tEnd)
+
+        print "LOROLOO: ", alignmentObjClippedBeg.tName,  alignmentObjClippedEnd.tName, elementLength, elementRange
 
         return elementLength, elementRange
 
@@ -1386,18 +1407,18 @@ class insertion():
             if (informativeContigClippedEndObj.bkpDict["pos"] < informativeContigClippedBegObj.bkpDict["pos"]):
 
                 bkpAPos = informativeContigClippedEndObj.bkpDict["pos"] 
-                bkpAContigSeq = informativeContigClippedEndObj.seq
+                bkpAContigSeq = informativeContigClippedEndObj.bkpDict["bkpSeq"]
 
                 bkpBPos = informativeContigClippedBegObj.bkpDict["pos"]
-                bkpBContigSeq = informativeContigClippedBegObj.seq
+                bkpBContigSeq = informativeContigClippedBegObj.bkpDict["bkpSeq"]
                 
             else:
 
                 bkpAPos = informativeContigClippedBegObj.bkpDict["pos"] 
-                bkpAContigSeq = informativeContigClippedBegObj.seq
+                bkpAContigSeq = informativeContigClippedBegObj.bkpDict["bkpSeq"]
 
                 bkpBPos = informativeContigClippedEndObj.bkpDict["pos"]
-                bkpBContigSeq = informativeContigClippedEndObj.seq
+                bkpBContigSeq = informativeContigClippedEndObj.bkpDict["bkpSeq"]
 
 
         # b) One breakpoint identified
@@ -1407,7 +1428,7 @@ class insertion():
             if (informativeContigClippedEndObj != "NA"):
                 chrom = informativeContigClippedEndObj.bkpDict["chrom"]
                 bkpAPos = informativeContigClippedEndObj.bkpDict["pos"] 
-                bkpAContigSeq = informativeContigClippedEndObj.seq
+                bkpAContigSeq = informativeContigClippedEndObj.bkpDict["bkpSeq"]
 
                 bkpBPos = "NA"
                 bkpBContigSeq = "NA"
@@ -1415,7 +1436,7 @@ class insertion():
             else:
                 chrom = informativeContigClippedBegObj.bkpDict["chrom"]
                 bkpAPos = informativeContigClippedBegObj.bkpDict["pos"] 
-                bkpAContigSeq = informativeContigClippedBegObj.seq
+                bkpAContigSeq = informativeContigClippedBegObj.bkpDict["bkpSeq"]
 
                 bkpBPos = "NA"
                 bkpBContigSeq = "NA"               
@@ -1587,6 +1608,7 @@ if __name__ == "__main__":
         else:
             message = "Input files for " + insertionCoord + " insertion do not exist"
             log("ERROR", message)
+
 
     ## 3. Sort MEI
     VCFObj.sort()
