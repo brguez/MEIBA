@@ -157,19 +157,14 @@ class chained_alignment():
         # Iterate over list from the back   
         for alignmentObj in reversed(self.alignmentList):
 
-            #print "** BLAT-BEFORE: ", alignmentObj.qName, alignmentObj.qSize, alignmentObj.qBeg, alignmentObj.qEnd, alignmentObj.tName, alignmentObj.tSize, alignmentObj.tBeg, alignmentObj.tEnd, alignmentObj.blockCount
-
             # Reverse complement the alignment
             alignmentObj.rev_complement()
-
-            #print "** BLAT-AFTER: ", alignmentObj.qName, alignmentObj.qSize, alignmentObj.qBeg, alignmentObj.qEnd, alignmentObj.tName, alignmentObj.tSize, alignmentObj.tBeg, alignmentObj.tEnd, alignmentObj.blockCount
 
             # Incorporate alignment to the list
             alignmentListRev.append(alignmentObj)
 
         return alignmentListRev 
         
-
 
 class blat_alignment():
     """
@@ -336,12 +331,10 @@ class contig():
             ## Partial overlap
             if (status == 'partial'):    
         
-
                 pairedAlignmentObj = chained_alignment([alignmentObjA, alignmentObjB])     
                 percQueryCoveredA = alignmentObjA.perc_query_covered()
                 percQueryCoveredB = alignmentObjB.perc_query_covered()
                 percQueryCoveredPaired = pairedAlignmentObj.perc_query_covered()
-                print "TEST: ", percQueryCoveredA, percQueryCoveredB, percQueryCoveredPaired
 
                 ## Paired alignments covers more % of contig sequence than individual alignments:
                 if (percQueryCoveredPaired > percQueryCoveredA) and (percQueryCoveredPaired > percQueryCoveredB):
@@ -1126,26 +1119,26 @@ class insertion():
         # b) Known target site as both breakpoints characterized
         else:
 
+            clippedBegPos = informativeContigClippedBegObj.bkpDict["pos"] 
             clippedEndPos = informativeContigClippedEndObj.bkpDict["pos"]
-            clippedBegPos = informativeContigClippedBegObj.bkpDict["pos"]
-            clippedEndAlignObj = informativeContigClippedEndObj.representativeAlignmentObj.alignmentList[0]
-            clippedBegAlignObj = informativeContigClippedBegObj.representativeAlignmentObj.alignmentList[-1]   
-        
-            overlapping, nbBases = overlap(clippedEndAlignObj.tBeg, clippedEndAlignObj.tEnd, clippedBegAlignObj.tBeg, clippedBegAlignObj.tEnd, 0)
 
             ## a) Target Site Duplication
-            # ----------contig----------bkp
-            #             bkp-------contig-----------
-            if overlapping != "not":
-                targetSiteLen = abs(clippedEndPos - clippedBegPos) 
+            #                ---------------*####clipped_end####
+            # ####clipped_beg####*------------------
+            #                    <--------->
+            #              target site duplication
+            if (clippedBegPos < clippedEndPos):
+                targetSiteLen = clippedEndPos - clippedBegPos
                 print 'TS DUP', self.coordinates, targetSiteLen
 
 
             ## b) Target Site Deletion 
-            # ----------contig----------bkp
-            #                                       bkp-------contig-----------
+            # ---------------*####clipped_end####
+            #                   ####clipped_beg####*------------------
+            #                <-------------------->
+            #                 target site deletion            else:
             else:
-                targetSiteLen = abs(clippedEndPos - clippedBegPos) * -1
+                targetSiteLen = clippedEndPos - clippedBegPos
                 print 'TS DEL', self.coordinates, targetSiteLen
 
         return targetSiteLen
