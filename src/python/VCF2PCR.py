@@ -75,7 +75,7 @@ outFilePath = outDir + '/' + donorId + ".sequences4PCR.tsv"
 outFile = open(outFilePath, 'w')
 
 # Write header 
-row = "#chrom" + "\t" + "bkp5prime" + "\t" + "newContig5prime" + "\t" + "bkp3prime" + "\t" + "newContig3prime" + "\t" + "rtClass" + "\t" + "insertionType" + "\t" + "score" + "\t" + "tsLen" + "\t" + "strand" + "\t" + "structure" + "\t" + "length" + "\n"
+row = "#chrom" + "\t" + "bkp5prime" + "\t" + "newContig5prime" + "\t" + "bkp3prime" + "\t" + "newContig3prime" + "\t" + "rtClass" + "\t" + "insertionType" + "\t" + "mechanism" + "\t" + "score" + "\t" + "tsLen" + "\t" + "strand" + "\t" + "structure" + "\t" + "length" + "\n"
 outFile.write(row)
 
 for VCFlineObj in VCFObj.lineList:
@@ -96,7 +96,7 @@ for VCFlineObj in VCFObj.lineList:
     contigA = VCFlineObj.infoDict["CONTIGA"] if "CONTIGA" in VCFlineObj.infoDict else 'NA'
     contigB = VCFlineObj.infoDict["CONTIGB"] if "CONTIGB" in VCFlineObj.infoDict else 'NA'      
 
-    print "*** MEI: ", chrom, bkpA, bkpB, rtClass, score, structure, length, strand, tsLen, contigA, contigB
+    print "*** MEI: ", chrom, bkpA, bkpB, rtClass, insertionType, mechanism, score, structure, length, strand, tsLen, contigA, contigB
 
     ### 2. Reorder breakpoints and contigs to have the 5' before the 3' 
     ## A) Both breakpoints reconstructed and no target site or target site duplication
@@ -159,7 +159,7 @@ for VCFlineObj in VCFObj.lineList:
             newContig5prime = "NA"            
 
     ## Write row into the output file
-    row = contigA + "\t" + contigB + "\t" + chrom + "\t" + str(bkp5prime) + "\t" + newContig5prime + "\t" + str(bkp3prime) + "\t" + newContig3prime + "\t" + insertionType + "\t" + rtClass + "\t" + score + "\t" + str(tsLen) + "\t" + strand + "\t" + structure + "\t" + length + "\n"
+    row = chrom + "\t" + str(bkp5prime) + "\t" + newContig5prime + "\t" + str(bkp3prime) + "\t" + newContig3prime + "\t" + rtClass + "\t" + insertionType + "\t" + mechanism + "\t" + score + "\t" + str(tsLen) + "\t" + strand + "\t" + structure + "\t" + length + "\n"
     outFile.write(row)
 
 
