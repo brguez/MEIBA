@@ -21,6 +21,7 @@ def parse_args():
     """Define and parse command line parameters."""
     parser = argparse.ArgumentParser(description="Generate MEI VCF file only containing the header")
     parser.add_argument('donorId', help='Donor identifier. The output vcf will be named accordingly')
+    parser.add_argument('genome', help='Reference genome fasta file')
     parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
     args = parser.parse_args()
@@ -32,6 +33,7 @@ if __name__ == "__main__":
     ## Get user's input ##
     args = parse_args()
     donorId = args.donorId
+    genome = args.genome
     outDir = args.outDir
 
     scriptName = os.path.basename(sys.argv[0])
@@ -40,6 +42,7 @@ if __name__ == "__main__":
     print
     print "***** ", scriptName, " configuration *****"
     print "donorId: ", donorId
+    print "genome: ", genome
     print "outDir: ", outDir
     print
     print "***** Executing ", scriptName, " *****"
@@ -49,11 +52,14 @@ if __name__ == "__main__":
     ## Start ## 
     outFilePath = outDir + '/' + donorId + '.vcf'
 
+    ## 0. Create reference genome fasta object
+    header("Creating reference genome fasta object")
+    genomeObj = formats.fasta(genome)
+
     ## 1. Create VCF object and print VCF header    
     header("Creating VCF object and printing VCF header into the output file")
     VCFObj = formats.VCF()
-    VCFObj.create_header()
-
+    VCFObj.create_header(genome, genomeObj)
     VCFObj.write_header(outFilePath)
 
     ## Finish ##

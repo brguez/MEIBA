@@ -302,7 +302,8 @@ class VCF():
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Unphased genotypes">
 ##FORMAT=<ID=NV,Number=1,Type=Integer,Description="Number of reads supporting the variant">
 ##FORMAT=<ID=NR,Number=1,Type=Integer,Description="Number of reads supporting the reference allele">
-#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT"""
+#CHROM  POS     ID      REF     ALT     QUAL    FILTER  INFO    FORMAT
+"""
 
         ## Create complete header:
         self.header = ''.join([chunk1, chunk2, chunk3])

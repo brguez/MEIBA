@@ -698,7 +698,7 @@ then
     log "Donor with 0 retrotransposition events. Generate empty VCF and stop execution\n" "INFO"
 
     # Print empty VCF only with header
-    run "python $EMPTYVCF $fileName -o $outDir 1> $logsDir/1_emptyVCF.out 2> $logsDir/1_emptyVCF.err" "$ECHO"
+    run "python $EMPTYVCF $fileName $genome -o $outDir 1> $logsDir/1_emptyVCF.out 2> $logsDir/1_emptyVCF.err" "$ECHO"
 
     ## End
     end=$(date +%s)
