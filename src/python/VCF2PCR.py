@@ -75,7 +75,7 @@ outFilePath = outDir + '/' + donorId + ".sequences4PCR.tsv"
 outFile = open(outFilePath, 'w')
 
 # Write header 
-row = "#chrom" + "\t" + "bkp5prime" + "\t" + "newContig5prime" + "\t" + "bkp3prime" + "\t" + "newContig3prime" + "\t" + "rtClass" + "\t" + "insertionType" + "\t" + "mechanism" + "\t" + "score" + "\t" + "tsLen" + "\t" + "strand" + "\t" + "structure" + "\t" + "length" + "\n"
+row = "#chrom" + "\t" + "bkp5prime" + "\t" + "newContig5prime" + "\t" + "bkp3prime" + "\t" + "newContig3prime" + "\t" + "rtClass" + "\t" + "insertionType" + "\t" + "mechanism" + "\t" + "filter" + "\t" + "score" + "\t" + "tsLen" + "\t" + "strand" + "\t" + "structure" + "\t" + "length" + "\n"
 outFile.write(row)
 
 for VCFlineObj in VCFObj.lineList:
@@ -88,6 +88,7 @@ for VCFlineObj in VCFObj.lineList:
     rtClass = VCFlineObj.infoDict["CLASS"] 
     insertionType = VCFlineObj.infoDict["TYPE"]
     mechanism = VCFlineObj.infoDict["MECHANISM"] if "MECHANISM" in VCFlineObj.infoDict else 'NA'
+    filterField = VCFlineObj.filter
     score = VCFlineObj.infoDict["SCORE"]
     structure = VCFlineObj.infoDict["STRUCT"] if "STRUCT" in VCFlineObj.infoDict else 'NA'
     length = VCFlineObj.infoDict["LEN"] if "LEN" in VCFlineObj.infoDict else 'NA'
@@ -159,7 +160,7 @@ for VCFlineObj in VCFObj.lineList:
             newContig5prime = "NA"            
 
     ## Write row into the output file
-    row = chrom + "\t" + str(bkp5prime) + "\t" + newContig5prime + "\t" + str(bkp3prime) + "\t" + newContig3prime + "\t" + rtClass + "\t" + insertionType + "\t" + mechanism + "\t" + score + "\t" + str(tsLen) + "\t" + strand + "\t" + structure + "\t" + length + "\n"
+    row = chrom + "\t" + str(bkp5prime) + "\t" + newContig5prime + "\t" + str(bkp3prime) + "\t" + newContig3prime + "\t" + rtClass + "\t" + insertionType + "\t" + mechanism + "\t" + filterField + "\t" + score + "\t" + str(tsLen) + "\t" + strand + "\t" + structure + "\t" + length + "\n"
     outFile.write(row)
 
 
