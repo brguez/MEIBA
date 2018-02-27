@@ -23,6 +23,26 @@ def log(label, string):
     print "[" + label + "]", string
 
 
+def rev_complement(seq):
+    """
+        Make the reverse complementary of a dna sequence
+        
+        Input:
+        1) seq. DNA sequence
+
+        Output:
+        1) revComplementSeq. Reverse complementary of input DNA sequence
+    """
+    baseComplementDict = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A', 'N': 'N'}
+    seq = seq.upper()
+    revSeq = seq[::-1] # Make reverse sequence
+    letters = list(revSeq)
+    letters = [baseComplementDict[base] for base in letters]
+    revComplementSeq = ''.join(letters) # Make complement of reverse sequence
+
+    return revComplementSeq
+
+
 #### MAIN ####
 
 ## Import modules ##
@@ -75,13 +95,13 @@ outFilePath = outDir + '/' + donorId + ".sequences4PCR.tsv"
 outFile = open(outFilePath, 'w')
 
 # Write header 
-row = "#chrom" + "\t" + "bkp5prime" + "\t" + "newContig5prime" + "\t" + "bkp3prime" + "\t" + "newContig3prime" + "\t" + "rtClass" + "\t" + "insertionType" + "\t" + "mechanism" + "\t" + "filter" + "\t" + "score" + "\t" + "tsLen" + "\t" + "strand" + "\t" + "structure" + "\t" + "length" + "\n"
+row = "#chrom" + "\t" + "firstBkp" + "\t" + "firstContig" + "\t" + "secondBkp" + "\t" + "secondContig" + "\t" + "rtClass" + "\t" + "insertionType" + "\t" + "mechanism" + "\t" + "filter" + "\t" + "score" + "\t" + "tsLen" + "\t" + "strand" + "\t" + "structure" + "\t" + "length" + "\n"
 outFile.write(row)
 
 for VCFlineObj in VCFObj.lineList:
 
-    
-    ### 1. Set variables of interest        
+    ### 1. Set variables of interest    
+    ##################################    
     chrom = VCFlineObj.chrom
     bkpA = int(VCFlineObj.pos)
     bkpB = int(VCFlineObj.infoDict["BKPB"]) if "BKPB" in VCFlineObj.infoDict else 'NA'
@@ -96,71 +116,138 @@ for VCFlineObj in VCFObj.lineList:
     tsLen = int(VCFlineObj.infoDict["TSLEN"]) if "TSLEN" in VCFlineObj.infoDict else 'NA'
     contigA = VCFlineObj.infoDict["CONTIGA"] if "CONTIGA" in VCFlineObj.infoDict else 'NA'
     contigB = VCFlineObj.infoDict["CONTIGB"] if "CONTIGB" in VCFlineObj.infoDict else 'NA'      
+    tdCoord = VCFlineObj.infoDict["TDC"] if "TDC" in VCFlineObj.infoDict else 'NA'
 
     print "*** MEI: ", chrom, bkpA, bkpB, rtClass, insertionType, mechanism, score, structure, length, strand, tsLen, contigA, contigB
 
-    ### 2. Reorder breakpoints and contigs to have the 5' before the 3' 
+    ### 2. Reorder breakpoints and contigs to have them in the same order as in the tumour genome 
+    ###############################################################################################
     ## A) Both breakpoints reconstructed and no target site or target site duplication
     if ((VCFlineObj.infoDict["SCORE"] == "1") or (VCFlineObj.infoDict["SCORE"] == "5")) and (tsLen >= 0):
-        bkp5prime = bkpB
-        bkp3prime = bkpA
-        contig5prime = contigB
-        contig3prime = contigA
+        firstBkp = bkpB
+        secondBkp = bkpA
+        firstContig = contigB
+        secondContig = contigA
             
     ## B) At least one breakpoint not reconstructed or target site deletion
     else:
-        bkp5prime = bkpA
-        bkp3prime = bkpB
-        contig5prime = contigA
-        contig3prime = contigB
+        firstBkp = bkpA
+        secondBkp = bkpB
+        firstContig = contigA
+        secondContig = contigB
             
-    ### 3. Expand target region sequence for designing the primers
+    ### 3. Expand bkp contig sequences for designing the primers
+    ###############################################################
     # A) No breakpoint reconstructed
     if (VCFlineObj.infoDict["SCORE"] == "2"):
-        newContig5prime = "NA"
-        newContig3prime = "NA"
+        newFirstContig = "NA"
+        newSecondContig = "NA"
 
     # B) Both breakpoints reconstructed
     elif ((VCFlineObj.infoDict["SCORE"] == "1") or (VCFlineObj.infoDict["SCORE"] == "5")):
         
-        ## 5 prime
-        seqA5prime = genomeObj.fastaDict[chrom][bkp5prime-500 : bkp5prime]
-        seqB5prime = contig5prime.split("[MEI]>")[1]
-        newContig5prime = seqA5prime + '[MEI]>' + seqB5prime
-    
-        ## 3 prime
-        seqB3prime = genomeObj.fastaDict[chrom][bkp3prime : bkp3prime+500]    
-        seqA3prime = contig3prime.split("<[MEI]")[0]
-        newContig3prime = seqA3prime + '<[MEI]' + seqB3prime
+        ### 3.1 Extend external contig fragments
+        firstContigSeqA = genomeObj.fastaDict[chrom][firstBkp-500 : firstBkp]
+        secondContigSeqB = genomeObj.fastaDict[chrom][secondBkp : secondBkp+500]    
+
+        ### 3.2 Extend internal fragments
+        # a) Insertion in the plus strand:  --------##########AAAAAA----------
+        if (strand == "+"):
+            firstContigSeqB = firstContig.split("[MEI]>")[1]
+
+            # Solo 
+            if (insertionType == "TD0"):
+                secondContigSeqA = secondContig.split("<[MEI]")[0]
+
+            # transduction
+            else:
+                chromTd = tdCoord.split("_")[0]
+                begTd = int(tdCoord.split("_")[1]) 
+                endTd = int(tdCoord.split("_")[2])
+                secondContigSeqA = genomeObj.fastaDict[chromTd][begTd : endTd] + "AAAAAAAAAAAAAAAAAAAAAAAA"
+
+        # b) Insertion in the minus strand: --------TTTTTT##########----------
+        else:
+            secondContigSeqA = secondContig.split("<[MEI]")[0]
+
+            # Solo 
+            if (insertionType == "TD0"):
+                firstContigSeqB = firstContig.split("[MEI]>")[1]
+
+            # transduction
+            else:
+                chromTd = tdCoord.split("_")[0]
+                begTd = int(tdCoord.split("_")[1]) 
+                endTd = int(tdCoord.split("_")[2])
+                firstContigSeqB = rev_complement(genomeObj.fastaDict[chromTd][begTd : endTd] + "AAAAAAAAAAAAAAAAAAAAAAAA")
+ 
+        ## 3.3 Join start and end
+        newFirstContig = firstContigSeqA + '[MEI]>' + firstContigSeqB
+        newSecondContig = secondContigSeqA + '<[MEI]' + secondContigSeqB
 
     # C) One breakpoint reconstructed 
     else:
 
-        ## a) 5 prime bkp reconstructed
-        if len(contig5prime.split("[MEI]>")) == 2:
+        ## a) First bkp reconstructed
+        # ----------[MEI]
+        if len(firstContig.split("[MEI]>")) == 2:
 
-            seqA5prime = genomeObj.fastaDict[chrom][bkp5prime-500 : bkp5prime]
-            seqB5prime = contig5prime.split("[MEI]>")[1]
-            newContig5prime = seqA5prime + '[MEI]>' + seqB5prime
-            newContig3prime = "NA"
+            ### 3.1. Extend external contig fragment
+            firstContigSeqA = genomeObj.fastaDict[chrom][firstBkp-500 : firstBkp]
 
-        ## b) 3 prime bkp reconstructed
+            ### 3.2 Extend internal fragment
+            ## Solo integration or no poly-A bkp  
+            # -----#####            
+            if (insertionType == "TD0") or (score == "3"):
+                firstContigSeqB = firstContig.split("[MEI]>")[1]
+
+            ## Transduction and poly-A bkp
+            # --------TTTTTT###         * I will assume the insertion has - orientation  
+            else:
+                chromTd = tdCoord.split("_")[0]
+                begTd = int(tdCoord.split("_")[1]) 
+                endTd = int(tdCoord.split("_")[2])
+                firstContigSeqB = rev_complement(genomeObj.fastaDict[chromTd][begTd : endTd] + "AAAAAAAAAAAAAAAAAAAAAAAA")
+    
+            ## 3.3 Join start and end
+            newFirstContig = firstContigSeqA + '[MEI]>' + firstContigSeqB
+            newSecondContig = "NA"
+
+        ## b) Second bkp reconstructed
+        # [MEI]----------
         else: 
 
-            ## Switch the breakpoints 
-            bkp3prime = bkp5prime
-            bkp5prime = "NA"
-            contig3prime = contig5prime
-            contig5prime = "NA"
+            ## 3.0 Switch the breakpoints 
+            secondBkp = firstBkp
+            firstBkp = "NA"
+            secondContig = firstContig
+            firstContig = "NA"
 
-            ## Extend 3 prime contig genomic sequence
-            seqB3prime = genomeObj.fastaDict[chrom][bkp3prime : bkp3prime+500]    
-            seqA3prime = contig3prime.split("<[MEI]")[0]
-            newContig3prime = seqA3prime + '<[MEI]' + seqB3prime
-            newContig5prime = "NA"            
+            ### 3.1. Extend external contig fragment
+            secondContigSeqB = genomeObj.fastaDict[chrom][secondBkp : secondBkp+500]    
 
-    ## Write row into the output file
-    row = chrom + "\t" + str(bkp5prime) + "\t" + newContig5prime + "\t" + str(bkp3prime) + "\t" + newContig3prime + "\t" + rtClass + "\t" + insertionType + "\t" + mechanism + "\t" + filterField + "\t" + score + "\t" + str(tsLen) + "\t" + strand + "\t" + structure + "\t" + length + "\n"
+            ### 3.2 Extend internal fragment
+            ## Solo integration or no poly-A bkp  
+            # #####------            
+            if (insertionType == "TD0") or (score == "3"):
+                secondContigSeqA = secondContig.split("<[MEI]")[0]
+
+            ## Transduction and poly-A bkp
+            # #####AAAAAA--------    * I will assume the insertion has + orientation  
+            else:
+                chromTd = tdCoord.split("_")[0]
+                begTd = int(tdCoord.split("_")[1]) 
+                endTd = int(tdCoord.split("_")[2])
+                secondContigSeqA = genomeObj.fastaDict[chromTd][begTd : endTd] + "AAAAAAAAAAAAAAAAAAAAAAAA"
+    
+            ## 3.3 Join start and end
+            newFirstContig = "NA" 
+            newSecondContig = secondContigSeqA + '<[MEI]' + secondContigSeqB
+
+
+    ## 4. Write row into the output file
+    ######################################
+    row = chrom + "\t" + str(firstBkp) + "\t" + newFirstContig + "\t" + str(secondBkp) + "\t" + newSecondContig + "\t" + rtClass + "\t" + insertionType + "\t" + mechanism + "\t" + filterField + "\t" + score + "\t" + str(tsLen) + "\t" + strand + "\t" + structure + "\t" + length + "\n"
     outFile.write(row)
 
 
