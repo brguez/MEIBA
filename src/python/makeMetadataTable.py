@@ -15,6 +15,8 @@ parser.add_argument('excludedTumorTypes', help='File with the list of excluded t
 parser.add_argument('ancestry', help='File with donor ancestry information')
 parser.add_argument('traficBlackList', help='File with trafic blacklisted samples')
 parser.add_argument('clinical', help='File with donor clinical information (gender, age at diagnosis...)')
+parser.add_argument('msi', help='File with donor MSI status')
+parser.add_argument('tp53', help='File with tp53 mutational status')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
@@ -25,6 +27,8 @@ excludedTumorTypesPath = args.excludedTumorTypes
 ancestryPath = args.ancestry
 traficBlackListPath = args.traficBlackList
 clinicalPath = args.clinical
+msiPath = args.msi
+tp53Path = args.tp53
 outDir = args.outDir
 
 scriptName = os.path.basename(sys.argv[0])
@@ -39,6 +43,8 @@ print "excludedTumorTypesPath: ", excludedTumorTypesPath
 print "ancestryPath: ", ancestryPath
 print "traficBlackList: ", traficBlackListPath
 print "clinical: ", clinicalPath
+print "msi: ", msiPath
+print "tp53: ", tp53Path
 print "outDir: ", outDir
 print
 
@@ -46,7 +52,6 @@ print "***** Executing ", scriptName, " *****"
 print
 print "..."
 print
-
 
 ### 1) Read file with representative tumor_aliquot_ids for multitumor donors
 # Make dictionary with donorUniqueId (projectCode::donorId) as key and representative tumor_aliquot_ids as values
@@ -174,18 +179,59 @@ for line in clinical:
         donorUniqueId = fieldsList[0] 
         clinicalDict[donorUniqueId] = {}
         clinicalDict[donorUniqueId]["sex"] = fieldsList[1]
-        clinicalDict[donorUniqueId]["diagnosisAge"] = fieldsList[2]
-        clinicalDict[donorUniqueId]["survivalTime"] = fieldsList[3]
-        clinicalDict[donorUniqueId]["intervalLastFollowup"] = fieldsList[4]
+        clinicalDict[donorUniqueId]["vitalStatus"] = fieldsList[2]
+        clinicalDict[donorUniqueId]["diagnosisAge"] = fieldsList[3]
+        clinicalDict[donorUniqueId]["survivalTime"] = fieldsList[4]
+        clinicalDict[donorUniqueId]["intervalLastFollowup"] = fieldsList[5]
+        clinicalDict[donorUniqueId]["smokingHistory"] = fieldsList[6]
+        clinicalDict[donorUniqueId]["smokingIntensity"] = fieldsList[7]
+        clinicalDict[donorUniqueId]["alcoholHistory"] = fieldsList[8]
+        clinicalDict[donorUniqueId]["alcoholIntensity"] = fieldsList[9]
 
-### 6) Read main metadata file and make output file containing all the metadata information
+### 6) Read file with microsatellite status
+msi = open(msiPath, 'r')
+msiDict = {}
+
+# Read file line by line
+for line in msi:
+    line = line.rstrip('\r\n')
+
+    ## Discard header
+    if not line.startswith("#"):
+        
+        fieldsList = line.split("\t")
+
+        submitted_donor_id = fieldsList[0] 
+        MSI_status = fieldsList[1] 
+        msiDict[submitted_donor_id] = MSI_status
+
+
+### 7) Read file with tp53 inactivation status
+tp53 = open(tp53Path, 'r')
+tp53Dict = {}
+
+# Read file line by line
+for line in tp53:
+    line = line.rstrip('\r\n')
+
+    ## Discard header
+    if not line.startswith("#"):
+        
+        fieldsList = line.split("\t")
+
+        tumor_wgs_aliquot_id = fieldsList[0] 
+        tp53_status = fieldsList[1] 
+        tp53Dict[tumor_wgs_aliquot_id] = tp53_status
+
+
+### 8) Read main metadata file and make output file containing all the metadata information
 # Open output file
 fileName = "PCAWG_donors_metadata.tsv"
 outFilePath = outDir + "/" + fileName
 outFile = open( outFilePath, "w" )
 
 # Write header:
-row = "#submitted_donor_id" + "\t" + "icgc_donor_id" + "\t" + "wgs_exclusion_white_gray" + "\t" + "wgs_exclusion_trafic" + "\t" + "ancestry_primary" + "\t" + "donor_sex" + "\t" + "donor_age_at_diagnosis" + "\t" + "donor_survival_time" + "\t" + "donor_interval_of_last_followup" + "\t" + "dcc_project_code" + "\t" + "histology_count" + "\t" + "histology_exclusion_status" + "\t" + "histology_abbreviation"	 + "\t" + "histology_tier1" + "\t" +	 "histology_tier2" + "\t" + "normal_wgs_icgc_specimen_id" + "\t" + "normal_wgs_icgc_sample_id" + "\t" + "normal_wgs_aliquot_id" + "\t" + "tumor_wgs_specimen_count" + "\t" + "tumor_wgs_icgc_specimen_id" + "\t" + "tumor_wgs_icgc_sample_id" + "\t" + "tumor_wgs_aliquot_id" + "\t" + "tumor_wgs_representative_aliquot_id" + "\t" + "normal_wgs_has_matched_rna_seq" + "\t" + "tumor_wgs_has_matched_rna_seq" + "\t" + 	"normal_rna_seq_icgc_specimen_id" + "\t" + "normal_rna_seq_icgc_sample_id" + "\t" + "tumor_rna_seq_specimen_count" + "\t" + "tumor_rna_seq_icgc_specimen_id" + "\t" + "tumor_rna_seq_icgc_sample_id" + "\t" + "tumor_rna_seq_aliquot_id" + "\n" 
+row = "#submitted_donor_id" + "\t" + "icgc_donor_id" + "\t" + "wgs_exclusion_white_gray" + "\t" + "wgs_exclusion_trafic" + "\t" + "ancestry_primary" + "\t" + "donor_sex" + "\t" + "donor_age_at_diagnosis" + "\t" + "donor_survival_time" + "\t" + "donor_interval_of_last_followup" + "\t" + "dcc_project_code" + "\t" + "histology_count" + "\t" + "histology_exclusion_status" + "\t" + "histology_abbreviation"	 + "\t" + "histology_tier1" + "\t" +	 "histology_tier2" + "\t" + "normal_wgs_icgc_specimen_id" + "\t" + "normal_wgs_icgc_sample_id" + "\t" + "normal_wgs_aliquot_id" + "\t" + "tumor_wgs_specimen_count" + "\t" + "tumor_wgs_icgc_specimen_id" + "\t" + "tumor_wgs_icgc_sample_id" + "\t" + "tumor_wgs_aliquot_id" + "\t" + "tumor_wgs_representative_aliquot_id" + "\t" + "normal_wgs_has_matched_rna_seq" + "\t" + "tumor_wgs_has_matched_rna_seq" + "\t" + 	"normal_rna_seq_icgc_specimen_id" + "\t" + "normal_rna_seq_icgc_sample_id" + "\t" + "tumor_rna_seq_specimen_count" + "\t" + "tumor_rna_seq_icgc_specimen_id" + "\t" + "tumor_rna_seq_icgc_sample_id" + "\t" + "tumor_rna_seq_aliquot_id" + "\t" + "donor_vital_status" + "\t" + "tobacco_history" + "\t" + "tobacco_intensity" + "\t" + "alcohol_history" + "\t" + "alcohol_intensity" + "\t" + "MSI_status_(from_TCGA_consortium)" + "\t" + "tp53Mut" + "\t" + "mutStatus" + "\n" 
 
 outFile.write(row)
 
@@ -234,6 +280,11 @@ for line in mainMetadata:
         donor_age_at_diagnosis = clinicalDict[donorUniqueId]["diagnosisAge"] 
         donor_survival_time = clinicalDict[donorUniqueId]["survivalTime"] 
         donor_interval_of_last_followup = clinicalDict[donorUniqueId]["intervalLastFollowup"] 
+        donor_vital_status = clinicalDict[donorUniqueId]["vitalStatus"] 
+        tobacco_history = clinicalDict[donorUniqueId]["smokingHistory"] 
+        tobacco_intensity = clinicalDict[donorUniqueId]["smokingIntensity"] 
+        alcohol_history = clinicalDict[donorUniqueId]["alcoholHistory"] 
+        alcohol_intensity = clinicalDict[donorUniqueId]["alcoholIntensity"]
 
         # a) Donor with a single tumor sample
         if (tumor_wgs_specimen_count == "1"):
@@ -262,9 +313,38 @@ for line in mainMetadata:
         else:
             wgs_exclusion_trafic = "Whitelist"
 
+        ## MSI status
+        MSI_status = msiDict[submitted_donor_id] if submitted_donor_id in msiDict else "UNK"
 
+        ## TP53 mutation status
+        # a) Single tumour donor
+        if (tumor_wgs_specimen_count == "1"):
+
+            if tumor_wgs_aliquot_id	in tp53Dict:
+                tp53_mutation = "True"
+                mutation_status = tp53Dict[tumor_wgs_aliquot_id]
+
+            else:
+                tp53_mutation = "False"
+                mutation_status = "wildType"
+
+        # b) Multitumour donor
+        else:
+            aliquotIdList = tumor_wgs_aliquot_id.split(',')
+            
+            ## Set default:            
+            tp53_mutation = "False"
+            mutation_status = "wildType"
+
+            ## For each tumour aliquot id check if TP53 mutated. I have checked and when mutated only reported in one aliquot, this is good.             
+            for aliquotId in aliquotIdList:
+            
+                if aliquotId in tp53Dict:
+                    tp53_mutation = "True"
+                    mutation_status = tp53Dict[aliquotId]
+    
         ### Write metadata row into the output file
-        row = submitted_donor_id + "\t" + icgc_donor_id + "\t" + wgs_exclusion_white_gray + "\t" + wgs_exclusion_trafic + "\t" + ancestry_primary + "\t" + donor_sex + "\t" + donor_age_at_diagnosis + "\t" + donor_survival_time + "\t" + donor_interval_of_last_followup + "\t" + dcc_project_code + "\t" + str(histology_count) + "\t" + histology_exclusion_status + "\t" + histology_abbreviation	 + "\t" + histology_tier1 + "\t" +	 histology_tier2 + "\t" + normal_wgs_icgc_specimen_id + "\t" + normal_wgs_icgc_sample_id + "\t" + normal_wgs_aliquot_id + "\t" + tumor_wgs_specimen_count	 + "\t" + tumor_wgs_icgc_specimen_id + "\t" + tumor_wgs_icgc_sample_id + "\t" + tumor_wgs_aliquot_id + "\t" + tumor_wgs_representative_aliquot_id + "\t" + normal_wgs_has_matched_rna_seq + "\t" + tumor_wgs_has_matched_rna_seq + "\t" + normal_rna_seq_icgc_specimen_id + "\t" + normal_rna_seq_icgc_sample_id + "\t" + tumor_rna_seq_specimen_count + "\t" + tumor_rna_seq_icgc_specimen_id + "\t" + tumor_rna_seq_icgc_sample_id + "\t" + tumor_rna_seq_aliquot_id + "\n" 
+        row = submitted_donor_id + "\t" + icgc_donor_id + "\t" + wgs_exclusion_white_gray + "\t" + wgs_exclusion_trafic + "\t" + ancestry_primary + "\t" + donor_sex + "\t" + donor_age_at_diagnosis + "\t" + donor_survival_time + "\t" + donor_interval_of_last_followup + "\t" + dcc_project_code + "\t" + str(histology_count) + "\t" + histology_exclusion_status + "\t" + histology_abbreviation	 + "\t" + histology_tier1 + "\t" +	 histology_tier2 + "\t" + normal_wgs_icgc_specimen_id + "\t" + normal_wgs_icgc_sample_id + "\t" + normal_wgs_aliquot_id + "\t" + tumor_wgs_specimen_count	 + "\t" + tumor_wgs_icgc_specimen_id + "\t" + tumor_wgs_icgc_sample_id + "\t" + tumor_wgs_aliquot_id + "\t" + tumor_wgs_representative_aliquot_id + "\t" + normal_wgs_has_matched_rna_seq + "\t" + tumor_wgs_has_matched_rna_seq + "\t" + normal_rna_seq_icgc_specimen_id + "\t" + normal_rna_seq_icgc_sample_id + "\t" + tumor_rna_seq_specimen_count + "\t" + tumor_rna_seq_icgc_specimen_id + "\t" + tumor_rna_seq_icgc_sample_id + "\t" + tumor_rna_seq_aliquot_id + "\t" + donor_vital_status + "\t" + tobacco_history + "\t" + tobacco_intensity + "\t" + alcohol_history + "\t" + alcohol_intensity + "\t" + MSI_status + "\t" + tp53_mutation + "\t" + mutation_status + "\n" 
 
         outFile.write(row)
 
