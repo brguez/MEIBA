@@ -2,13 +2,6 @@
 #coding: utf-8
 
 
-# Class cluster:
-#    clippedReadDict = {}
-# Keys(readId) -> {}
-#        key(alignmentObj)
-#        key(seq)
-
-     
 #### CLASSES ####
 class fasta():
     """
@@ -100,7 +93,6 @@ class cluster():
         self.clippedSide = clippedSide
         self.bkpPos = alignmentObj.reference_start if clippedSide == "beg" else alignmentObj.reference_end
         self.clippedReadDict = {}  
-        self.filteredClippedReadDict = {}       
         self.consensusSeq = ""
 
     def addClippedRead(self, alignmentObj):
@@ -122,6 +114,11 @@ class cluster():
         """
         return len(self.clippedReadDict)
 
+    def readIdList(self):
+        """
+        """
+        return list(self.clippedReadDict.keys())
+
     def addReadSeqs(self, fastaObj):
         """
         """
@@ -134,8 +131,6 @@ class cluster():
 
                 readSeq = rev_complement(fastaObj.fastaDict[readId])
 
-                #print "SEQ: ", fastaObj.fastaDict[readId]
-                #print "REV-SEQ: ", readSeq
             else:
                 readSeq = fastaObj.fastaDict[readId]
             
@@ -170,7 +165,6 @@ class cluster():
         
             ### 2. Make multiple sequence alignment
             msfPath = outDir + '/supportingReads.msf'
-            dndPath = outDir + '/supportingReads.dnd'
             command = 'tcoffee ' + fastaPath + ' -method=mafft_msa -quiet -output=msf_aln -outfile=' + msfPath
             print command
             os.system(command) # returns the exit status
@@ -188,7 +182,7 @@ class cluster():
             consensusSeq = fastaObj.fastaDict["EMBOSS_001"].upper()
 
             ### Do cleanup
-            command = 'rm ' + fastaPath + ' ' + msfPath + ' ' + dndPath + ' ' + consensusPath     
+            command = 'rm ' + fastaPath + ' ' + msfPath + ' ' + consensusPath     
             os.system(command) # returns the exit status
 
         return consensusSeq
@@ -344,8 +338,8 @@ def getClippedInterval(chrom, beg, end, bamFile):
     # Iterate over the alignments
     for alignmentObj in iterator:
 
-        ### Discard unmapped reads 
-        if (alignmentObj.is_unmapped == False):
+        ### Discard unmapped reads and PCR duplicates
+        if (alignmentObj.is_unmapped == False) and (alignmentObj.is_duplicate == False):
 
             firstOperation = alignmentObj.cigartuples[0][0]
             lastOperation = alignmentObj.cigartuples[-1][0]
@@ -353,19 +347,14 @@ def getClippedInterval(chrom, beg, end, bamFile):
             #### Cleck if soft-clipped read
             # Note: soft (Operation=4) or hard clipped (Operation=5)
             # Discard reads clipped both in the beginning and ending
-
             ## a) Clipping at the beginning of the read while not clipping at all at the end
             # *******--------- (clipped bases: *)     
             if ((firstOperation == 4) or (firstOperation == 5)) and ((lastOperation != 4) and (lastOperation != 5)):
-
-                #print "BEG-SOFT: ", alignmentObj, alignmentObj.query_name, alignmentObj.query_sequence, alignmentObj.reference_name, alignmentObj.reference_start       
                 clippedBegList.append(alignmentObj)
                 
             ## b) Clipping at the end of the read while not clipping at all at the beginning
             # ---------******* (clipped bases: *)     
             elif ((lastOperation == 4) or (lastOperation == 5)) and ((firstOperation != 4) and (firstOperation != 5)):
-                #print "END-SOFT: ", alignmentObj, alignmentObj.query_name, alignmentObj.query_sequence, alignmentObj.reference_name, alignmentObj.reference_start
-
                 clippedEndList.append(alignmentObj)      
   
     return clippedBegList, clippedEndList
@@ -472,6 +461,7 @@ args = parser.parse_args()
 insertionsPath = args.insertions
 bam = args.bam
 outDir = args.outDir
+tmpDir = outDir + '/tmp'
 
 scriptName = os.path.basename(sys.argv[0])
 
@@ -571,17 +561,14 @@ for insertionId in clustersDict:
     clusterEndList = clustersDict[insertionId]["end"]   
 
     for clusterObj in clusterBegList:
-        readPairIdList = [readId.split("/")[0] for readId in list(clusterObj.clippedReadDict.keys())]
-        #readIdList = [readId for readId in list(clusterObj.clippedReadDict.keys())]
+        readPairIdList = [readId.split("/")[0] for readId in clusterObj.readIdList()]
         allReadPairIdList = allReadPairIdList + readPairIdList
 
     for clusterObj in clusterEndList:
-        readPairIdList = [readId.split("/")[0] for readId in list(clusterObj.clippedReadDict.keys())]
-        #readIdList = [readId for readId in list(clusterObj.clippedReadDict.keys())]
+        readPairIdList = [readId.split("/")[0] for readId in clusterObj.readIdList()]
         allReadPairIdList = allReadPairIdList + readPairIdList    
 
 allReadPairIdList = list(set(allReadPairIdList))
-
 
 ## Write read pair ids in an output file:
 readPairsPath = outDir +'/allReadPairs.txt'
@@ -616,19 +603,17 @@ for insertionId in clustersDict:
 
     print "--- clusterBeg ---"
     for clusterObj in clusterBegList:
-        clusterId = clusterObj.chrom + "_" + str(clusterObj.bkpPos) + "_" + clusterObj.clippedSide + "_" + str(clusterObj.nbReads())        
-        consensusDir = outDir + '/tmp/' + clusterId
+        clusterId = clusterObj.chrom + "_" + str(clusterObj.bkpPos) + "_" + clusterObj.clippedSide + "_" + str(clusterObj.nbReads()) 
+        consensusDir = tmpDir + '/' + clusterId
         clusterObj.addReadSeqs(fastaObj) 
         clusterObj.consensusSeq = clusterObj.makeConsensusSeq(consensusDir)
-        print "......"
 
     #print "--- clusterEnd ---"
     for clusterObj in clusterEndList:
-        clusterId = clusterObj.chrom + "_" + str(clusterObj.bkpPos) + "_" + clusterObj.clippedSide + "_" + str(clusterObj.nbReads())        
-        consensusDir = outDir + '/tmp/' + clusterId
+        clusterId = clusterObj.chrom + "_" + str(clusterObj.bkpPos) + "_" + clusterObj.clippedSide + "_" + str(clusterObj.nbReads())          
+        consensusDir = tmpDir + '/' + clusterId
         clusterObj.addReadSeqs(fastaObj) 
         clusterObj.consensusSeq = clusterObj.makeConsensusSeq(consensusDir)
-        print "......"
 
 
 ## 4) For each insertion generate a fasta containing the consensus sequences for each cluster
@@ -642,12 +627,12 @@ for insertionId in clustersDict:
     ## For each cluster
     for clusterObj in clusterList:
 
-        header = "cluster" + "_" + clusterObj.chrom + "_" + str(clusterObj.bkpPos) + "_" + clusterObj.clippedSide + "_" + str(clusterObj.nbReads())
+        ## Include into the header the clipped read ids..
+        header = "cluster" + "_" + clusterObj.chrom + "_" + str(clusterObj.bkpPos) + "_" + clusterObj.clippedSide + "_" + str(clusterObj.nbReads()) + "\t" + ",".join(clusterObj.readIdList())
         fastaDict[header] = clusterObj.consensusSeq
 
     fastaObj = fasta()
     fastaObj.fastaDict = fastaDict
-    print insertionId, fastaObj.fastaDict
 
     ## Write into the output file
     fileName = insertionId + ".fa"
@@ -656,7 +641,7 @@ for insertionId in clustersDict:
 
 
 ### Make cleanup and finish
-command = 'rm ' + readPairsPath + ' ' + readPairsFasta 
+command = 'rm -r ' + readPairsPath + ' ' + readPairsFasta + ' ' + tmpDir 
 os.system(command) # returns the exit status
 
 

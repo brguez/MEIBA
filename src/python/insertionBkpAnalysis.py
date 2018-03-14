@@ -246,7 +246,7 @@ class contig():
     Methods:
     """
 
-    def __init__(self, contigId, contigSeq):
+    def __init__(self, contigId, contigSeq, clippedReadIds):
         """
             Initialize contig object.
 
@@ -269,7 +269,8 @@ class contig():
         self.informative = ""        
         self.bkpDict = {}
 
-        # Number supporting reads
+        # Supporting reads
+        self.clippedReadIds = clippedReadIds
         self.nbReads = ""     
     
         # Clipping side   
@@ -312,7 +313,6 @@ class contig():
         """
         ### Sort alignments based on contig beginning alignment coordinates
         alignmentObjListSorted = sorted(self.alignmentObjList, key=lambda alignmentObj: alignmentObj.qBeg, reverse=False)
-        #print "sorted-alignments: ", alignmentObjListSorted, [alignmentObj.qBeg for alignmentObj in alignmentObjListSorted]
 
         ### Make pairs of overlapping partial alignments
         pairedAlignmentObjList = []
@@ -390,7 +390,6 @@ class contig():
                 if (chainedAlignmentObj.perc_query_covered() > maxPerc):
 
                     chainedAlignmentObjNewList.append(chainedAlignmentObj)
-                    #print "**Chain_alignmnets: ", chainedAlignmentObj.alignmentList, len(chainedAlignmentObj.alignmentList), chainedAlignmentObj.perc_query_covered()
 
         nbAlignments = len(chainedAlignmentObjNewList)
 
@@ -435,8 +434,6 @@ class contig():
 
             ## 1. Identify single alignment spanning the largest piece of contig sequence
             bestAlignmentObj = self.best_single_alignment()            
-
-            #print "bestAlignmentObj: ", bestAlignmentObj, bestAlignmentObj.perc_query_covered()
 
             ## B) Only one alignment or multiple but one spans the full contig sequence
             if (nbAlignments == 1) or (bestAlignmentObj.perc_query_covered() == 100):
@@ -572,7 +569,6 @@ class contig():
                     beg = 0
 
             seq = targetSeq[beg:end]
-            print "PAJAROO: ", beg, end, targetSeqLen, targetSeq, seq, side, polyASeq
  
             # Compute percentage of A and T in the given slice
             nbA = seq.count("A") 
@@ -870,10 +866,10 @@ class insertion():
         self.coordinates = insertionCoord
         self.grInfo = grInfo
         self.sampleId = sampleId
-        self.readPairIdsPlus = readPairsPlus
-        self.nbReadPairsPlus =  len(readPairsPlus.split(','))
-        self.readPairIdsMinus = readPairsMinus
-        self.nbReadPairsMinus =  len(readPairsMinus.split(','))
+        self.DP = readPairsPlus
+        self.NDP =  len(readPairsPlus.split(','))
+        self.DN = readPairsMinus
+        self.NDN =  len(readPairsMinus.split(','))
 
         # Organize contigs into a dictionary
         self.contigsDict = self.read_contigs(contigsPath)
@@ -981,11 +977,12 @@ class insertion():
 
         ### For each contig create a contig object and add it to the dictionary
         # using the contig id as key
-        for contigId in fastaObj.fastaDict:
-            contigSeq = fastaObj.fastaDict[contigId]
+        for header in fastaObj.fastaDict:
+            contigId, clippedReadIds = header.split("\t")
+            contigSeq = fastaObj.fastaDict[header]
 
             # Create contig object
-            contigObj = contig(contigId, contigSeq)
+            contigObj = contig(contigId, contigSeq, clippedReadIds)
 
             # breakpoint position (cluster_X_9823493_end_1)
             contigIdList = contigId.split('_')
@@ -1053,7 +1050,6 @@ class insertion():
         for contigId in alignmentsDict:
             alignmentList = alignmentsDict[contigId]
             self.contigsDict[contigId].alignmentObjList = alignmentList
-
 
     def find_informative_contigs(self):
         """
@@ -1196,17 +1192,14 @@ class insertion():
         ## A) Full length (>=98% consensus sequence):
         if (percLength >= 98):
             structure = "FULL"
-            #print "FULL: ", self.tdType, percLength, elementLength, alignmentObjElement.tSize, alignmentObjElement.tName, orientation, alignmentObjElement.strand
 
         ## B) 5' inverted
         elif (orientation != alignmentObjElement.strand):
             structure = "INV"
-            #print "INV: ", self.tdType, percLength, elementLength, alignmentObjElement.tSize, alignmentObjElement.tName, orientation, alignmentObjElement.strand
 
         ## C) 3' deleted
         else:
             structure = "DEL"
-            #print "DEL: ", self.tdType, percLength, elementLength, alignmentObjElement.tSize, alignmentObjElement.tName, orientation, alignmentObjElement.strand
     
         return structure
 
@@ -1255,8 +1248,6 @@ class insertion():
         else:
             elementLength = alignmentObjClippedEnd.tEnd - alignmentObjClippedBeg.tBeg
             elementRange = str(alignmentObjClippedBeg.tBeg) + '-' + str(alignmentObjClippedEnd.tEnd)
-
-        print "LOROLOO: ", alignmentObjClippedBeg.tName,  alignmentObjClippedEnd.tName, elementLength, elementRange
 
         return elementLength, elementRange
 
@@ -1401,18 +1392,25 @@ class insertion():
 
                 bkpAPos = informativeContigClippedEndObj.bkpDict["pos"] 
                 bkpAContigSeq = informativeContigClippedEndObj.bkpDict["bkpSeq"]
+                NCA = informativeContigClippedEndObj.nbReads
+                CA = informativeContigClippedEndObj.clippedReadIds
 
                 bkpBPos = informativeContigClippedBegObj.bkpDict["pos"]
                 bkpBContigSeq = informativeContigClippedBegObj.bkpDict["bkpSeq"]
-                
+                NCB = informativeContigClippedBegObj.nbReads
+                CB = informativeContigClippedBegObj.clippedReadIds
+
             else:
 
                 bkpAPos = informativeContigClippedBegObj.bkpDict["pos"] 
                 bkpAContigSeq = informativeContigClippedBegObj.bkpDict["bkpSeq"]
-
+                NCA = informativeContigClippedBegObj.nbReads
+                CA = informativeContigClippedBegObj.clippedReadIds
+ 
                 bkpBPos = informativeContigClippedEndObj.bkpDict["pos"]
                 bkpBContigSeq = informativeContigClippedEndObj.bkpDict["bkpSeq"]
-
+                NCB = informativeContigClippedEndObj.nbReads
+                CB = informativeContigClippedEndObj.clippedReadIds
 
         # b) One breakpoint identified
         elif (self.score == '4') or (self.score == '3'):
@@ -1420,28 +1418,43 @@ class insertion():
 
             if (informativeContigClippedEndObj != "NA"):
                 chrom = informativeContigClippedEndObj.bkpDict["chrom"]
+
                 bkpAPos = informativeContigClippedEndObj.bkpDict["pos"] 
                 bkpAContigSeq = informativeContigClippedEndObj.bkpDict["bkpSeq"]
+                NCA = informativeContigClippedEndObj.nbReads
+                CA = informativeContigClippedEndObj.clippedReadIds
 
                 bkpBPos = "NA"
                 bkpBContigSeq = "NA"
-    
+                NCB = "."
+                CB = "NA"
+
             else:
                 chrom = informativeContigClippedBegObj.bkpDict["chrom"]
+
                 bkpAPos = informativeContigClippedBegObj.bkpDict["pos"] 
                 bkpAContigSeq = informativeContigClippedBegObj.bkpDict["bkpSeq"]
+                NCA = informativeContigClippedBegObj.nbReads
+                CA = informativeContigClippedBegObj.clippedReadIds
 
                 bkpBPos = "NA"
                 bkpBContigSeq = "NA"               
+                NCB = "."
+                CB = "NA"
 
         # c) No breakpoint identified (Imprecise breakpoint)      
         else:
             chrom, bkpAPos, cipos = self.imprecise_bkp()
             bkpAContigSeq = "NA"
+            NCA = "."
+            CA = "NA"
+
             bkpBPos = "NA"
             bkpBContigSeq = "NA"
+            NCB = "."
+            CB = "NA"
 
-        return chrom, bkpAPos, bkpBPos, bkpAContigSeq, bkpBContigSeq, cipos    
+        return chrom, bkpAPos, bkpBPos, bkpAContigSeq, bkpBContigSeq, NCA, NCB, CA, CB, cipos    
                  
     def find_insertionBkp(self):
         """
@@ -1491,9 +1504,9 @@ class insertion():
         self.score = self.insertion_score(informativeContigClippedEndObj, informativeContigClippedBegObj)
 
         ## 2.4 Breakpoints
-        self.chrom, self.bkpAPos, self.bkpBPos, self.bkpAContigSeq, self.bkpBContigSeq, self.cipos = self.breakpoints(informativeContigClippedEndObj, informativeContigClippedBegObj)
+        self.chrom, self.bkpAPos, self.bkpBPos, self.bkpAContigSeq, self.bkpBContigSeq, self.NCA, self.NCB, self.CA, self.CB, self.cipos = self.breakpoints(informativeContigClippedEndObj, informativeContigClippedBegObj)
 
-        print "FEATURES: ", self.tdType, self.coordinates, self.targetSiteLen, self.mechanism, self.orientation, self.elementLength, self.elementRange, self.structure, self.score, self.bkpAPos, self.bkpBPos, self.bkpAContigSeq, self.bkpBContigSeq, self.cipos
+        print "FEATURES: ", self.tdType, self.coordinates, self.targetSiteLen, self.mechanism, self.orientation, self.elementLength, self.elementRange, self.structure, self.score, self.bkpAPos, self.bkpBPos, self.bkpAContigSeq, self.bkpBContigSeq, self.NCA, self.NCB, self.CA, self.CB, self.cipos
 
 
     def convert2VCFline(self, genomeObj):
@@ -1507,11 +1520,13 @@ class insertion():
         ALT = "<MEI>"
         QUAL = "."
         FILTER = "."
-        INFO = "SVTYPE=<MEI>;CLASS=" + self.family + ";TYPE=" + self.tdType + ";MECHANISM=" + self.mechanism + ";SCORE=" + str(self.score) + ";BKPB=" + str(self.bkpBPos) + ";CIPOS=" + str(self.cipos) + ";STRAND=" + self.orientation + ";STRUCT=" + self.structure + ";LEN=" + str(self.elementLength) + ";RANGE=" + str(self.elementRange) + ";TSLEN=" + str(self.targetSiteLen) + ";SRCID=" + self.cytobandId + ";SRCTYPE=" + self.sourceElementType + ";SRC=" + self.sourceElementCoord + ";TDC=" + self.tdCoord + ";TDLEN=" + self.tdLen + ";TDLENR=" + self.tdLenRna + ";SRCGENE=" + self.srcgene + ";GR=" + self.grInfo + ";CONTIGA=" + self.bkpAContigSeq + ";CONTIGB=" + self.bkpBContigSeq + ";RP=" + self.readPairIdsPlus + ";RN=" + self.readPairIdsMinus    
-        FORMAT = "RCP:RCN:SL"
-        RP = str(self.nbReadPairsPlus)
-        RN = str(self.nbReadPairsMinus)
-        GENOTYPE = RP + ":" + RN + ":" + self.sampleId
+        INFO = "SVTYPE=<MEI>;CLASS=" + self.family + ";TYPE=" + self.tdType + ";MECHANISM=" + self.mechanism + ";SCORE=" + str(self.score) + ";BKPB=" + str(self.bkpBPos) + ";CIPOS=" + str(self.cipos) + ";STRAND=" + self.orientation + ";STRUCT=" + self.structure + ";LEN=" + str(self.elementLength) + ";RANGE=" + str(self.elementRange) + ";TSLEN=" + str(self.targetSiteLen) + ";SRCID=" + self.cytobandId + ";SRCTYPE=" + self.sourceElementType + ";SRC=" + self.sourceElementCoord + ";TDC=" + self.tdCoord + ";TDLEN=" + self.tdLen + ";TDLENR=" + self.tdLenRna + ";SRCGENE=" + self.srcgene + ";GR=" + self.grInfo + ";CONTIGA=" + self.bkpAContigSeq + ";CONTIGB=" + self.bkpBContigSeq + ";DP=" + self.DP + ";DN=" + self.DN + ";CA=" + self.CA + ";CB=" + self.CB 
+        FORMAT = "NDP:NDN:NCA:NCB:SL"
+        NDP = str(self.NDP)
+        NDN = str(self.NDN)
+        NCA = str(self.NCA)
+        NCB = str(self.NCB)
+        GENOTYPE = NDP + ":" + NDN + ":" + NCA + ":" + NCB + ":" + self.sampleId
 
         ## Generate VCF line object
         VCFlineList = [CHROM, POS, ID, REF, ALT, QUAL, FILTER, INFO, FORMAT, GENOTYPE]
@@ -1601,7 +1616,6 @@ if __name__ == "__main__":
         else:
             message = "Input files for " + insertionCoord + " insertion do not exist"
             log("ERROR", message)
-
 
     ## 3. Sort MEI
     VCFObj.sort()

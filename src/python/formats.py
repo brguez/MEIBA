@@ -260,7 +260,7 @@ class VCF():
 ##INFO=<ID=MECHANISM,Number=1,Type=String,Description="Insertion mechanism (TPRT: target primed reverse transcription, EI: endonuclease independent, DPA: double poly-A)>
 ##INFO=<ID=SCORE,Number=1,Type=Integer,Description="Insertion score (5: 5' and 3' breakpoints (bkp) identified, 4: 3'bkp identified, 3: 5'bkp identified, 2: no bkp identified, 1: inconsistent (contradictory insertion features))">
 ##INFO=<ID=MANUAL,Number=0,Type=Flag,Description="MEI manually verified through BAM inspection">
-##INFO=<ID=BKPB,Number=1,Type=Integer,Description="MEI right-most breakpoint position (bkp B). Left-most breakpoint position (bkp A) represented in the POS field">
+##INFO=<ID=BKPB,Number=1,Type=Integer,Description="MEI right-most breakpoint position (bkpB). Left-most breakpoint position (bkpA) represented in the POS field">
 ##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoint">
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
 ##INFO=<ID=STRUCT,Number=1,Type=String,Description="Mobile element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
@@ -283,10 +283,12 @@ class VCF():
 ##INFO=<ID=CPG,Number=0,Type=Flag,Description="Reported as cancer predisposition gene in 10.1038/nature12981 (DOI).">
 ##INFO=<ID=REP,Number=1,Type=String,Description="Repetitive element overlapping the insertion breakpoints">
 ##INFO=<ID=DIV,Number=1,Type=Integer,Description="Millidivergence of the overlapping repetitive element with respect a consensus sequence">
-##INFO=<ID=CONTIGA,Number=1,Type=String,Description="Assembled contig sequence spanning 1st bkp (lowest genomic position)">
-##INFO=<ID=CONTIGB,Number=1,Type=String,Description="Assembled contig sequence spanning 2nd bkp (highest genomic position)">
-##INFO=<ID=RP,Number=.,Type=String,Description="Positive cluster supporting read-pairs">
-##INFO=<ID=RN,Number=.,Type=String,Description="Negative cluster supporting read-pairs">
+##INFO=<ID=CONTIGA,Number=1,Type=String,Description="Assembled contig sequence spanning bkpA">
+##INFO=<ID=CONTIGB,Number=1,Type=String,Description="Assembled contig sequence spanning bkpB">
+##INFO=<ID=DP,Number=.,Type=String,Description="Discordant read-pairs Positive cluster">
+##INFO=<ID=DN,Number=.,Type=String,Description="Discordant read-pairs Negative cluster">
+##INFO=<ID=CA,Number=.,Type=String,Description="Clipped reads breakpoint A">
+##INFO=<ID=CB,Number=.,Type=String,Description="Clipped reads breakpoint B">
 ##FILTER=<ID=SCORE,Description="Insertion with an score < threshold">
 ##FILTER=<ID=FPSOURCE,Description="Transduction mediated by a false somatic source element">
 ##FILTER=<ID=REP,Description="Insertion overlapping a satellite region or a repetitive element of the same class">
@@ -295,8 +297,10 @@ class VCF():
 ##FILTER=<ID=TD,Description="L1 transduction incorrectly identified as a processed pseudogene insertion">
 ##FILTER=<ID=COUNT,Description="Allele count < threshold">
 ##FILTER=<ID=MISSGT,Description="Genotype missing-ness rate > threshold ">
-##FORMAT=<ID=RCP,Number=1,Type=Integer,Description="Count of positive cluster supporting read-pairs">
-##FORMAT=<ID=RCN,Number=1,Type=Integer,Description="Count of negative cluster supporting read-pairs">
+##FORMAT=<ID=NDP,Number=1,Type=Integer,Description="Number of Discordant read-pairs Positive cluster">
+##FORMAT=<ID=NDN,Number=1,Type=Integer,Description="Number of Discordant read-pairs Negative cluster">
+##FORMAT=<ID=NCA,Number=1,Type=Integer,Description="Number of Clipped reads breakpoint A">
+##FORMAT=<ID=NCB,Number=1,Type=Integer,Description="Number of Clipped reads breakpoint B">
 ##FORMAT=<ID=SL,Number=1,Type=String,Description="List of samples where the variant was found">
 ##FORMAT=<ID=REPR,Number=1,Type=String,Description="Representative sample among all the samples where the variant is identified">
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Unphased genotypes">
@@ -364,7 +368,7 @@ class VCFline():
         """
 
         ## Create list containing the order of info fields 
-        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "MECHANISM", "SCORE", "MANUAL", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "RANGE", "TSLEN", "SRCID", "SRCTYPE", "SRC", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GR", "GERMDB", "POLYMORPHIC", "NOVEL", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "RP", "RN" ]
+        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "MECHANISM", "SCORE", "MANUAL", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "RANGE", "TSLEN", "SRCID", "SRCTYPE", "SRC", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GR", "GERMDB", "POLYMORPHIC", "NOVEL", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "DP", "DN", "CA", "CB" ]
 
         flagList = ["POLYMORPHIC", "NOVEL", "COSMIC", "CPG" , "MANUAL"]
 

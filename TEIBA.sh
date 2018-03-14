@@ -905,7 +905,7 @@ then
     startTime=$(date +%s)
 
     log "Identifying insertion breakpoints, TSD, MEI length, orientation and structure" $step
-    run "python $BKP_ANALYSIS $paths2bkpAnalysis $sampleId $fileName $genome --outDir $bkpAnalysisDir 1>> $logsDir/4_bkpAnalysis.out 2>> $logsDir/4_bkpAnalysis.err" "$ECHO"
+    run "python $BKP_ANALYSIS $paths2bkpAnalysis $sampleId $fileName $genome --outDir $bkpAnalysisDir 1> $logsDir/4_bkpAnalysis.out 2> $logsDir/4_bkpAnalysis.err" "$ECHO"
 
     if [ ! -s $rawVCF ];
     then
@@ -945,7 +945,7 @@ then
     startTime=$(date +%s)
 
     log "Annotating MEI" $step
-    run "bash $ANNOTATOR $rawVCF $annotSteps $refDir $fileName $annotDir 1>> $logsDir/5_annotation.out 2>> $logsDir/5_annotation.err" "$ECHO"
+    run "bash $ANNOTATOR $rawVCF $annotSteps $refDir $fileName $annotDir 1> $logsDir/5_annotation.out 2> $logsDir/5_annotation.err" "$ECHO"
 
     if [ ! -s $annotVCF ];
     then
@@ -985,9 +985,9 @@ then
 
     if [[ "$germlineVCF" == "NOT_PROVIDED" ]]
     then
-        command="$FILTER $annotVCF $fileName $filterList --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err"
+        command="$FILTER $annotVCF $fileName $filterList --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --outDir $filterDir 1> $logsDir/6_filter.out 2> $logsDir/6_filter.err"
     else
-        command="$FILTER $annotVCF $fileName $filterList --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --germline-VCF $germlineVCF --outDir $filterDir 1>> $logsDir/6_filter.out 2>> $logsDir/6_filter.err"
+        command="$FILTER $annotVCF $fileName $filterList --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --germline-VCF $germlineVCF --outDir $filterDir 1> $logsDir/6_filter.out 2> $logsDir/6_filter.err"
     fi
 
     run "$command" "$ECHO"
