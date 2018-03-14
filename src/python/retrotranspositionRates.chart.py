@@ -210,9 +210,7 @@ for tumorType in cohortObj.VCFdict:
 # 0_insertions      X1           Y1           Z1     
 # 1-10_insertions   X2           Y2           Z2
 # ...
-
 categoryCountsDataframe =  pd.DataFrame(categoryCountsDict)
-print "categoryCountsDataframe: ", categoryCountsDataframe
 
 ### 5. Make dataframe with the percentage of samples per category for each tumor type
 # Project codes: columns
@@ -243,12 +241,17 @@ for category in categories:
         # Add source element contribution to dataframe
         categoryPercDataframe.loc[category, tumorType] = donorPercTumorType
 
-# Order dataframe columns (tumor types) first according to "High" and then to "None" category
-transposedDf = categoryPercDataframe.transpose()
-sortedDf = transposedDf.sort_values(['High', 'Moderate', 'Low', 'None'], ascending=[True, True, True, False])
-categoryPercSortedDataframe = sortedDf.transpose()
+# Order dataframe columns according to z-scores
+tumorTypeList = ['Eso-AdenoCA', 'Head-SCC', 'Lung-SCC', 'ColoRect-AdenoCA', 'Stomach-AdenoCA', 'Uterus-AdenoCA', 'Ovary-AdenoCA', 'Cervix-SCC', 'Myeloid-MDS', 'Biliary-AdenoCA', 'Bladder-TCC', 'Bone-Epith', 'Lymph-BNHL', 'Panc-AdenoCA', 'Lung-AdenoCA', 'Lymph-CLL', 'Prost-AdenoCA', 'Bone-Leiomyo', 'CNS-PiloAstro', 'CNS-Oligo', 'Breast-AdenoCA', 'Myeloid-MPN', 'CNS-GBM', 'Thy-AdenoCA', 'Bone-Osteosarc', 'Panc-Endocrine', 'Kidney-ChRCC', 'Myeloid-AML', 'Skin-Melanoma', 'CNS-Medullo', 'Kidney-RCC', 'Liver-HCC']
 
-print "categoryPercSortedDataframe: ", categoryPercSortedDataframe
+## Exclude "Myeloid-MDS" as single sample:
+tumorTypeList.remove('Myeloid-MDS')
+
+tumorTypeList = list(reversed(tumorTypeList))
+
+transposedDf = categoryPercDataframe.transpose()
+sortedDf = transposedDf.loc[tumorTypeList]
+categoryPercSortedDataframe = sortedDf.transpose()
 
 ### 6. Make list per category containing the percentage of samples belonging to a given category in each tumor type
 # list 0 insertions [%tumorType1, %tumorType2, ... ]
@@ -257,16 +260,8 @@ print "categoryPercSortedDataframe: ", categoryPercSortedDataframe
 
 percHighList, percLowList, percModerateList, percNoneList = categoryPercSortedDataframe.values.tolist()
 
-print "percHighList,percLowList,percModerateList,percNoneList: ", percHighList, percLowList, percModerateList, percNoneList
-
 ### 7. Make ordered list containing the number of donors per tumor type
-tumorTypeList = categoryPercSortedDataframe.columns.values.tolist()
-
-print "tumorTypeList: ", tumorTypeList
-
 donorCountsSortedSeries = donorsPerTumorTypeSerie.reindex(tumorTypeList)
-
-print "donorCountsSortedSeries: ", donorCountsSortedSeries
 
 ###  8. Make bar plot
 ypos = np.arange(1, len(percHighList) + 1)    # the y locations for the groups
@@ -309,7 +304,6 @@ plt.axis((x0,
 
 ## Customize ticks
 plt.xticks(np.arange(0, 100.001, 10), fontsize=8)
-tumorTypeList = categoryPercSortedDataframe.columns.values.tolist()
 plt.yticks(ypos, tumorTypeList, fontsize=8)
 
 # Rotate them

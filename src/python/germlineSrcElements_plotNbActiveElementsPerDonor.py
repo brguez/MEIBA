@@ -112,9 +112,6 @@ for line in donorMetadataFile:
 # Convert into dataframe
 donorIdTumorTypeSeries = pd.Series(donorIdTumorTypeDict, name='tumorType') 
 
-print "donorIdTumorTypeSeries: ", donorIdTumorTypeSeries
-
-
 #### 2. Read palette file
 ##########################
 # Initialize a dictionary with the following structure:
@@ -158,6 +155,9 @@ activeSourceFilteredSeries = activeSourceSeries.loc[donorIdList]
 header("4. Merge series generated in 0) and 1) into a single dataframe")
 tumorTypeActiveSourceDf = pd.concat([donorIdTumorTypeSeries, activeSourceFilteredSeries], axis=1)
 
+outFilePath = outDir + '/nbActive_germlineSource_tumourTypes.tsv'
+tumorTypeActiveSourceDf.to_csv(outFilePath, sep='\t') 
+
 ## Select donors with at least one active source element in a single donor
 tumorTypesDict = Counter(tumorTypeActiveSourceDf[tumorTypeActiveSourceDf["nbActiveSrc"] > 0]["tumorType"].tolist())
 
@@ -180,9 +180,9 @@ for tumorType in tumorTypeNbActiveSrcDict:
 
     meanDict[tumorType] = np.mean(tumorTypeNbActiveSrcDict[tumorType])
 
-tumorTypeNbActiveSrcSortedTuples = sorted(meanDict.items(), key=operator.itemgetter(1), reverse=True)
-sortedTumorTypesList = list(zip(*tumorTypeNbActiveSrcSortedTuples)[0])
 
+## Sort the tumour types according to their Z-score values
+sortedTumorTypesList = [ "Eso-AdenoCA", "Lung-SCC", "Head-SCC", "ColoRect-AdenoCA", "Stomach-AdenoCA", "Uterus-AdenoCA", "Cervix-SCC", "Lung-AdenoCA", "Biliary-AdenoCA", "Panc-Endocrine", "Bone-Epith", "Lymph-BNHL", "Ovary-AdenoCA", "Bladder-TCC", "Bone-Osteosarc", "Kidney-ChRCC", "Prost-AdenoCA", "Panc-AdenoCA", "Breast-AdenoCA", "Skin-Melanoma", "Kidney-RCC", "Liver-HCC" ]
 
 #### 6. Make the strip plot
 ############################
@@ -191,11 +191,11 @@ header("6. Make the strip plot")
 
 fig = plt.figure(figsize=(12,4))
 
-ax = sns.stripplot(x='tumorType', y='nbActiveSrc', data=tumorTypeActiveSourceFilteredDf, size=8, edgecolor="black", linewidth=1, jitter=True, palette=colorTumorTypeDict, order=sortedTumorTypesList)
+ax = sns.stripplot(x='tumorType', y='nbActiveSrc', data=tumorTypeActiveSourceFilteredDf, size=6, edgecolor="black", linewidth=1, alpha=.8, jitter=True, palette=colorTumorTypeDict, order=sortedTumorTypesList)
 
 ### Axis labels
 ax.set_xlabel('')
-ax.set_ylabel('Active source elements')
+ax.set_ylabel('Active source elements per sample')
 
 # turn the axis labels
 for item in ax.get_yticklabels():
