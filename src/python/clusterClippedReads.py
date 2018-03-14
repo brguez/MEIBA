@@ -166,8 +166,9 @@ class cluster():
             ### 2. Make multiple sequence alignment
             msfPath = outDir + '/supportingReads.msf'
             dndPath = outDir + '/supportingReads.dnd'
+            libraryPath = outDir + '/supportingReads.tc_lib'
+            command = 'tcoffee ' + fastaPath + ' -method=mafft_msa -quiet -output=msf_aln -outfile=' + msfPath + ' -newtree=' + dndPath + ' -newtree=' + ' -out_lib=' + libraryPath
 
-            command = 'tcoffee ' + fastaPath + ' -method=mafft_msa -quiet -output=msf_aln -outfile=' + msfPath + ' -newtree=' + dndPath
             print command
             os.system(command) # returns the exit status
 
@@ -184,7 +185,7 @@ class cluster():
             consensusSeq = fastaObj.fastaDict["EMBOSS_001"].upper()
 
             ### Do cleanup
-            command = 'rm ' + fastaPath + ' ' + msfPath + ' ' + dndPath + ' ' + consensusPath                
+            command = 'rm ' + fastaPath + ' ' + msfPath + ' ' + dndPath + ' ' + consensusPath + ' ' + libraryPath                
             os.system(command) # returns the exit status
 
         return consensusSeq
