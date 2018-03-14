@@ -17,6 +17,7 @@ parser.add_argument('traficBlackList', help='File with trafic blacklisted sample
 parser.add_argument('clinical', help='File with donor clinical information (gender, age at diagnosis...)')
 parser.add_argument('msi', help='File with donor MSI status')
 parser.add_argument('tp53', help='File with tp53 mutational status')
+parser.add_argument('QA', help='File with quality assessment (QA) data')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
@@ -29,6 +30,7 @@ traficBlackListPath = args.traficBlackList
 clinicalPath = args.clinical
 msiPath = args.msi
 tp53Path = args.tp53
+QAPath = args.QA
 outDir = args.outDir
 
 scriptName = os.path.basename(sys.argv[0])
@@ -45,6 +47,7 @@ print "traficBlackList: ", traficBlackListPath
 print "clinical: ", clinicalPath
 print "msi: ", msiPath
 print "tp53: ", tp53Path
+print "QAPath: ", QAPath
 print "outDir: ", outDir
 print
 
@@ -52,6 +55,7 @@ print "***** Executing ", scriptName, " *****"
 print
 print "..."
 print
+
 
 ### 1) Read file with representative tumor_aliquot_ids for multitumor donors
 # Make dictionary with donorUniqueId (projectCode::donorId) as key and representative tumor_aliquot_ids as values
@@ -224,14 +228,41 @@ for line in tp53:
         tp53Dict[tumor_wgs_aliquot_id] = tp53_status
 
 
-### 8) Read main metadata file and make output file containing all the metadata information
+### 8) Read file with QA info
+QA = open(QAPath, 'r')
+QADict = {}
+
+# Read file line by line
+for line in QA:
+    line = line.rstrip('\r\n')
+
+    ## Discard header
+    if not line.startswith("#"):
+        
+        fieldsList = line.split("\t")
+
+        submitted_donor_id = fieldsList[1]
+        normal_wgs_aliquot_id = fieldsList[2]
+        tumor_wgs_aliquot_id = fieldsList[3]
+        stars = fieldsList[4]
+        mean_coverage_normal = fieldsList[5]
+        mean_coverage_tumor = fieldsList[6]
+
+        ## Initialize nested dictionary
+        if submitted_donor_id not in QADict:
+            QADict[submitted_donor_id] = {}            
+
+        QADict[submitted_donor_id][normal_wgs_aliquot_id] = ["", mean_coverage_normal]
+        QADict[submitted_donor_id][tumor_wgs_aliquot_id] = [stars, mean_coverage_tumor]
+
+### 9) Read main metadata file and make output file containing all the metadata information
 # Open output file
 fileName = "PCAWG_donors_metadata.tsv"
 outFilePath = outDir + "/" + fileName
 outFile = open( outFilePath, "w" )
 
 # Write header:
-row = "#submitted_donor_id" + "\t" + "icgc_donor_id" + "\t" + "wgs_exclusion_white_gray" + "\t" + "wgs_exclusion_trafic" + "\t" + "ancestry_primary" + "\t" + "donor_sex" + "\t" + "donor_age_at_diagnosis" + "\t" + "donor_survival_time" + "\t" + "donor_interval_of_last_followup" + "\t" + "dcc_project_code" + "\t" + "histology_count" + "\t" + "histology_exclusion_status" + "\t" + "histology_abbreviation"	 + "\t" + "histology_tier1" + "\t" +	 "histology_tier2" + "\t" + "normal_wgs_icgc_specimen_id" + "\t" + "normal_wgs_icgc_sample_id" + "\t" + "normal_wgs_aliquot_id" + "\t" + "tumor_wgs_specimen_count" + "\t" + "tumor_wgs_icgc_specimen_id" + "\t" + "tumor_wgs_icgc_sample_id" + "\t" + "tumor_wgs_aliquot_id" + "\t" + "tumor_wgs_representative_aliquot_id" + "\t" + "normal_wgs_has_matched_rna_seq" + "\t" + "tumor_wgs_has_matched_rna_seq" + "\t" + 	"normal_rna_seq_icgc_specimen_id" + "\t" + "normal_rna_seq_icgc_sample_id" + "\t" + "tumor_rna_seq_specimen_count" + "\t" + "tumor_rna_seq_icgc_specimen_id" + "\t" + "tumor_rna_seq_icgc_sample_id" + "\t" + "tumor_rna_seq_aliquot_id" + "\t" + "donor_vital_status" + "\t" + "tobacco_history" + "\t" + "tobacco_intensity" + "\t" + "alcohol_history" + "\t" + "alcohol_intensity" + "\t" + "MSI_status_(from_TCGA_consortium)" + "\t" + "tp53Mut" + "\t" + "mutStatus" + "\n" 
+row = "#submitted_donor_id" + "\t" + "icgc_donor_id" + "\t" + "wgs_exclusion_white_gray" + "\t" + "wgs_exclusion_trafic" + "\t" + "ancestry_primary" + "\t" + "donor_sex" + "\t" + "donor_age_at_diagnosis" + "\t" + "donor_survival_time" + "\t" + "donor_interval_of_last_followup" + "\t" + "dcc_project_code" + "\t" + "histology_count" + "\t" + "histology_exclusion_status" + "\t" + "histology_abbreviation"	 + "\t" + "histology_tier1" + "\t" +	 "histology_tier2" + "\t" + "normal_wgs_icgc_specimen_id" + "\t" + "normal_wgs_icgc_sample_id" + "\t" + "normal_wgs_aliquot_id" + "\t" + "tumor_wgs_specimen_count" + "\t" + "tumor_wgs_icgc_specimen_id" + "\t" + "tumor_wgs_icgc_sample_id" + "\t" + "tumor_wgs_aliquot_id" + "\t" + "tumor_wgs_representative_aliquot_id" + "\t" + "normal_wgs_has_matched_rna_seq" + "\t" + "tumor_wgs_has_matched_rna_seq" + "\t" + 	"normal_rna_seq_icgc_specimen_id" + "\t" + "normal_rna_seq_icgc_sample_id" + "\t" + "tumor_rna_seq_specimen_count" + "\t" + "tumor_rna_seq_icgc_specimen_id" + "\t" + "tumor_rna_seq_icgc_sample_id" + "\t" + "tumor_rna_seq_aliquot_id" + "\t" + "donor_vital_status" + "\t" + "tobacco_history" + "\t" + "tobacco_intensity" + "\t" + "alcohol_history" + "\t" + "alcohol_intensity" + "\t" + "MSI_status_(from_TCGA_consortium)" + "\t" + "tp53Mut" + "\t" + "mutStatus" + "\t" + "stars" + "\t" + "mean_coverage_normal" + "\t" + "mean_coverage_tumor" + "\n" 
 
 outFile.write(row)
 
@@ -268,14 +299,14 @@ for line in mainMetadata:
 
         donorUniqueId = dcc_project_code + "::" + submitted_donor_id
         
-        ## Histology        
+        ## Histology ##        
         histology_abbreviation = histologyDict[donorUniqueId]["abbreviation"] 
         histology_count = len(histology_abbreviation.split(','))
         histology_tier1 = histologyDict[donorUniqueId]["tier1"] 
         histology_tier2 = histologyDict[donorUniqueId]["tier2"]   
         histology_exclusion_status = 'Excluded' if histology_abbreviation in excludedTumorTypesList else 'included'
 
-        ## Clinical
+        ## Clinical ##
         donor_sex = clinicalDict[donorUniqueId]["sex"] 
         donor_age_at_diagnosis = clinicalDict[donorUniqueId]["diagnosisAge"] 
         donor_survival_time = clinicalDict[donorUniqueId]["survivalTime"] 
@@ -294,7 +325,7 @@ for line in mainMetadata:
         else:
             tumor_wgs_representative_aliquot_id = multitumorDict[donorUniqueId]
     
-        ## Ancestry
+        ## Ancestry ##
         # a) Donor without ancestry information
         # Note: there are 16 donors we do not have ancestry information...         
         if normal_wgs_aliquot_id not in ancestryDict:
@@ -304,7 +335,7 @@ for line in mainMetadata:
         else:     
             ancestry_primary = ancestryDict[normal_wgs_aliquot_id]
 
-        ## Blacklist
+        ## Blacklist ##
         # a) Donor in TraFiC blacklist
         if icgc_donor_id in blackList:
             wgs_exclusion_trafic = "Excluded"
@@ -313,7 +344,7 @@ for line in mainMetadata:
         else:
             wgs_exclusion_trafic = "Whitelist"
 
-        ## MSI status
+        ## MSI status ##
         MSI_status = msiDict[submitted_donor_id] if submitted_donor_id in msiDict else "UNK"
 
         ## TP53 mutation status
@@ -321,11 +352,10 @@ for line in mainMetadata:
         if (tumor_wgs_specimen_count == "1"):
 
             if tumor_wgs_aliquot_id	in tp53Dict:
-                tp53_mutation = "True"
+                tp53_mutation = "mutated"
                 mutation_status = tp53Dict[tumor_wgs_aliquot_id]
-
             else:
-                tp53_mutation = "False"
+                tp53_mutation = "wildType"
                 mutation_status = "wildType"
 
         # b) Multitumour donor
@@ -343,8 +373,31 @@ for line in mainMetadata:
                     tp53_mutation = "True"
                     mutation_status = tp53Dict[aliquotId]
     
+        ## Quality assessment data ##
+        # NOTE: For some reason there is not coverage info for one donor
+
+        # 
+        mean_coverage_normal = QADict[submitted_donor_id][normal_wgs_aliquot_id][1]  if submitted_donor_id in QADict else "UNK"
+
+        # For each tumour aliquot id        
+        tumorAliquotIdList = tumor_wgs_aliquot_id.split(',')
+
+        starList = []
+        coverageTumorList = []
+
+        for tumorAliquotId in tumorAliquotIdList:
+
+            star, coverageTumor = QADict[submitted_donor_id][tumorAliquotId]  if submitted_donor_id in QADict else ["UNK", "UNK"]
+
+            starList.append(star)
+            coverageTumorList.append(coverageTumor)
+
+        stars = ",".join(starList)        
+        mean_coverage_tumor = ",".join(coverageTumorList)
+        
+
         ### Write metadata row into the output file
-        row = submitted_donor_id + "\t" + icgc_donor_id + "\t" + wgs_exclusion_white_gray + "\t" + wgs_exclusion_trafic + "\t" + ancestry_primary + "\t" + donor_sex + "\t" + donor_age_at_diagnosis + "\t" + donor_survival_time + "\t" + donor_interval_of_last_followup + "\t" + dcc_project_code + "\t" + str(histology_count) + "\t" + histology_exclusion_status + "\t" + histology_abbreviation	 + "\t" + histology_tier1 + "\t" +	 histology_tier2 + "\t" + normal_wgs_icgc_specimen_id + "\t" + normal_wgs_icgc_sample_id + "\t" + normal_wgs_aliquot_id + "\t" + tumor_wgs_specimen_count	 + "\t" + tumor_wgs_icgc_specimen_id + "\t" + tumor_wgs_icgc_sample_id + "\t" + tumor_wgs_aliquot_id + "\t" + tumor_wgs_representative_aliquot_id + "\t" + normal_wgs_has_matched_rna_seq + "\t" + tumor_wgs_has_matched_rna_seq + "\t" + normal_rna_seq_icgc_specimen_id + "\t" + normal_rna_seq_icgc_sample_id + "\t" + tumor_rna_seq_specimen_count + "\t" + tumor_rna_seq_icgc_specimen_id + "\t" + tumor_rna_seq_icgc_sample_id + "\t" + tumor_rna_seq_aliquot_id + "\t" + donor_vital_status + "\t" + tobacco_history + "\t" + tobacco_intensity + "\t" + alcohol_history + "\t" + alcohol_intensity + "\t" + MSI_status + "\t" + tp53_mutation + "\t" + mutation_status + "\n" 
+        row = submitted_donor_id + "\t" + icgc_donor_id + "\t" + wgs_exclusion_white_gray + "\t" + wgs_exclusion_trafic + "\t" + ancestry_primary + "\t" + donor_sex + "\t" + donor_age_at_diagnosis + "\t" + donor_survival_time + "\t" + donor_interval_of_last_followup + "\t" + dcc_project_code + "\t" + str(histology_count) + "\t" + histology_exclusion_status + "\t" + histology_abbreviation	 + "\t" + histology_tier1 + "\t" +	 histology_tier2 + "\t" + normal_wgs_icgc_specimen_id + "\t" + normal_wgs_icgc_sample_id + "\t" + normal_wgs_aliquot_id + "\t" + tumor_wgs_specimen_count	 + "\t" + tumor_wgs_icgc_specimen_id + "\t" + tumor_wgs_icgc_sample_id + "\t" + tumor_wgs_aliquot_id + "\t" + tumor_wgs_representative_aliquot_id + "\t" + normal_wgs_has_matched_rna_seq + "\t" + tumor_wgs_has_matched_rna_seq + "\t" + normal_rna_seq_icgc_specimen_id + "\t" + normal_rna_seq_icgc_sample_id + "\t" + tumor_rna_seq_specimen_count + "\t" + tumor_rna_seq_icgc_specimen_id + "\t" + tumor_rna_seq_icgc_sample_id + "\t" + tumor_rna_seq_aliquot_id + "\t" + donor_vital_status + "\t" + tobacco_history + "\t" + tobacco_intensity + "\t" + alcohol_history + "\t" + alcohol_intensity + "\t" + MSI_status + "\t" + tp53_mutation + "\t" + mutation_status + "\t" + stars + "\t" + mean_coverage_normal + "\t" + mean_coverage_tumor + "\n" 
 
         outFile.write(row)
 
