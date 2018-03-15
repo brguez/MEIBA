@@ -165,17 +165,14 @@ class cluster():
         
             ### 2. Make multiple sequence alignment
             msfPath = outDir + '/supportingReads.msf'
-            dndPath = outDir + '/supportingReads.dnd'
-            libraryPath = outDir + '/supportingReads.tc_lib'
-            command = 'tcoffee ' + fastaPath + ' -method=mafft_msa -quiet -output=msf_aln -outfile=' + msfPath + ' -newtree=' + dndPath + ' -newtree=' + ' -out_lib=' + libraryPath
-
+            command = 'muscle -in ' + fastaPath + ' -out ' + msfPath + ' -msf' 
             print command
             os.system(command) # returns the exit status
 
             ### 3. Generate consensus sequence (cons tool from EMBOSS packagge)
             consensusPath = outDir + '/consensus.fa'
     
-            command = 'cons -sequence ' + msfPath + ' -outseq ' + consensusPath + ' -identity 1 -plurality 1'
+            command = 'cons -sequence ' + msfPath + ' -outseq ' + consensusPath + ' -identity 0 -plurality 0'
             print command
             os.system(command) # returns the exit status
 
@@ -185,8 +182,14 @@ class cluster():
             consensusSeq = fastaObj.fastaDict["EMBOSS_001"].upper()
 
             ### Do cleanup
-            command = 'rm ' + fastaPath + ' ' + msfPath + ' ' + dndPath + ' ' + consensusPath + ' ' + libraryPath                
+            command = 'rm ' + fastaPath + ' ' + msfPath + consensusPath             
             os.system(command) # returns the exit status
+
+        ## Replace '-' by 'N' for ambiguous bases:
+        consensusSeq = consensusSeq.replace('-', 'N')
+
+        ## Convert consensus sequence into upper case:
+        consensusSeq = consensusSeq.upper()
 
         return consensusSeq
                   

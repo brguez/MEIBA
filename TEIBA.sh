@@ -596,7 +596,6 @@ awkDir=$srcDir/awk
 ## Output files directories
 logsDir=$outDir/Logs
 clippedDir=$outDir/Clipped
-tcoffeeDir=$outDir/tcoffee
 blatDir=$outDir/Blat
 bkpAnalysisDir=$outDir/BkpAnalysis
 annotDir=$outDir/Annot
@@ -607,10 +606,6 @@ srcRegDir=$outDir/SrcRegions
 # The temporary directory will be exported as an environmental variable since it will
 # be used by every TEIBA's scripts
 export TMPDIR=$TMPDIR
-
-# Export tcoffee directories
-if [[ ! -d $tcoffeeDir ]]; then mkdir $tcoffeeDir; fi
-export UNIQUE_DIR_4_TCOFFEE=$tcoffeeDir
 
 ## make sure the pipeline removes intermediate files even if it fails
 trap cleanupFunc EXIT
