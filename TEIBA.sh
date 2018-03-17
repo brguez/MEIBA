@@ -749,7 +749,7 @@ cat $insertions | while read chrP begP endP nReadsP famP readsP chrM begM endM n
         [[ $begExA -lt $begExB ]] && begEx=$begExA || begEx=$begExB
         [[ $endExA -gt $endExB ]] && endEx=$endExA || endEx=$endExB
         targetRegionFile=${famP}":"${tdType}":"${chrP}"_"${endP}"_"${begM}".src.fa"
-        extractRegion $genome $chrExA $begEx $endEx $windowSize $srcRegDir/$targetRegionFile
+        extractRegion $genome $chrExA $begEx $endEx $windowSize $tdType $srcRegDir/$targetRegionFile
     fi
 done
 
@@ -785,6 +785,7 @@ run "python $CLIPPED $insertions $bam -o $outDir --outDir $clippedDir 1> $logsDi
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
+
 # 2) Align the consensus sequence for each breakpoint cluster into the reference genome with blat
 ##################################################################################################
 # It will produce a psl with the blat alignments for the assembled contigs
@@ -810,7 +811,7 @@ startTime=$(date +%s)
 
 printHeader "Aligning the assembled bkp contigs into the reference genome with blat"
 
-ls $clippedDir | grep -v 'tmp' | while read bkpContig;
+ls $clippedDir | grep -v 'tmp' | grep -v 'allReadPairs' | while read bkpContig;
 do
     bkpContigPath=${clippedDir}/${bkpContig}
     bkpId=${bkpContig%.fa}
@@ -859,7 +860,7 @@ if [[ ! -d $bkpAnalysisDir ]]; then mkdir $bkpAnalysisDir; fi
 # - $outDir/insertions_list.txt
 insertionList=$bkpAnalysisDir/insertionList.txt
 
-ls $clippedDir | grep -v 'tmp' | awk '{split($1,a,".fa"); print a[1];}' > $insertionList
+ls $clippedDir | grep -v 'tmp' | grep -v 'allReadPairs' | awk '{split($1,a,".fa"); print a[1];}' > $insertionList
 
 ## 3.2 For each insertion add the list of read pairs supporting the clusters, the source element, transduction and rearrangement info 
 # Output:
