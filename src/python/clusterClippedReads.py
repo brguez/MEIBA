@@ -53,36 +53,6 @@ class fasta():
         outFile.close()
 
 
-class slide():
-    """
-    """
-    def __init__(self):
-        """
-        """
-        self.beg = ""
-        self.end = ""
-        self.seq = ""
-        self.percN = ""
-
-
-class polyNcluster():
-    """
-    """
-    def __init__(self, slideObj):
-        """
-        """
-        self.beg = slideObj.beg
-        self.end = slideObj.end
-        self.slideObjList = [slideObj]
-
-    def addSlide(self, slideObj):
-        self.end = slideObj.end
-        self.slideObjList.append(slideObj)
-        
-    def nbSlides(self):
-        return len(self.slideObjList)
-
-
 class cluster():
     """
     """
@@ -387,18 +357,12 @@ def clusterCLipped(clippedList, clippedSide):
         # A) No cluster in the list -> Create first cluster
         if not clusterList:
 
-            #msg = "Initialize first cluster"
-            #log("CLUSTER", msg) 
-
             clusterObj = cluster(alignmentObj, clippedSide) 
             clusterObj.addClippedRead(alignmentObj)
             clusterList.append(clusterObj)
 
         # B) There is already at least one cluster in the list -> Check if current clipped read within the latest cluster
         else:
-                    
-            #msg = "Check if clipped read within latest cluster"
-            #log("CLUSTER", msg) 
 
             ## Define bkp position:
             bkpPos = alignmentObj.reference_start if clippedSide == "beg" else alignmentObj.reference_end        
@@ -407,34 +371,21 @@ def clusterCLipped(clippedList, clippedSide):
             lastClusterObj = clusterList[-1]     
             begClusterRange = lastClusterObj.bkpPos 
             endClusterRange = lastClusterObj.bkpPos + 3
-            #endClusterRange = lastClusterObj.bkpPos + 1
     
             #### Check if clipped read within cluster range
             overlapping = overlap(bkpPos, bkpPos, begClusterRange, endClusterRange) 
-
-            #msg = "cluster_range,clipped_range: " + str(begClusterRange) + " " + str(endClusterRange) + " " + str(bkpPos) + " " + str(bkpPos) + " " + str(overlapping)
-            #log("CLUSTER", msg) 
     
             ## a) Overlapping ranges, so clipped read within previous cluster interval -> add read to the cluster                                
             if overlapping:
 
-                #msg = "clipped read within cluster -> add to the cluster"
-                #log("CLUSTER", msg) 
                 lastClusterObj.addClippedRead(alignmentObj)
                      
             ## b) Clipped read outside previous cluster interval -> create new cluster and add it into the list
             else:
-            
-                #msg = "Clipped read outside the cluster -> create new cluster "
-                #log("CLUSTER", msg) 
+
                 clusterObj = cluster(alignmentObj, clippedSide) 
                 clusterObj.addClippedRead(alignmentObj)
                 clusterList.append(clusterObj)
-                 
-            #msg = "Number of clipped reads within cluster: ", len(clusterObj.clippedReadDict)
-            #log("CLUSTER", msg) 
-            #msg = "----------------------"
-            #log("CLUSTER", msg) 
 
     return clusterList
 
@@ -462,11 +413,13 @@ PICARD = os.environ['PICARD']
 parser = argparse.ArgumentParser(description= "")
 parser.add_argument('insertions', help='')
 parser.add_argument('bam', help='')
+parser.add_argument('--maxNbReads', default=500, dest='maxNbReads', type=int, help='Maximum number of clipped reads composing the cluster. Default: 500' )
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
 insertionsPath = args.insertions
 bam = args.bam
+maxNbReads = args.maxNbReads
 outDir = args.outDir
 tmpDir = outDir + '/tmp'
 
@@ -477,6 +430,7 @@ print
 print "***** ", scriptName, " configuration *****"
 print "insertionsPath: ", insertionsPath
 print "bam: ", bam
+print "maxNbReads: ", maxNbReads
 print "outDir: ", outDir
 print
 print "***** Executing ", scriptName, ".... *****"
@@ -547,16 +501,21 @@ for line in insertions:
         ### 2. Cluster clipped reads:
         ## CLipping at the beginn
         clusterBegList = clusterCLipped(clippedBegList, "beg")
-        print "clusterBegList: ", len(clusterBegList), clusterBegList
 
         ## Clipping at the end
         clusterEndList = clusterCLipped(clippedEndList, "end")       
-        print "clusterEndList: ", len(clusterEndList), clusterEndList
 
-        ### 3. Add the 2 cluster lists to the dictionary:
+        ### 3. Filter clusters of clipped reads:
+        ## CLipping at the begin
+        clusterBegFilteredList =  [clusterObj for clusterObj in clusterBegList if clusterObj.nbReads() <= maxNbReads]
+
+        ## Clipping at the end
+        clusterEndFilteredList =  [clusterObj for clusterObj in clusterEndList if clusterObj.nbReads() <= maxNbReads]
+
+        ### 4. Add the 2 cluster lists to the dictionary:
         clustersDict[insertionId] = {}
-        clustersDict[insertionId]["beg"] = clusterBegList
-        clustersDict[insertionId]["end"] = clusterEndList
+        clustersDict[insertionId]["beg"] = clusterBegFilteredList
+        clustersDict[insertionId]["end"] = clusterEndFilteredList
 
 bamFile.close()
 
