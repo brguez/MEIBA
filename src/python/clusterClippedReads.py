@@ -192,7 +192,8 @@ class cluster():
         consensusSeq = consensusSeq.upper()
 
         return consensusSeq
-                  
+    
+              
 #### FUNCTIONS ####
 def log(label, string):
     """
@@ -490,6 +491,8 @@ insertions = open(insertionsPath, 'r')
 bamFile = pysam.AlignmentFile(bam, "rb")
 
 clustersDict = {}
+discordantReadPairList = []
+totalNumberDiscordant = 0
 
 ## Read insertions file line by line
 for line in insertions:
@@ -518,6 +521,11 @@ for line in insertions:
         insertionType = fieldsList[12]
         rgType = fieldsList[30]
 
+        totalNumberDiscordant = totalNumberDiscordant + int(nbReadsPlus) + int(nbReadsMinus)
+
+        ## Add discordant read pairs to the list:
+        discordantReadPairList = discordantReadPairList + readPairListPlus + readPairListMinus
+    
         print "###### INSERTION: ", chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType
 
         ## Define an insertion id (insertion coordinates defined by the end
@@ -536,16 +544,13 @@ for line in insertions:
         else:
             clippedBegList, clippedEndList = getClippedUnpairedCluster(chrPlus, begPlus, endPlus, bamFile)
 
-
         ### 2. Cluster clipped reads:
         ## CLipping at the beginn
         clusterBegList = clusterCLipped(clippedBegList, "beg")
-
         print "clusterBegList: ", len(clusterBegList), clusterBegList
 
         ## Clipping at the end
-        clusterEndList = clusterCLipped(clippedEndList, "end")
-         
+        clusterEndList = clusterCLipped(clippedEndList, "end")       
         print "clusterEndList: ", len(clusterEndList), clusterEndList
 
         ### 3. Add the 2 cluster lists to the dictionary:
@@ -555,12 +560,16 @@ for line in insertions:
 
 bamFile.close()
 
-## 2) Make fasta containing the reads supporting the clusters of clipped reads
-################################################################################
 
-## 1. Make file containing the list of read pair ids supporting the clipped clusters
-allReadPairIdList = []
+## 2) Make fasta containing the discordant paired-end reads + 
+##############################################################
+# the reads supporting the clusters of clipped reads 
+####################################################
 
+## 1. Make list containing the discordant paired-end reads
+allReadPairIdList = discordantReadPairList
+
+## 2. Add to the list the reads supporting the clusters of clipped reads 
 for insertionId in clustersDict:
    
     clusterBegList = clustersDict[insertionId]["beg"] 
@@ -576,7 +585,7 @@ for insertionId in clustersDict:
 
 allReadPairIdList = list(set(allReadPairIdList))
 
-## Write read pair ids in an output file:
+## 3. Make file containing the supporting read ids
 readPairsPath = outDir +'/allReadPairs.txt'
 readPairsFile = open(readPairsPath, 'w')
 
@@ -587,7 +596,7 @@ for readPairId in allReadPairIdList:
 ## Important to close! otherwhise next step won't work properly...
 readPairsFile.close()
 
-## 2. Extract clipped read sequences with picard and generate fasta containing all the reads supporting the clusters
+## 4. Extract read sequences with picard and generate fasta
 readPairsFasta = outDir + '/allReadPairs.fa'
 
 command = PICARD + ' FilterSamReads I=' + bam + ' O=/dev/stdout READ_LIST_FILE=' + readPairsPath + ' FILTER=includeReadList WRITE_READS_FILES=false VALIDATION_STRINGENCY=SILENT QUIET=true | samtools fasta - > '  + readPairsFasta
@@ -647,7 +656,7 @@ for insertionId in clustersDict:
 
 
 ### Make cleanup and finish
-command = 'rm -r ' + readPairsPath + ' ' + readPairsFasta + ' ' + tmpDir 
+command = 'rm -r ' + readPairsPath + ' ' + tmpDir 
 os.system(command) # returns the exit status
 
 
