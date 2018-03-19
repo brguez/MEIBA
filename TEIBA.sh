@@ -82,39 +82,42 @@ Execute TEIBA on one dataset (sample).
     $0 -i <insertions> -b <bam> --ref-dir <path> --sample-id <sample_identifier> --file-name <output_fileName> [OPTIONS]
 
 *** MANDATORY
-    -i|--insertions     <TSV>                           TraFiC insertions file for a given sample.
-    -b|--bam            <BAM>                           Sample BAM file.
-    --ref-dir           <PATH>                          Path to the directory where TEIBA reference files are located.
-    --sample-id	        <STRING>                        Sample identifier to be incorporated in the SL field of the output VCF. 
-    --file-name	        <STRING>                        Output VCF name.
+    -i|--insertions     <TSV>                                   TraFiC insertions file for a given sample.
+    -b|--bam            <BAM>                                   Sample BAM file.
+    --ref-dir           <PATH>                                  Path to the directory where TEIBA reference files are located.
+    --sample-id	        <STRING>                                Sample identifier to be incorporated in the SL field of the output VCF. 
+    --file-name	        <STRING>                                Output VCF name.
 
 *** [OPTIONS] can be:
 * General:
-    -o|--out-dir        <PATH>                          Output directory. Default current working directory.
-    --tmp-dir		<PATH>		                Temporary directory. Default /tmp.
-    --no-cleanup	                                Keep intermediate files.
-    -h|--help			                        Display usage information
+    -o|--out-dir        <PATH>                                  Output directory. Default current working directory.
+    --tmp-dir		<PATH>		                        Temporary directory. Default /tmp.
+    --no-cleanup	                                        Keep intermediate files.
+    -h|--help			                                Display usage information
 
 
 * Annotation:
-    --annotation-steps  <(STEP_1)>, ... ,<(STEP_N)>	List of annotation steps to be executed. 6 different steps can be enabled:
-                                                        GENE, REPEATS, DRIVERS AND/OR GERMLINE. 'NONE' will disable any annotation.
+    --annotation-steps  <(STEP_1)>, ... ,<(STEP_N)>	        List of annotation steps to be executed. 6 different steps can be enabled:
+                                                                GENE, REPEATS, DRIVERS AND/OR GERMLINE. 'NONE' will disable any annotation.
 
 * Filters:
-    --filters           <(FILTER_1)>, ... ,<(FILTER_N)>	List of filters to be applied out of 6 possible filtering criteria: 
-                                                        NONE, SCORE, REP, DUP, FPSOURCE and GERMLINE. 'NONE' will disable any filtering.
-                                                        Default='SCORE,DUP,FPSOURCE'
-    --score-L1-TD0      <INTEGER>                       Minimum assembly score for solo L1 insertions. Default 2.
-    --score-L1-TD1      <INTEGER>                       Minimum assembly score for L1 partnered transductions. Default 2.
-    --score-L1-TD2      <INTEGER>                       Minimum assembly score for L1 orphan transductions. Default 2.
-    --score-Alu         <INTEGER>                       Minimum assembly score for Alu insertions. Default 2.
-    --score-SVA         <INTEGER>                       Minimum assembly score for SVA insertions. Default 2.
-    --score-ERVK        <INTEGER>                       Minimum assembly score for ERVK insertions. Default 2.
-    --score-PSD         <INTEGER>                       Minimum assembly score for processed-pseudogene (PSD) insertions. Default 2.
+    --filters           <(FILTER_1)>, ... ,<(FILTER_N)>	        List of filters to be applied out of 6 possible filtering criteria: 
+                                                                NONE, SCORE, REP, DUP, FPSOURCE and GERMLINE. 'NONE' will disable any filtering.
+                                                                Default='SCORE,DUP,FPSOURCE'.
+
+    --mechanism         <(MECHANISM_1)>, ...,<(MECHANISM_N)>    List of insertion mechanisms to be taken into account. 3 possible mechanisms:
+                                                                TPRT, EI AND DPA. Default: 'TPRT,EI,DPA'.
+    --score-L1-TD0      <INTEGER>                               Minimum assembly score for solo L1 insertions. Default 2.
+    --score-L1-TD1      <INTEGER>                               Minimum assembly score for L1 partnered transductions. Default 2.
+    --score-L1-TD2      <INTEGER>                               Minimum assembly score for L1 orphan transductions. Default 2.
+    --score-Alu         <INTEGER>                               Minimum assembly score for Alu insertions. Default 2.
+    --score-SVA         <INTEGER>                               Minimum assembly score for SVA insertions. Default 2.
+    --score-ERVK        <INTEGER>                               Minimum assembly score for ERVK insertions. Default 2.
+    --score-PSD         <INTEGER>                               Minimum assembly score for processed-pseudogene (PSD) insertions. Default 2.
 
 * Files:
-    --germline-VCF      <VCF>                           VCF with germline MEI calls for a given donor. If provided, input insertions are considered to be somatic.
-                                                        Used in GERMLINE filtering.
+    --germline-VCF      <VCF>                                   VCF with germline MEI calls for a given donor. If provided, input insertions are considered to be somatic.
+                                                                Used in GERMLINE filtering.
 help
 }
 
@@ -123,7 +126,7 @@ help
 ################################
 function getoptions {
 
-ARGS=`getopt -o "i:b:g:d:o:h" -l "insertions:,bam:,ref-dir:,sample-id:,file-name:,out-dir:,tmp-dir:,no-cleanup,help,annotation-steps:,filters:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,score-GR:,germline-VCF:" \
+ARGS=`getopt -o "i:b:g:d:o:h" -l "insertions:,bam:,ref-dir:,sample-id:,file-name:,out-dir:,tmp-dir:,no-cleanup,help,annotation-steps:,filters:,mechanism:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,score-GR:,germline-VCF:" \
       -n "$0" -- "$@"`
 
 #Bad arguments
@@ -214,6 +217,13 @@ do
             if [ -n "$2" ];
             then
                 filterList=$2
+            fi
+            shift 2;;
+
+        --mechanism)
+            if [ -n "$2" ];
+            then
+                mechanism=$2
             fi
             shift 2;;
 
@@ -373,7 +383,7 @@ function cleanupFunc {
 ############################
 
 # TEIBA version
-version=0.7.8
+version=0.8.0
 
 # Enable extended pattern matching
 shopt -s extglob
@@ -472,6 +482,12 @@ fi
 if [[ "$filterList" == "" ]];
 then
 	filterList='SCORE,DUP,FPSOURCE';
+fi
+
+## Insertion mechanism
+if [[ "$mechanism" == "" ]];
+then
+	mechanism='TPRT,EI,DPA';
 fi
 
 ## Minimum assembly score for solo L1 insertions
@@ -654,6 +670,7 @@ printf "  %-34s %s\n\n" "annotation-steps:" "$annotSteps"
 
 printf "  %-34s %s\n" "*** Filters ***"
 printf "  %-34s %s\n" "filters:" "$filterList"
+printf "  %-34s %s\n" "mechanism:" "$mechanism"
 printf "  %-34s %s\n" "score-L1-TD0:" "$scoreL1_TD0"
 printf "  %-34s %s\n" "score-L1-TD1:" "$scoreL1_TD1"
 printf "  %-34s %s\n" "score-L1-TD2:" "$scoreL1_TD2"
@@ -987,9 +1004,9 @@ then
 
     if [[ "$germlineVCF" == "NOT_PROVIDED" ]]
     then
-        command="$FILTER $annotVCF $fileName $filterList --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --outDir $filterDir 1> $logsDir/6_filter.out 2> $logsDir/6_filter.err"
+        command="$FILTER $annotVCF $fileName $filterList --mechanism $mechanism --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --outDir $filterDir 1> $logsDir/6_filter.out 2> $logsDir/6_filter.err"
     else
-        command="$FILTER $annotVCF $fileName $filterList --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --germline-VCF $germlineVCF --outDir $filterDir 1> $logsDir/6_filter.out 2> $logsDir/6_filter.err"
+        command="$FILTER $annotVCF $fileName $filterList --mechanism $mechanism --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --germline-VCF $germlineVCF --outDir $filterDir 1> $logsDir/6_filter.out 2> $logsDir/6_filter.err"
     fi
 
     run "$command" "$ECHO"

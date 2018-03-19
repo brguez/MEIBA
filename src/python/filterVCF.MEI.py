@@ -701,7 +701,8 @@ from operator import attrgetter
 parser = argparse.ArgumentParser(description= "Applies a set of filters to a VCF file and set filter field as PASS or as a list with all the filters a given MEI failed to pass")
 parser.add_argument('VCF', help='VCF file to be filtered')
 parser.add_argument('donorId', help='Donor Id')
-parser.add_argument('filters', help='List of filters to be applied out of 5 possible filtering criteria: SCORE, REP, DUP, FPSOURCE and GERMLINE.')
+parser.add_argument('filters', help='List of filters to be applied out of 6 possible filtering criteria: SCORE, REP, DUP, FPSOURCE, GERMLINE and MECHANISM.')
+parser.add_argument('--mechanism', default='TPRT,EI,DPA', dest='mechanism', type=str, help='List of insertion mechanisms to be taken into account. 3 possible mechanisms: TPRT, EI AND DPA. Default: TPRT,EI,DPA.' )
 parser.add_argument('--score-L1-TD0', default=2, dest='scoreL1_TD0', type=int, help='Minimum assembly score for solo L1 insertions. Default 2.' )
 parser.add_argument('--score-L1-TD1', default=2, dest='scoreL1_TD1', type=int, help='Minimum assembly score for L1 partnered transductions. Default 2.' )
 parser.add_argument('--score-L1-TD2', default=2, dest='scoreL1_TD2', type=int, help='Minimum assembly score for L1 orphan transductions. Default 2.' )
@@ -717,6 +718,7 @@ args = parser.parse_args()
 inputVCF = args.VCF
 donorId = args.donorId
 filters = args.filters
+mechanism = args.mechanism
 scoreL1_TD0 = args.scoreL1_TD0
 scoreL1_TD1 = args.scoreL1_TD1
 scoreL1_TD2 = args.scoreL1_TD2
@@ -736,6 +738,7 @@ print "***** ", scriptName, " configuration *****"
 print "vcf: ", inputVCF
 print "donorId: ", donorId
 print "filters: ", filters
+print "mechanism: ", mechanism
 print "score-L1-TD0: ", scoreL1_TD0
 print "score-L1-TD1: ", scoreL1_TD1
 print "score-L1-TD2: ", scoreL1_TD2
@@ -805,8 +808,20 @@ for VCFlineObj in VCFObj.lineList:
 
     msg ="Filter " + insertionType + ":" + RTclass + ":" + VCFlineObj.chrom + "_" + str(VCFlineObj.pos)
     subHeader(msg) 
-       
-    ### 4.1  Score filter:
+ 
+    ### 4.1  Insertion mechanism filter:
+    if "MECHANISM" in filterList:
+        mechanismList = mechanism.split(',')
+        insertionMechanism = VCFlineObj.infoDict["MECHANISM"] if 'MECHANISM' in VCFlineObj.infoDict else 'NA'
+
+        # Failed filter: Mechanism available and not included into the list:
+        if (insertionMechanism != "NA") and (insertionMechanism not in mechanismList):
+            failedFiltersList.append("MECHANISM") 
+
+        msg = "Filtering status: " + str(failedFiltersList)
+        log("MECHANISM", msg)    
+
+    ### 4.2  Score filter:
     if "SCORE" in filterList:
         
         score = int(VCFlineObj.infoDict["SCORE"])
@@ -877,7 +892,7 @@ for VCFlineObj in VCFObj.lineList:
         log("SCORE", msg)    
     
 
-    ### 4.2 Repeats filter:
+    ### 4.3 Repeats filter:
     if "REP" in filterList:
         
         msg = "Apply repeats filter"
@@ -906,7 +921,7 @@ for VCFlineObj in VCFObj.lineList:
         log("REPEATS", msg)  
 
 
-    ### 4.3 Duplicated insertions filter
+    ### 4.4 Duplicated insertions filter
     if "DUP" in filterList:
     
         msg = "Apply duplicated insertions filter"
@@ -923,7 +938,7 @@ for VCFlineObj in VCFObj.lineList:
 
 
 
-    ### 4.4 False positive somatic source element filter   
+    ### 4.5 False positive somatic source element filter   
     if "FPSOURCE" in filterList:
         msg = "False positive somatic source element filter"
         log("FPSOURCE", msg)
@@ -938,7 +953,7 @@ for VCFlineObj in VCFObj.lineList:
         log("FPSOURCE", msg) 
 
 
-    ### 4.5 Germline insertions miscalled as somatic filter
+    ### 4.6 Germline insertions miscalled as somatic filter
     if "GERMLINE" in filterList:
 
         msg = "Apply germline filter"
