@@ -298,15 +298,19 @@ def selectRepresentativeMEI(MEIList):
  
         ## B) Several possible MEI with the highest score -> 2. select the one with the highest number of supporting reads 
         else: 
-            msg = "2. Select MEI with the highest number of supporting reads "  
+            msg = "2. Select MEI with the highest number of supporting reads (discordant paired-ends + clipped reads)"  
             log("REPRESENTATIVE", msg)
             maxRC = 0
             maxRCList = []
 
             ## For each MEI:
             for MEI in maxScoreList:
-                RCP, RCN, sampleId = MEI.genotype.split(":")                    
-                RC = int(RCP) + int(RCN)
+                NDP, NDN, NCA, NCB, sampleIds = MEI.genotype.split(":")
+
+                NCA = 0 if NCA == "." else NCA
+                NCB = 0 if NCB == "." else NCB
+
+                RC = int(NDP) + int(NDN) + int(NCA) + int(NCB)
     
                 msg = "MEI: " + MEI.chrom + " " + str(MEI.pos) + " " + MEI.genotype + " " + str(RC) 
                 log("REPRESENTATIVE", msg)
@@ -456,14 +460,14 @@ for eventType in MEIDict:
             ## 3.2) Make list of samples where the insertion is found  
             msg="3.2) Make list of samples where the insertion is found"            
             subHeader(msg)            
-            sampleIdList = [MEIObj.genotype.split(":")[2] for MEIObj in cluster.MEIlist]
+            sampleIdList = [MEIObj.genotype.split(":")[4] for MEIObj in cluster.MEIlist]
             newSampleIds = ";".join(sampleIdList)
 
             ## 3.3) Substitute the sample list field by the new one in the representative MEI
             msg="3.3) Substitute the sample list field by the new one in the representative MEI"            
             subHeader(msg)
-            RCP, RCN, sampleIds = reprMEIObj.genotype.split(":")
-            reprMEIObj.genotype = RCP + ":" + RCN + ":" + newSampleIds
+            NDP, NDN, NCA, NCB, sampleIds = reprMEIObj.genotype.split(":")
+            reprMEIObj.genotype = NDP + ":" + NDN + ":" + NCA + ":" + NCB + ":" + newSampleIds
 
             ## 3.4) Add the representative MEI to the output VCF
             msg="3.4) Add the representative MEI to the output VCF"            
