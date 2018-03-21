@@ -79,7 +79,7 @@ cat <<help
 Execute TEIBA on one dataset (sample).
 
 *** USAGE
-    $0 -i <insertions> -b <bam> --ref-dir <path> --sample-id <sample_identifier> --file-name <output_fileName> [OPTIONS]
+    $0 -i <insertions> --tumour-bam <bam> --normal-bam <bam> --ref-dir <path> --sample-id <sample_identifier> --file-name <output_fileName> [OPTIONS]
 
 *** MANDATORY
     -i|--insertions     <TSV>                                   TraFiC insertions file for a given sample.
