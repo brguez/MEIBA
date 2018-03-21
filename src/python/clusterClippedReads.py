@@ -106,7 +106,6 @@ class cluster():
             
             self.clippedReadDict[readId]["seq"]= readSeq
 
-
     def makeConsensusSeq(self, outDir):
         """
         multiple sequence alignment based
@@ -337,18 +336,19 @@ def getClippedInterval(chrom, beg, end, bamFile):
     return clippedBegList, clippedEndList
 
 
-def clusterCLipped(clippedList, clippedSide):
+
+def clusterCLipped(clippedList, clippedSide, minNbReads, maxNbReads):
     '''
     '''
     #print "** clusterCLipped  function **"
 
-    ### Sort the list of clipped reads in increasing coordinates order
+    ### 1. Sort the list of clipped reads in increasing coordinates order
     if (clippedSide == "beg"):    
         clippedSortedList = sorted(clippedList, key=lambda alignmentObj: alignmentObj.reference_start, reverse=False)
     else:
         clippedSortedList = sorted(clippedList, key=lambda alignmentObj: alignmentObj.reference_end, reverse=False)
 
-    ### Make clipped read clusters:
+    ### 2. Make clipped read clusters:
     clusterList = []
 
     ## For each clipped read alignment 
@@ -387,8 +387,66 @@ def clusterCLipped(clippedList, clippedSide):
                 clusterObj.addClippedRead(alignmentObj)
                 clusterList.append(clusterObj)
 
-    return clusterList
 
+    ### 3. Filter the clusters according to the number of reads supporting them (min and max cut-offs)
+    filteredClusterList = []
+
+    for clusterObj in clusterList: 
+
+        if (clusterObj.nbReads() >= minNbReads) and (clusterObj.nbReads() <= maxNbReads):
+            filteredClusterList.append(clusterObj)            
+
+    return filteredClusterList
+
+
+def filterNbClusters(clusterBegList, clusterEndList, maxNbClusters):
+    '''
+    '''
+    totalNbClusters = len(clusterBegList) + len(clusterEndList)
+    
+    ## A) Number of clipped clusters higher than the treshold -> Discard clusters as most likely are the consequence of
+    # alignment artefacts. In a perfect scenario we would expect two clusters, a single one per breakpoint
+    if (totalNbClusters > maxNbClusters):
+        filteredClusterBegList = []
+        filteredClusterEndList = []
+
+    ## B) Pass the filter            
+    else:
+        filteredClusterBegList = clusterBegList
+        filteredClusterEndList = clusterEndList
+
+    return filteredClusterBegList, filteredClusterEndList
+
+
+def clusterInMatchedNormal(clusterTumorList, clusterNormalList):
+    '''
+    '''
+    clusterTumorFilteredList = []
+    
+    ## For each clipped cluster in the tumour
+    for clusterTumorObj in clusterTumorList:
+        
+        filtered = False
+        begTumor = clusterTumorObj.bkpPos - 5
+        endTumor = clusterTumorObj.bkpPos + 5
+
+        ## For each clipped cluster in the normal
+        for clusterNormalObj in clusterNormalList:
+
+            begNormal = clusterNormalObj.bkpPos - 5 
+            endNormal = clusterNormalObj.bkpPos + 5
+
+            ## Filter those clusters matching with the normal
+            if overlap(begTumor, endTumor, begNormal, endNormal):
+                filtered = True
+       
+        ## Cluster not matching cluster in the normal
+        if not filtered:
+            clusterTumorFilteredList.append(clusterTumorObj)
+        else:
+            print "FILTERED: ", clusterTumorObj.chrom, clusterTumorObj.bkpPos, [clusterNormalObj.bkpPos for clusterNormalObj in clusterNormalList]
+
+    return clusterTumorFilteredList          
 
 
 #### MAIN ####
@@ -412,14 +470,20 @@ PICARD = os.environ['PICARD']
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= "")
 parser.add_argument('insertions', help='')
-parser.add_argument('bam', help='')
+parser.add_argument('tumourBam', help='Tumour bam file')
+parser.add_argument('normalBam', help='Matched normal bam file')
+parser.add_argument('--minNbReads', default=1, dest='minNbReads', type=int, help='Minimum number of clipped reads composing the cluster. Default: 1' )
 parser.add_argument('--maxNbReads', default=500, dest='maxNbReads', type=int, help='Maximum number of clipped reads composing the cluster. Default: 500' )
+parser.add_argument('--maxNbClusters', default=10, dest='maxNbClusters', type=int, help='Maximum number of clipped read clusters in the insertion region. Default: 10' )
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
 insertionsPath = args.insertions
-bam = args.bam
+tumourBam = args.tumourBam
+normalBam = args.normalBam
+minNbReads = args.minNbReads
 maxNbReads = args.maxNbReads
+maxNbClusters = args.maxNbClusters
 outDir = args.outDir
 tmpDir = outDir + '/tmp'
 
@@ -429,8 +493,11 @@ scriptName = os.path.basename(sys.argv[0])
 print
 print "***** ", scriptName, " configuration *****"
 print "insertionsPath: ", insertionsPath
-print "bam: ", bam
+print "tumourBam: ", tumourBam
+print "normalBam: ", normalBam
+print "minNbReads: ", minNbReads
 print "maxNbReads: ", maxNbReads
+print "maxNbClusters: ", maxNbClusters
 print "outDir: ", outDir
 print
 print "***** Executing ", scriptName, ".... *****"
@@ -441,12 +508,12 @@ print
 ## Open input files
 insertions = open(insertionsPath, 'r')
 
-## Open donor's BAM file for reading
-bamFile = pysam.AlignmentFile(bam, "rb")
+## Open donor's BAM files for reading
+tumourBamFile = pysam.AlignmentFile(tumourBam, "rb")
+normalBamFile = pysam.AlignmentFile(normalBam, "rb")
 
 clustersDict = {}
 discordantReadPairList = []
-totalNumberDiscordant = 0
 
 ## Read insertions file line by line
 for line in insertions:
@@ -475,12 +542,10 @@ for line in insertions:
         insertionType = fieldsList[12]
         rgType = fieldsList[30]
 
-        totalNumberDiscordant = totalNumberDiscordant + int(nbReadsPlus) + int(nbReadsMinus)
+        print "###### INSERTION: ", chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType
 
         ## Add discordant read pairs to the list:
-        discordantReadPairList = discordantReadPairList + readPairListPlus + readPairListMinus
-    
-        print "###### INSERTION: ", chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType
+        discordantReadPairList = discordantReadPairList + readPairListPlus + readPairListMinus        
 
         ## Define an insertion id (insertion coordinates defined by the end
         # of + cluster and beg of - cluster)
@@ -492,32 +557,42 @@ for line in insertions:
         ### 1. Search for clipped reads
         ## A) Paired cluster
         if (chrMinus != "NA"):
-            clippedBegList, clippedEndList = getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, bamFile)
-            
+            clippedBegList, clippedEndList = getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, tumourBamFile)
+            clippedBegNormalList, clippedEndNormalList = getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, normalBamFile)
+       
         ## B) Unpaired cluster
         else:
-            clippedBegList, clippedEndList = getClippedUnpairedCluster(chrPlus, begPlus, endPlus, bamFile)
+            clippedBegList, clippedEndList = getClippedUnpairedCluster(chrPlus, begPlus, endPlus, tumourBamFile)
+            clippedBegNormalList, clippedEndNormalList = getClippedUnpairedCluster(chrPlus, begPlus, endPlus, normalBamFile)
 
         ### 2. Cluster clipped reads:
-        ## CLipping at the beginn
-        clusterBegList = clusterCLipped(clippedBegList, "beg")
+        ### 2.1 Tumour
+        clusterBegList = clusterCLipped(clippedBegList, "beg", minNbReads, maxNbReads)
+        clusterEndList = clusterCLipped(clippedEndList, "end", minNbReads, maxNbReads)       
 
-        ## Clipping at the end
-        clusterEndList = clusterCLipped(clippedEndList, "end")       
+        ### 2.2 Matched normal
+        clusterBegNormalList = clusterCLipped(clippedBegNormalList, "beg", 3, maxNbReads)
+        clusterEndNormalList = clusterCLipped(clippedEndNormalList, "end", 3, maxNbReads)       
 
         ### 3. Filter clusters of clipped reads:
-        ## CLipping at the begin
-        clusterBegFilteredList =  [clusterObj for clusterObj in clusterBegList if clusterObj.nbReads() <= maxNbReads]
+        ## 3.1 Filter by the number of clipped-read clusters              
+        clusterBegList, clusterEndList = filterNbClusters(clusterBegList, clusterEndList, maxNbClusters)
+
+        ## 3.2 Filter those clusters that are also in the matched normal
+        #print "CLUSTERS: ", chrPlus, begPlus, endPlus, len(clusterBegList) + len(clusterEndList), len(clusterBegList), len(clusterEndList), len(clusterBegNormalList), len(clusterEndNormalList), [clusterObj.bkpPos for clusterObj in clusterBegList ], [clusterObj.bkpPos for clusterObj in clusterEndList ], [clusterObj.bkpPos for clusterObj in clusterBegNormalList ], [clusterObj.bkpPos for clusterObj in clusterEndNormalList ]
+
+        ## Clipping at the begin
+        clusterBegFilteredList = clusterInMatchedNormal(clusterBegList, clusterBegNormalList)
 
         ## Clipping at the end
-        clusterEndFilteredList =  [clusterObj for clusterObj in clusterEndList if clusterObj.nbReads() <= maxNbReads]
+        clusterEndFilteredList = clusterInMatchedNormal(clusterEndList, clusterEndNormalList)
 
         ### 4. Add the 2 cluster lists to the dictionary:
         clustersDict[insertionId] = {}
         clustersDict[insertionId]["beg"] = clusterBegFilteredList
         clustersDict[insertionId]["end"] = clusterEndFilteredList
 
-bamFile.close()
+tumourBamFile.close()
 
 
 ## 2) Make fasta containing the discordant paired-end reads + 
@@ -558,7 +633,7 @@ readPairsFile.close()
 ## 4. Extract read sequences with picard and generate fasta
 readPairsFasta = outDir + '/allReadPairs.fa'
 
-command = PICARD + ' FilterSamReads I=' + bam + ' O=/dev/stdout READ_LIST_FILE=' + readPairsPath + ' FILTER=includeReadList WRITE_READS_FILES=false VALIDATION_STRINGENCY=SILENT QUIET=true | samtools fasta - > '  + readPairsFasta
+command = PICARD + ' FilterSamReads I=' + tumourBam + ' O=/dev/stdout READ_LIST_FILE=' + readPairsPath + ' FILTER=includeReadList WRITE_READS_FILES=false VALIDATION_STRINGENCY=SILENT QUIET=true | samtools fasta - > '  + readPairsFasta
 print command
 os.system(command)
 

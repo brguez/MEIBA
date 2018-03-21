@@ -83,7 +83,8 @@ Execute TEIBA on one dataset (sample).
 
 *** MANDATORY
     -i|--insertions     <TSV>                                   TraFiC insertions file for a given sample.
-    -b|--bam            <BAM>                                   Sample BAM file.
+    --tumour-bam        <BAM>                                   Tumour BAM file.
+    --normal-bam        <BAM>                                   Matched normal BAM file.
     --ref-dir           <PATH>                                  Path to the directory where TEIBA reference files are located.
     --sample-id	        <STRING>                                Sample identifier to be incorporated in the SL field of the output VCF. 
     --file-name	        <STRING>                                Output VCF name.
@@ -126,7 +127,7 @@ help
 ################################
 function getoptions {
 
-ARGS=`getopt -o "i:b:g:d:o:h" -l "insertions:,bam:,ref-dir:,sample-id:,file-name:,out-dir:,tmp-dir:,no-cleanup,help,annotation-steps:,filters:,mechanism:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,score-GR:,germline-VCF:" \
+ARGS=`getopt -o "i:g:d:o:h" -l "insertions:,tumour-bam:,normal-bam:,ref-dir:,sample-id:,file-name:,out-dir:,tmp-dir:,no-cleanup,help,annotation-steps:,filters:,mechanism:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,score-GR:,germline-VCF:" \
       -n "$0" -- "$@"`
 
 #Bad arguments
@@ -151,10 +152,17 @@ do
             fi
             shift 2;;
 
-        -b|--bam)
+        --tumour-bam)
             if [ -n "$2" ];
             then
-                bam=$2
+                tumorBam=$2
+            fi
+            shift 2;;
+
+        --normal-bam)
+            if [ -n "$2" ];
+            then
+                normalBam=$2
             fi
             shift 2;;
 
@@ -383,7 +391,7 @@ function cleanupFunc {
 ############################
 
 # TEIBA version
-version=0.7.9
+version=0.8.0
 
 # Enable extended pattern matching
 shopt -s extglob
@@ -428,7 +436,8 @@ fi
 
 ## Check that everything is ok:
 if [[ ! -s $insertions ]]; then log "TraFiC MEI calls file does not exist or is empty. Mandatory argument -i|--insertions" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -s $bam ]]; then log "Sample BAM file does not exist or is empty. Mandatory argument -b|--bam" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -s $tumorBam ]]; then log "Tumour BAM file does not exist or is empty. Mandatory argument --tumour-bam" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -s $normalBam ]]; then log "Normal BAM file does not exist or is empty. Mandatory argument --normal-bam" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ ! -e $refDir ]]; then log "TEIBA reference dir does not exist. Mandatory argument --ref-dir" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ $sampleId == "" ]]; then log "Sample id not provided. Mandatory argument --sample-id" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ $fileName == "" ]]; then log "Output file name not provided. Mandatory argument --file-name" "ERROR" >&2; usageDoc; exit -1; fi
@@ -654,7 +663,8 @@ printf "\n\n"
 printf "  %-34s %s\n\n" "TEIBA Version $version"
 printf "  %-34s %s\n" "***** MANDATORY ARGUMENTS *****"
 printf "  %-34s %s\n" "insertions:" "$insertions"
-printf "  %-34s %s\n" "bam:" "$bam"
+printf "  %-34s %s\n" "tumorBam:" "$tumorBam"
+printf "  %-34s %s\n" "normalBam:" "$normalBam"
 printf "  %-34s %s\n" "ref-dir:" "$refDir"
 printf "  %-34s %s\n" "sample-id:" "$sampleId"
 printf "  %-34s %s\n\n" "file-name:" "$fileName"
@@ -798,7 +808,7 @@ step="CLUSTER-CLIPPED"
 startTime=$(date +%s)
 printHeader "Cluster clipped"
 log "Cluster clipped" $step
-run "python $CLIPPED $insertions $bam -o $outDir --outDir $clippedDir 1> $logsDir/1_clipped.out 2> $logsDir/1_clipped.err" "$ECHO"
+run "python $CLIPPED $insertions $tumorBam $normalBam -o $outDir --outDir $clippedDir 1> $logsDir/1_clipped.out 2> $logsDir/1_clipped.err" "$ECHO"
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
