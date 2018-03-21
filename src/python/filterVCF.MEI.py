@@ -711,7 +711,7 @@ parser.add_argument('--score-SVA', default=2, dest='scoreSVA', type=int, help='M
 parser.add_argument('--score-ERVK', default=2, dest='scoreERVK', type=int, help='Minimum assembly score for ERVK insertions. Default 2.' )
 parser.add_argument('--score-PSD', default=2, dest='scorePSD', type=int, help='Minimum assembly score for processed-pseudogene (PSD) insertions. Default 2.' )
 parser.add_argument('--germline-VCF', default=False, dest='germlineVCF', help=' VCF with germline MEI calls for the same donor. If provided, input insertions are considered to be somatic. Necesary for GERMLINE filtering.' )
-parser.add_argument('--max-divergence', default=300, dest='maxDiv', type=int, help='Maximum millidivergence. Default: 300.' )
+parser.add_argument('--max-divergence', default=100, dest='maxDiv', type=int, help='Maximum millidivergence. Default: 100.' )
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()

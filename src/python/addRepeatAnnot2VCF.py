@@ -95,8 +95,8 @@ for line in repeatAnnotFile:
         elif (DIV == "na") or ((category == REP) and (category != repeatDict[insertionId]["REP"])):
             repeatDict[insertionId] = annotDict
 
-        # B.3) Overlapping repeat with higher millidivergence than previous one
-        elif (int(DIV) > int(repeatDict[insertionId]["DIV"])):
+        # B.3) Overlapping repeat with lower millidivergence than previous one
+        elif (int(DIV) < int(repeatDict[insertionId]["DIV"])):
             repeatDict[insertionId] = annotDict
 
 
@@ -113,15 +113,15 @@ for VCFlineObj in VCFObj.lineList:
     if ("BKPB" in VCFlineObj.infoDict):
 
         # Compute expected beg and end
-        exBeg = VCFlineObj.pos - 1
-        exEnd = VCFlineObj.infoDict["BKPB"]
+        exBeg = VCFlineObj.pos - 100
+        exEnd = int(VCFlineObj.infoDict["BKPB"]) + 100
 
     # b) bkpB not identified
     else:
 
         # Compute expected beg and end
-        exBeg = VCFlineObj.pos - 1;    # Substract 1 to convert from 1-based (VCF) to 0-based (bed) coordinate system
-        exEnd = VCFlineObj.pos;
+        exBeg = VCFlineObj.pos - 100
+        exEnd = VCFlineObj.pos + 100
 
     insertionId = VCFlineObj.infoDict["CLASS"] + ":" + VCFlineObj.chrom + "_" + str(exBeg) + "_" + str(exEnd)
 

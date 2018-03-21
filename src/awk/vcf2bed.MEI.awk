@@ -79,16 +79,16 @@ function abs(v) {
     # a) bkpB identified
     if ( bkpB != "NA")
     {
-        # Compute beg and end
-        beg = pos - 1;    # Substract 1 to convert from 1-based (VCF) to 0-based (bed) coordinate system
-        end = bkpB;                
+        # Compute range +- 100bp around insertion breakpoint
+        beg = pos - 100;   
+        end = bkpB + 100;                
     }
     # b) bkpB not identified
     else
     {
-        # Compute beg and end
-        beg = pos - 1;    # Substract 1 to convert from 1-based (VCF) to 0-based (bed) coordinate system
-        end = pos;
+        # Compute range +- 100bp around insertion breakpoint
+        beg = pos - 100;    
+        end = pos + 100;
     }
 
     # Print bed row
