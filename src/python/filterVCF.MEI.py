@@ -261,7 +261,6 @@ def findDuplicates(MEIList):
     
     ### Make list with the identifier of the duplicated MEI
     # Identifier in the format:
-    # MEIid = chrom + '_' + pos + '_' + type + '_' + genotype        
     dupList = []
     
     ### Cluster MEI
@@ -701,8 +700,7 @@ from operator import attrgetter
 parser = argparse.ArgumentParser(description= "Applies a set of filters to a VCF file and set filter field as PASS or as a list with all the filters a given MEI failed to pass")
 parser.add_argument('VCF', help='VCF file to be filtered')
 parser.add_argument('donorId', help='Donor Id')
-parser.add_argument('filters', help='List of filters to be applied out of 6 possible filtering criteria: SCORE, REP, DUP, FPSOURCE, GERMLINE and MECHANISM.')
-parser.add_argument('--mechanism', default='TPRT,EI,DPA', dest='mechanism', type=str, help='List of insertion mechanisms to be taken into account. 3 possible mechanisms: TPRT, EI AND DPA. Default: TPRT,EI,DPA.' )
+parser.add_argument('filters', help='List of filters to be applied out of 7 possible filtering criteria: SCORE, REP, DUP, FPSOURCE, GERMLINE, CLIPPED and MECHANISM.')
 parser.add_argument('--score-L1-TD0', default=2, dest='scoreL1_TD0', type=int, help='Minimum assembly score for solo L1 insertions. Default 2.' )
 parser.add_argument('--score-L1-TD1', default=2, dest='scoreL1_TD1', type=int, help='Minimum assembly score for L1 partnered transductions. Default 2.' )
 parser.add_argument('--score-L1-TD2', default=2, dest='scoreL1_TD2', type=int, help='Minimum assembly score for L1 orphan transductions. Default 2.' )
@@ -710,8 +708,11 @@ parser.add_argument('--score-Alu', default=2, dest='scoreAlu', type=int, help='M
 parser.add_argument('--score-SVA', default=2, dest='scoreSVA', type=int, help='Minimum assembly score for SVA insertions. Default 2.' )
 parser.add_argument('--score-ERVK', default=2, dest='scoreERVK', type=int, help='Minimum assembly score for ERVK insertions. Default 2.' )
 parser.add_argument('--score-PSD', default=2, dest='scorePSD', type=int, help='Minimum assembly score for processed-pseudogene (PSD) insertions. Default 2.' )
-parser.add_argument('--germline-VCF', default=False, dest='germlineVCF', help=' VCF with germline MEI calls for the same donor. If provided, input insertions are considered to be somatic. Necesary for GERMLINE filtering.' )
+parser.add_argument('--min-clipped', default=2, dest='minClipped', type=int, help='Minimum number of clipped reads supporting the insertion. Default: 3.' )
 parser.add_argument('--max-divergence', default=100, dest='maxDiv', type=int, help='Maximum millidivergence. Default: 100.' )
+parser.add_argument('--mechanism', default='TPRT,EI,DPA', dest='mechanism', type=str, help='List of insertion mechanisms to be taken into account. 3 possible mechanisms: TPRT, EI AND DPA. Default: TPRT,EI,DPA.' )
+parser.add_argument('--germline-VCF', default=False, dest='germlineVCF', help=' VCF with germline MEI calls for the same donor. If provided, input insertions are considered to be somatic. Necesary for GERMLINE filtering.' )
+
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
@@ -726,6 +727,7 @@ scoreAlu = args.scoreAlu
 scoreSVA = args.scoreSVA
 scoreERVK = args.scoreERVK
 scorePSD = args.scorePSD
+minClipped = args.minClipped
 germlineVCF = args.germlineVCF
 maxDiv = args.maxDiv
 outDir = args.outDir
@@ -746,12 +748,14 @@ print "score-Alu: ", scoreAlu
 print "score-SVA: ", scoreSVA
 print "score-ERVK: ", scoreERVK
 print "score-PSD: ", scorePSD
+print "min-clipped-reads: ", minClipped
 print "germlineVCF: ", germlineVCF
 print "maxDiv: ", maxDiv
 print "outDir: ", outDir
 print
 print "***** Executing ", scriptName, ".... *****"
 print
+
 
 ## Start ## 
 
@@ -936,8 +940,6 @@ for VCFlineObj in VCFObj.lineList:
         msg = "Filtering status: " + str(failedFiltersList)
         log("DUP", msg) 
 
-
-
     ### 4.5 False positive somatic source element filter   
     if "FPSOURCE" in filterList:
         msg = "False positive somatic source element filter"
@@ -967,6 +969,23 @@ for VCFlineObj in VCFObj.lineList:
 
         msg = "Filtering status: " + str(failedFiltersList)
         log("DUP", msg) 
+
+    ### 4.7  Number of clipped-reads filter:
+    if "CLIPPED" in filterList:
+        
+        NDP, NDN, NCA, NCB, sampleId = VCFlineObj.genotype.split(":")
+
+        NCA = 0 if NCA == "." else int(NCA)
+        NCB = 0 if NCB == "." else int(NCB)
+        nbClipped = NCA + NCB
+        
+        ## Failed filter: Number of clipped < threshold
+        if (nbClipped < minClipped):
+            failedFiltersList.append("CLIPPED") 
+
+        msg = "Filtering status: " + str(failedFiltersList)
+        log("CLIPPED", msg)   
+
 
     ###  Set filter VCF field:
     if (len(failedFiltersList) == 0):
