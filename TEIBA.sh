@@ -98,12 +98,12 @@ Execute TEIBA on one dataset (sample).
 
 
 * Annotation:
-    --annotation-steps  <(STEP_1)>, ... ,<(STEP_N)>	        List of annotation steps to be executed. 6 different steps can be enabled:
+    --annotation-steps  <(STEP_1)>, ... ,<(STEP_N)>	        List of annotation steps to be executed. 4 different steps can be enabled:
                                                                 GENE, REPEATS, DRIVERS AND/OR GERMLINE. 'NONE' will disable any annotation.
 
 * Filters:
-    --filters           <(FILTER_1)>, ... ,<(FILTER_N)>	        List of filters to be applied out of 6 possible filtering criteria: 
-                                                                NONE, SCORE, REP, DUP, FPSOURCE and GERMLINE. 'NONE' will disable any filtering.
+    --filters           <(FILTER_1)>, ... ,<(FILTER_N)>	        List of filters to be applied out of 7 possible filtering criteria: 
+                                                                NONE, SCORE, REP, DUP, FPSOURCE, CLIPPED and GERMLINE. 'NONE' will disable any filtering.
                                                                 Default='SCORE,DUP,FPSOURCE'.
 
     --mechanism         <(MECHANISM_1)>, ...,<(MECHANISM_N)>    List of insertion mechanisms to be taken into account. 3 possible mechanisms:
