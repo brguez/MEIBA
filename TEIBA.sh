@@ -808,7 +808,7 @@ step="CLUSTER-CLIPPED"
 startTime=$(date +%s)
 printHeader "Cluster clipped"
 log "Cluster clipped" $step
-run "python $CLIPPED $insertions $tumorBam $normalBam -o $outDir --outDir $clippedDir 1> $logsDir/1_clipped.out 2> $logsDir/1_clipped.err" "$ECHO"
+run "python $CLIPPED $insertions $tumorBam $normalBam --outDir $clippedDir 1> $logsDir/1_clipped.out 2> $logsDir/1_clipped.err" "$ECHO"
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
