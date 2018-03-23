@@ -708,7 +708,7 @@ parser.add_argument('--score-Alu', default=2, dest='scoreAlu', type=int, help='M
 parser.add_argument('--score-SVA', default=2, dest='scoreSVA', type=int, help='Minimum assembly score for SVA insertions. Default 2.' )
 parser.add_argument('--score-ERVK', default=2, dest='scoreERVK', type=int, help='Minimum assembly score for ERVK insertions. Default 2.' )
 parser.add_argument('--score-PSD', default=2, dest='scorePSD', type=int, help='Minimum assembly score for processed-pseudogene (PSD) insertions. Default 2.' )
-parser.add_argument('--min-clipped', default=2, dest='minClipped', type=int, help='Minimum number of clipped reads supporting the insertion. Default: 3.' )
+parser.add_argument('--min-clipped', default=2, dest='minClipped', type=int, help='Minimum number of clipped reads supporting the insertion. Default: 2.' )
 parser.add_argument('--max-divergence', default=100, dest='maxDiv', type=int, help='Maximum millidivergence. Default: 100.' )
 parser.add_argument('--mechanism', default='TPRT,EI,DPA', dest='mechanism', type=str, help='List of insertion mechanisms to be taken into account. 3 possible mechanisms: TPRT, EI AND DPA. Default: TPRT,EI,DPA.' )
 parser.add_argument('--germline-VCF', default=False, dest='germlineVCF', help=' VCF with germline MEI calls for the same donor. If provided, input insertions are considered to be somatic. Necesary for GERMLINE filtering.' )
