@@ -443,10 +443,54 @@ def clusterInMatchedNormal(clusterTumorList, clusterNormalList):
         ## Cluster not matching cluster in the normal
         if not filtered:
             clusterTumorFilteredList.append(clusterTumorObj)
-        else:
-            print "FILTERED: ", clusterTumorObj.chrom, clusterTumorObj.bkpPos, [clusterNormalObj.bkpPos for clusterNormalObj in clusterNormalList]
 
     return clusterTumorFilteredList          
+
+
+def filterDiscordantCluster(chrom, beg, end, readPairList, bamFile):
+    '''
+    '''
+    nbDiscordant = len(readPairList)
+    nbClippedBothSides = 0
+    readPairFilteredList = []
+
+    ## Extract alignments in the interval
+    iterator = bamFile.fetch(chrom, beg, end)
+
+    ## Iterate over the alignments
+    for alignmentObj in iterator:
+
+        ## Supporting discordant paired-end read
+        if alignmentObj.query_name in readPairList:
+
+            firstOperation = alignmentObj.cigartuples[0][0]
+            lastOperation = alignmentObj.cigartuples[-1][0]
+
+            ### A) Read clipped both in the beginning and ending
+            if ((firstOperation == 4) or (firstOperation == 5)) and ((lastOperation == 4) or (lastOperation == 5)):
+                nbClippedBothSides += 1
+    
+            ### B) Read not clipped in both sides
+            else:
+                readPairFilteredList.append(alignmentObj.query_name)
+
+    ## Percentage of supporting paired ends that are clipped on both sides
+    percClippedBothSides = float(nbClippedBothSides) / nbDiscordant * 100
+
+    ## Recompute the number of supporting paired ends after removing problematic reads
+    readPairFilteredList = list(set(readPairFilteredList))
+    nbFilteredDiscordant = len(readPairFilteredList)
+
+    ## Discard cluster if more than 50% supporting paired-ends clipped on both sides:
+    if (percClippedBothSides > 50):
+        print "FILTER-CLUSTER: ", nbClippedBothSides, nbDiscordant, percClippedBothSides, nbFilteredDiscordant, readPairFilteredList
+        readPairFilteredList = []
+        nbFilteredDiscordant = 0
+        filtered = True
+    else:
+        filtered = False
+
+    return filtered
 
 
 #### MAIN ####
@@ -554,38 +598,51 @@ for line in insertions:
 
         insertionId = familyPlus + ":" + insertionType + ":" + chrPlus + "_" + endPlus + "_" + begMinus 
 
-        ### 1. Search for clipped reads
-        ## A) Paired cluster
-        if (chrMinus != "NA"):
-            clippedBegList, clippedEndList = getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, tumourBamFile)
-            clippedBegNormalList, clippedEndNormalList = getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, normalBamFile)
-       
-        ## B) Unpaired cluster
+        ### Refine discordant paired end clusters:
+        ## a) Positive cluster
+        filteredPlus = filterDiscordantCluster(chrPlus, int(begPlus), int(endPlus) + 100, readPairListPlus, tumourBamFile)
+
+        ## b) Negative cluster
+        filteredMinus = filterDiscordantCluster(chrMinus, int(begMinus), int(endMinus) + 100, readPairListMinus, tumourBamFile)
+
+        ## Discard those insertions with a high percentage of both-sides clipped reads supporting at least one of the clusters:
+        if (filteredPlus == True) or (filteredMinus == True):
+            print "FILTERED: ", insertionId
+            clusterBegFilteredList = []
+            clusterEndFilteredList = []
+
         else:
-            clippedBegList, clippedEndList = getClippedUnpairedCluster(chrPlus, begPlus, endPlus, tumourBamFile)
-            clippedBegNormalList, clippedEndNormalList = getClippedUnpairedCluster(chrPlus, begPlus, endPlus, normalBamFile)
 
-        ### 2. Cluster clipped reads:
-        ### 2.1 Tumour
-        clusterBegList = clusterCLipped(clippedBegList, "beg", minNbReads, maxNbReads)
-        clusterEndList = clusterCLipped(clippedEndList, "end", minNbReads, maxNbReads)       
+            ### 1. Search for clipped reads
+            ## A) Paired cluster
+            if (chrMinus != "NA"):
+                clippedBegList, clippedEndList = getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, tumourBamFile)
+                clippedBegNormalList, clippedEndNormalList = getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, normalBamFile)
+       
+            ## B) Unpaired cluster
+            else:
+                clippedBegList, clippedEndList = getClippedUnpairedCluster(chrPlus, begPlus, endPlus, tumourBamFile)
+                clippedBegNormalList, clippedEndNormalList = getClippedUnpairedCluster(chrPlus, begPlus, endPlus, normalBamFile)
 
-        ### 2.2 Matched normal
-        clusterBegNormalList = clusterCLipped(clippedBegNormalList, "beg", 3, maxNbReads)
-        clusterEndNormalList = clusterCLipped(clippedEndNormalList, "end", 3, maxNbReads)       
+            ### 2. Cluster clipped reads:
+            ### 2.1 Tumour
+            clusterBegList = clusterCLipped(clippedBegList, "beg", minNbReads, maxNbReads)
+            clusterEndList = clusterCLipped(clippedEndList, "end", minNbReads, maxNbReads)       
 
-        ### 3. Filter clusters of clipped reads:
-        ## 3.1 Filter by the number of clipped-read clusters              
-        clusterBegList, clusterEndList = filterNbClusters(clusterBegList, clusterEndList, maxNbClusters)
+            ### 2.2 Matched normal
+            clusterBegNormalList = clusterCLipped(clippedBegNormalList, "beg", 3, maxNbReads)
+            clusterEndNormalList = clusterCLipped(clippedEndNormalList, "end", 3, maxNbReads)       
 
-        ## 3.2 Filter those clusters that are also in the matched normal
-        #print "CLUSTERS: ", chrPlus, begPlus, endPlus, len(clusterBegList) + len(clusterEndList), len(clusterBegList), len(clusterEndList), len(clusterBegNormalList), len(clusterEndNormalList), [clusterObj.bkpPos for clusterObj in clusterBegList ], [clusterObj.bkpPos for clusterObj in clusterEndList ], [clusterObj.bkpPos for clusterObj in clusterBegNormalList ], [clusterObj.bkpPos for clusterObj in clusterEndNormalList ]
+            ### 3. Filter clusters of clipped reads:
+            ## 3.1 Filter by the number of clipped-read clusters              
+            clusterBegList, clusterEndList = filterNbClusters(clusterBegList, clusterEndList, maxNbClusters)
+    
+            ## 3.2 Filter those clusters that are also in the matched normal
+            ## Clipping at the begin
+            clusterBegFilteredList = clusterInMatchedNormal(clusterBegList, clusterBegNormalList)
 
-        ## Clipping at the begin
-        clusterBegFilteredList = clusterInMatchedNormal(clusterBegList, clusterBegNormalList)
-
-        ## Clipping at the end
-        clusterEndFilteredList = clusterInMatchedNormal(clusterEndList, clusterEndNormalList)
+            ## Clipping at the end
+            clusterEndFilteredList = clusterInMatchedNormal(clusterEndList, clusterEndNormalList)
 
         ### 4. Add the 2 cluster lists to the dictionary:
         clustersDict[insertionId] = {}
@@ -593,7 +650,7 @@ for line in insertions:
         clustersDict[insertionId]["end"] = clusterEndFilteredList
 
 tumourBamFile.close()
-
+normalBamFile.close()
 
 ## 2) Make fasta containing the discordant paired-end reads + 
 ##############################################################
