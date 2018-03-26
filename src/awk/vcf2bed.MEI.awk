@@ -79,16 +79,16 @@ function abs(v) {
     # a) bkpB identified
     if ( bkpB != "NA")
     {
-        # Compute range +- 100bp around insertion breakpoint
-        beg = pos - 100;   
-        end = bkpB + 100;                
+        # Compute range +- 150bp around insertion breakpoint
+        beg = pos - 150;   
+        end = bkpB + 150;                
     }
     # b) bkpB not identified
     else
     {
-        # Compute range +- 100bp around insertion breakpoint
-        beg = pos - 100;    
-        end = pos + 100;
+        # Compute range +- 150bp around insertion breakpoint
+        beg = pos - 150;    
+        end = pos + 150;
     }
 
     # Print bed row

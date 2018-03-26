@@ -113,15 +113,15 @@ for VCFlineObj in VCFObj.lineList:
     if ("BKPB" in VCFlineObj.infoDict):
 
         # Compute expected beg and end
-        exBeg = VCFlineObj.pos - 100
-        exEnd = int(VCFlineObj.infoDict["BKPB"]) + 100
+        exBeg = VCFlineObj.pos - 150
+        exEnd = int(VCFlineObj.infoDict["BKPB"]) + 150
 
     # b) bkpB not identified
     else:
 
         # Compute expected beg and end
-        exBeg = VCFlineObj.pos - 100
-        exEnd = VCFlineObj.pos + 100
+        exBeg = VCFlineObj.pos - 150
+        exEnd = VCFlineObj.pos + 150
 
     insertionId = VCFlineObj.infoDict["CLASS"] + ":" + VCFlineObj.chrom + "_" + str(exBeg) + "_" + str(exEnd)
 
