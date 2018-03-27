@@ -943,6 +943,7 @@ for VCFlineObj in VCFObj.lineList:
 
     ### 4.5 False positive somatic source element filter   
     if "FPSOURCE" in filterList:
+
         msg = "False positive somatic source element filter"
         log("FPSOURCE", msg)
     
@@ -972,8 +973,9 @@ for VCFlineObj in VCFObj.lineList:
         log("DUP", msg) 
 
     ### 4.7  Number of clipped-reads filter:
-    if "CLIPPED" in filterList:
-        
+    ## Do not apply this filter to L1 insertions (insertions on repeats are usually problematic for shorter elements as Alu or SVA. This is not the case of L1)
+    if ("CLIPPED" in filterList) and (RTclass != "L1"):
+ 
         NDP, NDN, NCA, NCB, sampleId = VCFlineObj.genotype.split(":")
 
         NCA = 0 if NCA == "." else int(NCA)
