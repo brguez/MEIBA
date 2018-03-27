@@ -897,8 +897,9 @@ for VCFlineObj in VCFObj.lineList:
     
 
     ### 4.3 Repeats filter:
-    if "REP" in filterList:
-        
+    ## Do not apply this filter to L1 insertions (insertions on repeats are usually problematic for shorter elements as Alu or SVA. This is not the case of L1)
+    if ("REP") and (RTclass != "L1") in filterList:
+         
         msg = "Apply repeats filter"
         log("REPEATS", msg)
 
