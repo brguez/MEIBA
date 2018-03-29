@@ -1086,9 +1086,6 @@ else
     printHeader "Output file already exists... skipping step"
 fi
 
-## Remove temporary subfamily directory
-if [[ "$cleanup" == "TRUE" ]]; then rm -r $subfamilyDir ; fi
-
 #############################
 # 7) MAKE OUTPUT VCF AND END #
 #############################
@@ -1098,8 +1095,9 @@ finalVCF=$outDir/$fileName.vcf
 
 cp $subfamilyVCF $finalVCF
 
-## Remove temporary filter directory
-if [[ "$cleanup" == "TRUE" ]]; then rm -r $filterDir ; fi
+## Remove temporary files
+#if [[ "$cleanup" == "TRUE" ]]; then rm -r $subfamilyDir ; fi
+rm $outDir/allReadPairs.fa
 
 ## End
 end=$(date +%s)
