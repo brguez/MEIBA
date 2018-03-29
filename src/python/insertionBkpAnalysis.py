@@ -1520,7 +1520,7 @@ class insertion():
         ALT = "<MEI>"
         QUAL = "."
         FILTER = "."
-        INFO = "SVTYPE=<MEI>;CLASS=" + self.family + ";TYPE=" + self.tdType + ";MECHANISM=" + self.mechanism + ";SCORE=" + str(self.score) + ";BKPB=" + str(self.bkpBPos) + ";CIPOS=" + str(self.cipos) + ";STRAND=" + self.orientation + ";STRUCT=" + self.structure + ";LEN=" + str(self.elementLength) + ";RANGE=" + str(self.elementRange) + ";TSLEN=" + str(self.targetSiteLen) + ";SRCID=" + self.cytobandId + ";SRCTYPE=" + self.sourceElementType + ";SRC=" + self.sourceElementCoord + ";TDC=" + self.tdCoord + ";TDLEN=" + self.tdLen + ";TDLENR=" + self.tdLenRna + ";SRCGENE=" + self.srcgene + ";GR=" + self.grInfo + ";CONTIGA=" + self.bkpAContigSeq + ";CONTIGB=" + self.bkpBContigSeq + ";DP=" + self.DP + ";DN=" + self.DN + ";CA=" + self.CA + ";CB=" + self.CB 
+        INFO = "SVTYPE=<MEI>;TYPE=" + self.tdType + ";SCORE=" + str(self.score) + ";CLASS=" + self.family + ";MECHANISM=" + self.mechanism + ";BKPB=" + str(self.bkpBPos) + ";CIPOS=" + str(self.cipos) + ";STRAND=" + self.orientation + ";STRUCT=" + self.structure + ";LEN=" + str(self.elementLength) + ";RANGE=" + str(self.elementRange) + ";TSLEN=" + str(self.targetSiteLen) + ";SRCID=" + self.cytobandId + ";SRCTYPE=" + self.sourceElementType + ";SRC=" + self.sourceElementCoord + ";TDC=" + self.tdCoord + ";TDLEN=" + self.tdLen + ";TDLENR=" + self.tdLenRna + ";SRCGENE=" + self.srcgene + ";GR=" + self.grInfo + ";CONTIGA=" + self.bkpAContigSeq + ";CONTIGB=" + self.bkpBContigSeq + ";DP=" + self.DP + ";DN=" + self.DN + ";CA=" + self.CA + ";CB=" + self.CB 
         FORMAT = "NDP:NDN:NCA:NCB:SL"
         NDP = str(self.NDP)
         NDN = str(self.NDN)

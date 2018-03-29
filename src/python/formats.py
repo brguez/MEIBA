@@ -368,7 +368,7 @@ class VCFline():
         """
 
         ## Create list containing the order of info fields 
-        infoOrder = [ "SVTYPE", "CLASS", "TYPE", "MECHANISM", "SCORE", "MANUAL", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "RANGE", "TSLEN", "SRCID", "SRCTYPE", "SRC", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GR", "GERMDB", "POLYMORPHIC", "NOVEL", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "DP", "DN", "CA", "CB" ]
+        infoOrder = [ "SVTYPE", "TYPE", "SCORE", "CLASS", "SUBFAMILY", "MECHANISM", "MANUAL", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "RANGE", "TSLEN", "SRCID", "SRCTYPE", "SRC", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GR", "GERMDB", "POLYMORPHIC", "NOVEL", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "DP", "DN", "CA", "CB" ]
 
         flagList = ["POLYMORPHIC", "NOVEL", "COSMIC", "CPG" , "MANUAL"]
 

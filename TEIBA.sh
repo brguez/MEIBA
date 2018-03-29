@@ -100,6 +100,7 @@ Execute TEIBA on one dataset (sample).
 * Annotation:
     --annotation-steps  <(STEP_1)>, ... ,<(STEP_N)>	        List of annotation steps to be executed. 4 different steps can be enabled:
                                                                 GENE, REPEATS, DRIVERS AND/OR GERMLINE. 'NONE' will disable any annotation.
+    --subfamily                                                 Enable MEI subfamily inference based on diagnostic nucleotides. 
 
 * Filters:
     --filters           <(FILTER_1)>, ... ,<(FILTER_N)>	        List of filters to be applied out of 7 possible filtering criteria: 
@@ -127,7 +128,7 @@ help
 ################################
 function getoptions {
 
-ARGS=`getopt -o "i:g:d:o:h" -l "insertions:,tumour-bam:,normal-bam:,ref-dir:,sample-id:,file-name:,out-dir:,tmp-dir:,no-cleanup,help,annotation-steps:,filters:,mechanism:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,score-GR:,germline-VCF:" \
+ARGS=`getopt -o "i:g:d:o:h" -l "insertions:,tumour-bam:,normal-bam:,ref-dir:,sample-id:,file-name:,out-dir:,tmp-dir:,no-cleanup,help,annotation-steps:,subfamily,filters:,mechanism:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,score-GR:,germline-VCF:" \
       -n "$0" -- "$@"`
 
 #Bad arguments
@@ -219,6 +220,10 @@ do
                 annotSteps=$2
             fi
             shift 2;;
+
+        --subfamily)
+            subfamilyBool="TRUE";
+            shift;;
 
         # Filters:
         --filters)
@@ -391,7 +396,7 @@ function cleanupFunc {
 ############################
 
 # TEIBA version
-version=0.8.0
+version=0.8.1
 
 # Enable extended pattern matching
 shopt -s extglob
@@ -485,8 +490,13 @@ then
     annotSteps="NONE";
 fi
 
-#### Filters:
+## Subfamily
+if [[ "$subfamilyBool" != "TRUE" ]];
+then
+    subfamilyBool='FALSE';
+fi
 
+#### Filters:
 ## List of filters to be applied
 if [[ "$filterList" == "" ]];
 then
@@ -624,6 +634,7 @@ clippedDir=$outDir/Clipped
 blatDir=$outDir/Blat
 bkpAnalysisDir=$outDir/BkpAnalysis
 annotDir=$outDir/Annot
+subfamilyDir=$outDir/Subfamily
 filterDir=$outDir/Filter
 srcRegDir=$outDir/SrcRegions
  
@@ -644,6 +655,7 @@ ALIGN_CONTIGS=$bashDir/alignContigs2reference.sh
 ADD_INFO=$awkDir/addInfo2insertionList.awk
 BKP_ANALYSIS=$pyDir/insertionBkpAnalysis.py
 ANNOTATOR=$bashDir/variants_annotator.sh
+SUBFAMILY=$pyDir/inferSubfamily.py
 FILTER=$pyDir/filterVCF.MEI.py
 
 # reference genome
@@ -676,7 +688,8 @@ printf "  %-34s %s\n" "tmp-dir:" "$TMPDIR"
 printf "  %-34s %s\n\n" "cleanup:" "$cleanup"
 
 printf "  %-34s %s\n" "*** Annotation ***"
-printf "  %-34s %s\n\n" "annotation-steps:" "$annotSteps"
+printf "  %-34s %s\n" "annotation-steps:" "$annotSteps"
+printf "  %-34s %s\n\n" "subfamily:" "$subfamilyBool"
 
 printf "  %-34s %s\n" "*** Filters ***"
 printf "  %-34s %s\n" "filters:" "$filterList"
@@ -692,6 +705,7 @@ printf "  %-34s %s\n\n" "score-GR:" "$scoreGR"
 
 printf "  %-34s %s\n" "*** Files ***"
 printf "  %-34s %s\n\n" "germline-VCF:" "$germlineVCF"
+
 
 ##########
 ## START #
@@ -809,6 +823,7 @@ startTime=$(date +%s)
 printHeader "Cluster clipped"
 log "Cluster clipped" $step
 run "python $CLIPPED $insertions $tumorBam $normalBam --outDir $clippedDir 1> $logsDir/1_clipped.out 2> $logsDir/1_clipped.err" "$ECHO"
+cp $clippedDir/allReadPairs.fa $outDir/allReadPairs.fa
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
 
@@ -861,7 +876,7 @@ do
     # Align contigs into the insertion target region and MEI sequence
     log "** ${bkpId} breakpoint **" $step
     log "1. Blat alignment" $step
-    run "bash $ALIGN_CONTIGS $bkpContigPath $bkpId $genome $srcTarget 1000 $blatDir 1>> $logsDir/3_blat.out 2>> $logsDir/3_blat.err" "$ECHO"
+    run "bash $ALIGN_CONTIGS $bkpContigPath $bkpId $genome $srcTarget 1000 $blatDir 1>> $logsDir/2_blat.out 2>> $logsDir/2_blat.err" "$ECHO"
 done
 
 ## Remove temporary src region directory
@@ -934,7 +949,7 @@ then
     startTime=$(date +%s)
 
     log "Identifying insertion breakpoints, TSD, MEI length, orientation and structure" $step
-    run "python $BKP_ANALYSIS $paths2bkpAnalysis $sampleId $fileName $genome --outDir $bkpAnalysisDir 1> $logsDir/4_bkpAnalysis.out 2> $logsDir/4_bkpAnalysis.err" "$ECHO"
+    run "python $BKP_ANALYSIS $paths2bkpAnalysis $sampleId $fileName $genome --outDir $bkpAnalysisDir 1> $logsDir/3_bkpAnalysis.out 2> $logsDir/3_bkpAnalysis.err" "$ECHO"
 
     if [ ! -s $rawVCF ];
     then
@@ -974,7 +989,7 @@ then
     startTime=$(date +%s)
 
     log "Annotating MEI" $step
-    run "bash $ANNOTATOR $rawVCF $annotSteps $refDir $fileName $annotDir 1> $logsDir/5_annotation.out 2> $logsDir/5_annotation.err" "$ECHO"
+    run "bash $ANNOTATOR $rawVCF $annotSteps $refDir $fileName $annotDir 1> $logsDir/4_annotation.out 2> $logsDir/4_annotation.err" "$ECHO"
 
     if [ ! -s $annotVCF ];
     then
@@ -1002,8 +1017,6 @@ filteredVCF=$filterDir/$fileName.filtered.vcf
 if [[ ! -d $filterDir ]]; then mkdir $filterDir; fi
 
 ### Execute the step
-# NOTE: for germline variants use a minimum score of 5...
-
 printHeader "Performing MEI filtering"
 
 if [ ! -s $filteredVCF ];
@@ -1014,9 +1027,9 @@ then
 
     if [[ "$germlineVCF" == "NOT_PROVIDED" ]]
     then
-        command="$FILTER $annotVCF $fileName $filterList --mechanism $mechanism --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --outDir $filterDir 1> $logsDir/6_filter.out 2> $logsDir/6_filter.err"
+        command="$FILTER $annotVCF $fileName $filterList --mechanism $mechanism --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --outDir $filterDir 1> $logsDir/5_filter.out 2> $logsDir/5_filter.err"
     else
-        command="$FILTER $annotVCF $fileName $filterList --mechanism $mechanism --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --germline-VCF $germlineVCF --outDir $filterDir 1> $logsDir/6_filter.out 2> $logsDir/6_filter.err"
+        command="$FILTER $annotVCF $fileName $filterList --mechanism $mechanism --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --germline-VCF $germlineVCF --outDir $filterDir 1> $logsDir/5_filter.out 2> $logsDir/5_filter.err"
     fi
 
     run "$command" "$ECHO"
@@ -1037,14 +1050,53 @@ fi
 if [[ "$cleanup" == "TRUE" ]]; then rm -r $annotDir ; fi
 
 
+# 6) Infer MEI subfamily
+#########################
+## Output:
+# -  $subfamilyDir/$fileName.subfamily.vcf
+subfamilyVCF=$subfamilyDir/$fileName.subfamily.vcf
+
+## Make MEI subfamily directory:
+if [[ ! -d $subfamilyDir ]]; then mkdir $subfamilyDir; fi
+
+## If subfamily inference disabled copy the previously generated VCF as subfamily output VCF. 
+# Then, the subfamily step will be skipped as file already exits 
+if [[ "$subfamilyBool" == "FALSE" ]]; then cp $filteredVCF $subfamilyVCF; fi
+
+### Execute the step
+printHeader "Performing MEI subfamily inference"
+
+if [ ! -s $subfamilyVCF ];
+then
+    step="SUBFAMILY"
+    startTime=$(date +%s)
+
+    log "Infering MEI subfamily" $step
+    run "python $SUBFAMILY $filteredVCF $tumorBam $outDir/allReadPairs.fa $refDir $fileName -o $subfamilyDir 1> $logsDir/6_subfamily.out 2> $logsDir/6_subfamily.err" "$ECHO"
+
+    if [ ! -s $subfamilyVCF ];
+    then
+        log "Error infering subfamily" "ERROR"
+            exit -1
+    else
+        endTime=$(date +%s)
+        printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
+    fi
+else
+    printHeader "Output file already exists... skipping step"
+fi
+
+## Remove temporary subfamily directory
+if [[ "$cleanup" == "TRUE" ]]; then rm -r $subfamilyDir ; fi
+
 #############################
-# 6) MAKE OUTPUT VCF AND END #
+# 7) MAKE OUTPUT VCF AND END #
 #############################
 
 ## Produce output VCF
 finalVCF=$outDir/$fileName.vcf
 
-cp $filteredVCF $finalVCF
+cp $subfamilyVCF $finalVCF
 
 ## Remove temporary filter directory
 if [[ "$cleanup" == "TRUE" ]]; then rm -r $filterDir ; fi
