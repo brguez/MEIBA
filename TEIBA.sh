@@ -1096,8 +1096,7 @@ finalVCF=$outDir/$fileName.vcf
 cp $subfamilyVCF $finalVCF
 
 ## Remove temporary files
-#if [[ "$cleanup" == "TRUE" ]]; then rm -r $subfamilyDir ; fi
-rm $outDir/allReadPairs.fa
+#if [[ "$cleanup" == "TRUE" ]]; then rm -r $subfamilyDir $outDir/allReadPairs.fa; fi
 
 ## End
 end=$(date +%s)
