@@ -267,38 +267,75 @@ for VCFlineObj in VCFObj.lineList:
         anchorMatesFastaPath = MEIDir + "/anchorMates.fa"
         anchorMatesFastaObj.write_fasta(anchorMatesFastaPath)
 
-        ### 2.4 Align the reads into the reference transposon sequence
-        referenceFasta = refDir + '/' + family + '_consensus.fa'
-        anchorMatesBamPath = MEIDir + "/anchorMates.bam"
-        command = 'bwa mem ' + referenceFasta + ' ' + anchorMatesFastaPath + ' | samtools view -b - | samtools sort - > ' + anchorMatesBamPath
-        print command
-        os.system(command) 
+        ## A) L1
+        #if family == "L1":
+        if False:
 
-        ### 2.5 Index the bam file
-        command = 'samtools index ' + anchorMatesBamPath
-        print command
-        os.system(command) 
+            ### 2.4 Align the reads into the reference transposon sequence
+            referenceFasta = refDir + '/' + family + '_consensus.fa'
+            anchorMatesBamPath = MEIDir + "/anchorMates.bam"
+            command = 'bwa mem ' + referenceFasta + ' ' + anchorMatesFastaPath + ' | samtools view -b - | samtools sort - > ' + anchorMatesBamPath
+            print command
+            os.system(command) 
 
-        ### 2.6 Call SNP and INDELS
-        MEIvcf = MEIDir + "/MEI.vcf" 
-        command = 'samtools mpileup -f ' + referenceFasta + ' -g ' + anchorMatesBamPath + ' | bcftools call -c - | bcftools filter -i \'QUAL>20 && DP>1\' > ' + MEIvcf
-        print command
-        os.system(command) 
+            ### 2.5 Index the bam file
+            command = 'samtools index ' + anchorMatesBamPath
+            print command
+            os.system(command) 
 
-        ### 2.7 Infer subfamily based on diagnostic nucleotides
-        ## a) L1
-        if family == "L1":
+            ### 2.6 Call SNP and INDELS
+            MEIvcf = MEIDir + "/MEI.vcf" 
+            command = 'samtools mpileup -f ' + referenceFasta + ' -g ' + anchorMatesBamPath + ' | bcftools call -c - | bcftools filter -i \'QUAL>20 && DP>1\' > ' + MEIvcf
+            print command
+            os.system(command) 
+
+            ### 2.7 Infer subfamily based on diagnostic nucleotides
             subFamily = subFamilyL1(MEIvcf)  
-        else:
-            subFamily = "NA"
+
+        ## B) Alu or SVA
+        elif (family == "Alu") or (family == "SVA"): 
+            print "Alu or SVA!!!"
+
+            ### 2.4 Assemble the reads corresponding to the inserted Alu or L1 element. 
+            contigsFastaPath = MEIDir + '/contigs.fa'
+            kmerLen='21'
+
+            command = 'velveth ' + MEIDir + ' ' + kmerLen + ' -fasta -short ' + anchorMatesFastaPath
+            print command
+            os.system(command) 
+
+            command = 'velvetg ' + MEIDir + ' -exp_cov auto -cov_cutoff auto' 
+            print command
+            os.system(command) 
+
+            ## Do cleaning:
+            sequences = MEIDir + '/Sequences '
+            roadmaps = MEIDir + '/Roadmaps '
+            pregraph = MEIDir + '/PreGraph '
+            stats = MEIDir + '/stats.txt '
+            lastGraph = MEIDir + '/LastGraph '
+            graph2 = MEIDir + '/Graph2 '
+            command = 'rm ' + sequences + roadmaps + pregraph + stats + lastGraph + graph2
+            print command
+            os.system(command) 
+
+            ### 2.5 Run repeats masker on the assembled contigs
+            command = 'RepeatMasker -qq -dir ' + MEIDir + ' ' + contigsFastaPath
+            print command
+            os.system(command)
+
+
+            ### 2.7 Extract subfamily from repeats masker output
     
     ## Orphan transduction            
     else:
         subFamily = "NA"
 
     ## Add subfamily to the info field:
-    VCFlineObj.infoDict["SUBFAMILY"] = subFamily
-    VCFlineObj.info = VCFlineObj.make_info()
+    #VCFlineObj.infoDict["SUBFAMILY"] = subFamily
+    #VCFlineObj.info = VCFlineObj.make_info()
+
+sys.exit(1)
 
 #### 4. Make output VCF
 outFilePath = outDir + '/' + fileName + ".subfamily.vcf"
