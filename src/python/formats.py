@@ -255,10 +255,12 @@ class VCF():
         ## 2.3 Header chunk 3
         chunk3 = """
 ##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant.">
-##INFO=<ID=CLASS,Number=1,Type=String,Description="Mobile element class (L1, ALU, SVA or ERVK)">
 ##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction, PSD: processed-pseudogene)>
-##INFO=<ID=MECHANISM,Number=1,Type=String,Description="Insertion mechanism (TPRT: target primed reverse transcription, EI: endonuclease independent, DPA: double poly-A)>
 ##INFO=<ID=SCORE,Number=1,Type=Integer,Description="Insertion score (5: 5' and 3' breakpoints (bkp) identified, 4: 3'bkp identified, 3: 5'bkp identified, 2: no bkp identified, 1: inconsistent (contradictory insertion features))">
+##INFO=<ID=CLASS,Number=1,Type=String,Description="Mobile element family (L1, ALU, SVA or ERVK)">
+##INFO=<ID=SUBFAMILY,Number=1,Type=String,Description="Mobile element subfamily">
+##INFO=<ID=PDIV,Number=1,Type=Integer,Description="Percentage divergence with respect to consensus mobile element subfamily">
+##INFO=<ID=MECHANISM,Number=1,Type=String,Description="Insertion mechanism (TPRT: target primed reverse transcription, EI: endonuclease independent, DPA: double poly-A)>
 ##INFO=<ID=MANUAL,Number=0,Type=Flag,Description="MEI manually verified through BAM inspection">
 ##INFO=<ID=BKPB,Number=1,Type=Integer,Description="MEI right-most breakpoint position (bkpB). Left-most breakpoint position (bkpA) represented in the POS field">
 ##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoint">
@@ -368,7 +370,7 @@ class VCFline():
         """
 
         ## Create list containing the order of info fields 
-        infoOrder = [ "SVTYPE", "TYPE", "SCORE", "CLASS", "SUBFAMILY", "MECHANISM", "MANUAL", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "RANGE", "TSLEN", "SRCID", "SRCTYPE", "SRC", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GR", "GERMDB", "POLYMORPHIC", "NOVEL", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "DP", "DN", "CA", "CB" ]
+        infoOrder = [ "SVTYPE", "TYPE", "SCORE", "CLASS", "SUBFAMILY", "PDIV", "MECHANISM", "MANUAL", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "RANGE", "TSLEN", "SRCID", "SRCTYPE", "SRC", "POLYMORPHIC", "NOVEL", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GR", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "DP", "DN", "CA", "CB" ]
 
         flagList = ["POLYMORPHIC", "NOVEL", "COSMIC", "CPG" , "MANUAL"]
 

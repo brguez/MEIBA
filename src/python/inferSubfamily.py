@@ -267,10 +267,13 @@ for VCFlineObj in VCFObj.lineList:
         anchorMatesFastaPath = MEIDir + "/anchorMates.fa"
         anchorMatesFastaObj.write_fasta(anchorMatesFastaPath)
 
-        ## A) L1
-        #if family == "L1":
-        if False:
+        ## Initialize subFamily as unknown
+        percDiv = "NA"
+        subFamily = "NA"
 
+        ## A) L1
+        if family == "L1":
+    
             ### 2.4 Align the reads into the reference transposon sequence
             referenceFasta = refDir + '/' + family + '_consensus.fa'
             anchorMatesBamPath = MEIDir + "/anchorMates.bam"
@@ -294,7 +297,6 @@ for VCFlineObj in VCFObj.lineList:
 
         ## B) Alu or SVA
         elif (family == "Alu") or (family == "SVA"): 
-            print "Alu or SVA!!!"
 
             ### 2.4 Assemble the reads corresponding to the inserted Alu or L1 element. 
             contigsFastaPath = MEIDir + '/contigs.fa'
@@ -320,22 +322,40 @@ for VCFlineObj in VCFObj.lineList:
             os.system(command) 
 
             ### 2.5 Run repeats masker on the assembled contigs
+            repeatsMaskerOut = MEIDir + '/contigs.fa.out'
             command = 'RepeatMasker -qq -dir ' + MEIDir + ' ' + contigsFastaPath
             print command
             os.system(command)
 
+            ### 2.6 Extract subFamily from repeats masker output
+            with open(repeatsMaskerOut) as f:
+                lines = f.readlines()[3:]
+                bestScore = 0
 
-            ### 2.7 Extract subfamily from repeats masker output
-    
-    ## Orphan transduction            
-    else:
-        subFamily = "NA"
+                ## Analyze one repeatMasker hit per iteration. 
+                # Select hit with highest smith-waterman score as representative
+                for line in lines:
+                    line = line.rstrip('\n')
+                    line = line.split()
+                    swScore = int(line[0])
 
-    ## Add subfamily to the info field:
-    #VCFlineObj.infoDict["SUBFAMILY"] = subFamily
-    #VCFlineObj.info = VCFlineObj.make_info()
+                    ## Current hit better than previous
+                    if (swScore > bestScore):
+                        
+                        bestScore = swScore
+                        percDiv = line[1]
+                        subFamily = line[9]
 
-sys.exit(1)
+                ## If sw-score lower than threshold set subFamily as unknown
+                if (bestScore == 0): 
+                    percDiv = "NA"
+                    subFamily = "NA"
+     
+
+    ## Add subFamily and percentage divergence to consensus to the info field:
+    VCFlineObj.infoDict["SUBFAMILY"] = subFamily
+    VCFlineObj.infoDict["PDIV"] = percDiv
+    VCFlineObj.info = VCFlineObj.make_info()
 
 #### 4. Make output VCF
 outFilePath = outDir + '/' + fileName + ".subfamily.vcf"

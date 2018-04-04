@@ -396,7 +396,7 @@ function cleanupFunc {
 ############################
 
 # TEIBA version
-version=0.8.1
+version=0.8.2
 
 # Enable extended pattern matching
 shopt -s extglob
@@ -1096,7 +1096,7 @@ finalVCF=$outDir/$fileName.vcf
 cp $subfamilyVCF $finalVCF
 
 ## Remove temporary files
-#if [[ "$cleanup" == "TRUE" ]]; then rm -r $subfamilyDir $outDir/allReadPairs.fa; fi
+if [[ "$cleanup" == "TRUE" ]]; then rm -r $subfamilyDir $outDir/allReadPairs.fa; fi
 
 ## End
 end=$(date +%s)
