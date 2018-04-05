@@ -1618,7 +1618,7 @@ if __name__ == "__main__":
             log("ERROR", message)
 
     ## 3. Sort MEI
-    VCFObj.sort()
+    VCFObj.lineList = VCFObj.sort()
 
     ## 4. Write output VCF
     outFilePath = outDir + '/' + fileName + '.vcf'
