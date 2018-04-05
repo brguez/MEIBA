@@ -234,7 +234,11 @@ for VCFlineObj in VCFObj.lineList:
     pos = str(VCFlineObj.pos)
     insertionType = VCFlineObj.infoDict["TYPE"]
     family = VCFlineObj.infoDict["CLASS"] if "CLASS" in VCFlineObj.infoDict else 'NA'
-        
+            
+    ## Initialize subFamily as unknown
+    percDiv = "NA"
+    subFamily = "NA"
+
     ## Skip orphan transductions
     if (insertionType != "TD2"):
         insertionId = family + "_" + insertionType + "_" + chrom + "_" + pos
@@ -267,10 +271,6 @@ for VCFlineObj in VCFObj.lineList:
         anchorMatesFastaPath = MEIDir + "/anchorMates.fa"
         anchorMatesFastaObj.write_fasta(anchorMatesFastaPath)
 
-        ## Initialize subFamily as unknown
-        percDiv = "NA"
-        subFamily = "NA"
-
         ## A) L1
         if family == "L1":
     
@@ -295,10 +295,10 @@ for VCFlineObj in VCFObj.lineList:
             ### 2.7 Infer subfamily based on diagnostic nucleotides
             subFamily = subFamilyL1(MEIvcf)  
 
-        ## B) Alu or SVA
-        elif (family == "Alu") or (family == "SVA"): 
+        ## B) Alu, SVA or ERVK
+        elif (family == "Alu") or (family == "SVA") or (family == "ERVK"): 
 
-            ### 2.4 Assemble the reads corresponding to the inserted Alu or L1 element. 
+            ### 2.4 Assemble the reads corresponding to the inserted element. 
             contigsFastaPath = MEIDir + '/contigs.fa'
             kmerLen='21'
 
@@ -351,7 +351,7 @@ for VCFlineObj in VCFObj.lineList:
                     percDiv = "NA"
                     subFamily = "NA"
      
-
+    
     ## Add subFamily and percentage divergence to consensus to the info field:
     VCFlineObj.infoDict["SUBFAMILY"] = subFamily
     VCFlineObj.infoDict["PDIV"] = percDiv
