@@ -700,7 +700,7 @@ from operator import attrgetter
 parser = argparse.ArgumentParser(description= "Applies a set of filters to a VCF file and set filter field as PASS or as a list with all the filters a given MEI failed to pass")
 parser.add_argument('VCF', help='VCF file to be filtered')
 parser.add_argument('donorId', help='Donor Id')
-parser.add_argument('filters', help='List of filters to be applied out of 7 possible filtering criteria: SCORE, REP, DUP, FPSOURCE, GERMLINE, CLIPPED and MECHANISM.')
+parser.add_argument('filters', help='List of filters to be applied out of 8 possible filtering criteria: SCORE, REP, DUP, FPSOURCE, GERMLINE, CLIPPED, MECHANISM, SUBFAMILY.')
 parser.add_argument('--score-L1-TD0', default=2, dest='scoreL1_TD0', type=int, help='Minimum assembly score for solo L1 insertions. Default 2.' )
 parser.add_argument('--score-L1-TD1', default=2, dest='scoreL1_TD1', type=int, help='Minimum assembly score for L1 partnered transductions. Default 2.' )
 parser.add_argument('--score-L1-TD2', default=2, dest='scoreL1_TD2', type=int, help='Minimum assembly score for L1 orphan transductions. Default 2.' )
@@ -809,6 +809,7 @@ for VCFlineObj in VCFObj.lineList:
     failedFiltersList = []
     insertionType = VCFlineObj.infoDict["TYPE"]
     RTclass = VCFlineObj.infoDict["CLASS"] if "CLASS" in VCFlineObj.infoDict else 'NA'
+    subfamily = VCFlineObj.infoDict["SUBFAMILY"] if "SUBFAMILY" in VCFlineObj.infoDict else 'NA'
 
     msg ="Filter " + insertionType + ":" + RTclass + ":" + VCFlineObj.chrom + "_" + str(VCFlineObj.pos)
     subHeader(msg) 
@@ -989,6 +990,17 @@ for VCFlineObj in VCFObj.lineList:
         msg = "Filtering status: " + str(failedFiltersList)
         log("CLIPPED", msg)   
 
+    ### 4.8 Subfamily filter:
+    ## Introduce new filtering step to filter out MEI whose infered subfamily is not consistent with their family. 
+    # Do not apply this filter to L1 elements
+    if ("SUBFAMILY" in filterList) and (subfamily != "NA") and (RTclass != "L1"):
+ 
+        ## Failed filter: subfamily not consistent with family
+        if RTclass not in subfamily:
+            failedFiltersList.append("SUBFAMILY") 
+
+        msg = "Filtering status: " + str(failedFiltersList)
+        log("SUBFAMILY", msg)   
 
     ###  Set filter VCF field:
     if (len(failedFiltersList) == 0):

@@ -321,36 +321,40 @@ for VCFlineObj in VCFObj.lineList:
             print command
             os.system(command) 
 
-            ### 2.5 Run repeats masker on the assembled contigs
-            repeatsMaskerOut = MEIDir + '/contigs.fa.out'
-            command = 'RepeatMasker -qq -dir ' + MEIDir + ' ' + contigsFastaPath
-            print command
-            os.system(command)
+            ## 2.5 Run repeats masker if velvet assembled at least one contig
+            if (os.path.isfile(contigsFastaPath)) and (os.path.getsize(contigsFastaPath) > 0):
+            
+                repeatsMaskerOut = MEIDir + '/contigs.fa.out'
+                command = 'RepeatMasker -qq -dir ' + MEIDir + ' ' + contigsFastaPath
+                print command
+                os.system(command)
 
-            ### 2.6 Extract subFamily from repeats masker output
-            with open(repeatsMaskerOut) as f:
-                lines = f.readlines()[3:]
-                bestScore = 0
+                ### 2.6 Extract subFamily from repeats masker output
+                with open(repeatsMaskerOut) as f:
+                    lines = f.readlines()[3:]
+                    bestScore = 0
 
-                ## Analyze one repeatMasker hit per iteration. 
-                # Select hit with highest smith-waterman score as representative
-                for line in lines:
-                    line = line.rstrip('\n')
-                    line = line.split()
-                    swScore = int(line[0])
+                    ## Analyze one repeatMasker hit per iteration. 
+                    # Select hit with highest smith-waterman score as representative
+                    for line in lines:
+                        line = line.rstrip('\n')
+                        line = line.split()
+                        swScore = int(line[0])
 
-                    ## Current hit better than previous
-                    if (swScore > bestScore):
+                        ## Current hit better than previous
+                        if (swScore > bestScore):
                         
-                        bestScore = swScore
-                        percDiv = line[1]
-                        subFamily = line[9]
+                            bestScore = swScore
+                            percDiv = line[1]
+                            subFamily = line[9]
 
-                ## If sw-score lower than threshold set subFamily as unknown
-                if (bestScore == 0): 
-                    percDiv = "NA"
-                    subFamily = "NA"
-     
+                    ## If sw-score lower than threshold set subFamily as unknown
+                    if (bestScore == 0): 
+                        percDiv = "NA"
+                        subFamily = "NA"
+            else:
+                print "[WARNING] NO CONTIG ASSEMBLED. SKIP REPEATS MASKER"         
+
     
     ## Add subFamily and percentage divergence to consensus to the info field:
     VCFlineObj.infoDict["SUBFAMILY"] = subFamily

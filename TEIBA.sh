@@ -103,8 +103,8 @@ Execute TEIBA on one dataset (sample).
     --subfamily                                                 Enable MEI subfamily inference based on diagnostic nucleotides. 
 
 * Filters:
-    --filters           <(FILTER_1)>, ... ,<(FILTER_N)>	        List of filters to be applied out of 7 possible filtering criteria: 
-                                                                NONE, SCORE, REP, DUP, FPSOURCE, CLIPPED, MECHANISM and GERMLINE. 'NONE' will disable any filtering.
+    --filters           <(FILTER_1)>, ... ,<(FILTER_N)>	        List of filters to be applied out of 8 possible filtering criteria: 
+                                                                NONE, SCORE, REP, DUP, FPSOURCE, CLIPPED, MECHANISM, SUBFAMILY and GERMLINE. 'NONE' will disable any filtering.
                                                                 Default='SCORE,DUP,FPSOURCE'.
 
     --mechanism         <(MECHANISM_1)>, ...,<(MECHANISM_N)>    List of insertion mechanisms to be taken into account. 3 possible mechanisms:
@@ -396,7 +396,7 @@ function cleanupFunc {
 ############################
 
 # TEIBA version
-version=0.8.2
+version=0.8.3
 
 # Enable extended pattern matching
 shopt -s extglob
@@ -1006,8 +1006,46 @@ fi
 ## Remove temporary bkp analysis directory
 if [[ "$cleanup" == "TRUE" ]]; then rm -r $bkpAnalysisDir ; fi
 
+# 5) Infer MEI subfamily
+#########################
+## Output:
+# -  $subfamilyDir/$fileName.subfamily.vcf
+subfamilyVCF=$subfamilyDir/$fileName.subfamily.vcf
 
-# 5) Filter MEI
+## Make MEI subfamily directory:
+if [[ ! -d $subfamilyDir ]]; then mkdir $subfamilyDir; fi
+
+## If subfamily inference disabled copy the previously generated VCF as subfamily output VCF. 
+# Then, the subfamily step will be skipped as file already exits 
+if [[ "$subfamilyBool" == "FALSE" ]]; then cp $annotVCF $subfamilyVCF; fi
+
+### Execute the step
+printHeader "Performing MEI subfamily inference"
+
+if [ ! -s $subfamilyVCF ];
+then
+    step="SUBFAMILY"
+    startTime=$(date +%s)
+
+    log "Infering MEI subfamily" $step
+    run "python $SUBFAMILY $annotVCF $tumorBam $outDir/allReadPairs.fa $refDir $fileName -o $subfamilyDir 1> $logsDir/5_subfamily.out 2> $logsDir/5_subfamily.err" "$ECHO"
+
+    if [ ! -s $subfamilyVCF ];
+    then
+        log "Error infering subfamily" "ERROR"
+            exit -1
+    else
+        endTime=$(date +%s)
+        printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
+    fi
+else
+    printHeader "Output file already exists... skipping step"
+fi
+
+## Remove temporary annotation directory
+if [[ "$cleanup" == "TRUE" ]]; then rm -r $annotDir ; fi
+
+# 6) Filter MEI
 #################
 ## Output:
 # -  $filterDir/$fileName.filtered.vcf
@@ -1027,9 +1065,9 @@ then
 
     if [[ "$germlineVCF" == "NOT_PROVIDED" ]]
     then
-        command="$FILTER $annotVCF $fileName $filterList --mechanism $mechanism --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --outDir $filterDir 1> $logsDir/5_filter.out 2> $logsDir/5_filter.err"
+        command="$FILTER $subfamilyVCF $fileName $filterList --mechanism $mechanism --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --outDir $filterDir 1> $logsDir/6_filter.out 2> $logsDir/6_filter.err"
     else
-        command="$FILTER $annotVCF $fileName $filterList --mechanism $mechanism --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --germline-VCF $germlineVCF --outDir $filterDir 1> $logsDir/5_filter.out 2> $logsDir/5_filter.err"
+        command="$FILTER $subfamilyVCF $fileName $filterList --mechanism $mechanism --score-L1-TD0 $scoreL1_TD0 --score-L1-TD1 $scoreL1_TD1 --score-L1-TD2 $scoreL1_TD2 --score-Alu $scoreAlu --score-SVA $scoreSVA --score-ERVK $scoreERVK --score-PSD $scorePSD --germline-VCF $germlineVCF --outDir $filterDir 1> $logsDir/6_filter.out 2> $logsDir/6_filter.err"
     fi
 
     run "$command" "$ECHO"
@@ -1046,45 +1084,8 @@ else
     printHeader "Output file already exists... skipping step"
 fi
 
-## Remove temporary annotation directory
-if [[ "$cleanup" == "TRUE" ]]; then rm -r $annotDir ; fi
-
-
-# 6) Infer MEI subfamily
-#########################
-## Output:
-# -  $subfamilyDir/$fileName.subfamily.vcf
-subfamilyVCF=$subfamilyDir/$fileName.subfamily.vcf
-
-## Make MEI subfamily directory:
-if [[ ! -d $subfamilyDir ]]; then mkdir $subfamilyDir; fi
-
-## If subfamily inference disabled copy the previously generated VCF as subfamily output VCF. 
-# Then, the subfamily step will be skipped as file already exits 
-if [[ "$subfamilyBool" == "FALSE" ]]; then cp $filteredVCF $subfamilyVCF; fi
-
-### Execute the step
-printHeader "Performing MEI subfamily inference"
-
-if [ ! -s $subfamilyVCF ];
-then
-    step="SUBFAMILY"
-    startTime=$(date +%s)
-
-    log "Infering MEI subfamily" $step
-    run "python $SUBFAMILY $filteredVCF $tumorBam $outDir/allReadPairs.fa $refDir $fileName -o $subfamilyDir 1> $logsDir/6_subfamily.out 2> $logsDir/6_subfamily.err" "$ECHO"
-
-    if [ ! -s $subfamilyVCF ];
-    then
-        log "Error infering subfamily" "ERROR"
-            exit -1
-    else
-        endTime=$(date +%s)
-        printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
-    fi
-else
-    printHeader "Output file already exists... skipping step"
-fi
+## Remove subfamily directory
+if [[ "$cleanup" == "TRUE" ]]; then rm -r $subfamilyDir ; fi
 
 #############################
 # 7) MAKE OUTPUT VCF AND END #
@@ -1093,10 +1094,10 @@ fi
 ## Produce output VCF
 finalVCF=$outDir/$fileName.vcf
 
-cp $subfamilyVCF $finalVCF
+cp $filteredVCF $finalVCF
 
 ## Remove temporary files
-if [[ "$cleanup" == "TRUE" ]]; then rm -r $subfamilyDir $outDir/allReadPairs.fa; fi
+if [[ "$cleanup" == "TRUE" ]]; then rm -r $filterDir $outDir/allReadPairs.fa; fi
 
 ## End
 end=$(date +%s)
