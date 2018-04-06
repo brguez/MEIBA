@@ -676,24 +676,35 @@ for insertionId in clustersDict:
 
 allReadPairIdList = list(set(allReadPairIdList))
 
-## 3. Make file containing the supporting read ids
-readPairsPath = outDir +'/allReadPairs.txt'
-readPairsFile = open(readPairsPath, 'w')
+## 3. Make bam file only containing the target reads
+readPairsBam = outDir + "/allReadPairs.bam"
+tumourBamFile = pysam.AlignmentFile(tumourBam, "rb")
 
-for readPairId in allReadPairIdList:
-    row = readPairId + "\n"
-    readPairsFile.write(row)
+name_indexed = pysam.IndexedReads(tumourBamFile)
+name_indexed.build()
+header = tumourBamFile.header.copy()
+out = pysam.Samfile(readPairsBam, 'wb', header=header)
 
-## Important to close! otherwhise next step won't work properly...
-readPairsFile.close()
+for name in allReadPairIdList:
+    try:
+        name_indexed.find(name)
+    except KeyError:
+        pass
+    else:
+        iterator = name_indexed.find(name)
+        for x in iterator:
+            out.write(x)
 
-## 4. Extract read sequences with picard and generate fasta
+tumourBamFile.close()
+out.close()
+
+## 4.Convert bam into fasta:
 readPairsFasta = outDir + '/allReadPairs.fa'
 
-command = PICARD + ' FilterSamReads I=' + tumourBam + ' O=/dev/stdout READ_LIST_FILE=' + readPairsPath + ' FILTER=includeReadList WRITE_READS_FILES=false VALIDATION_STRINGENCY=SILENT QUIET=true | samtools fasta - > '  + readPairsFasta
+command = 'samtools fasta ' + readPairsBam + ' > '  + readPairsFasta
+
 print command
 os.system(command)
-
 
 ## 3) Add to the reads supporting the clusters its complete sequence from fasta and 
 ####################################################################################
@@ -747,7 +758,7 @@ for insertionId in clustersDict:
 
 
 ### Make cleanup and finish
-command = 'rm -r ' + readPairsPath + ' ' + tmpDir 
+command = 'rm -r ' + readPairsBam + ' ' + tmpDir 
 os.system(command) # returns the exit status
 
 
