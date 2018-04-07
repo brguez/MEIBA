@@ -314,8 +314,8 @@ def getClippedInterval(chrom, beg, end, bamFile):
     # Iterate over the alignments
     for alignmentObj in iterator:
 
-        ### Discard unmapped reads and PCR duplicates
-        if (alignmentObj.is_unmapped == False) and (alignmentObj.is_duplicate == False):
+        ### Discard unmapped reads, PCR duplicates, secondary and supplementary alignments
+        if (alignmentObj.is_unmapped == False) and (alignmentObj.is_duplicate == False) and (alignmentObj.is_secondary == False) and (alignmentObj.is_supplementary == False):
 
             firstOperation = alignmentObj.cigartuples[0][0]
             lastOperation = alignmentObj.cigartuples[-1][0]
