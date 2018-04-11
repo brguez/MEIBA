@@ -363,14 +363,14 @@ for line in mainMetadata:
             aliquotIdList = tumor_wgs_aliquot_id.split(',')
             
             ## Set default:            
-            tp53_mutation = "False"
+            tp53_mutation = "wildType"
             mutation_status = "wildType"
 
             ## For each tumour aliquot id check if TP53 mutated. I have checked and when mutated only reported in one aliquot, this is good.             
             for aliquotId in aliquotIdList:
             
                 if aliquotId in tp53Dict:
-                    tp53_mutation = "True"
+                    tp53_mutation = "mutated"
                     mutation_status = tp53Dict[aliquotId]
     
         ## Quality assessment data ##

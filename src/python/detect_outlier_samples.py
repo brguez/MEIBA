@@ -67,9 +67,9 @@ scoreStatsDf = pd.read_csv(scoreStats, header=0, index_col=0, sep='\t')
 rtCountsDf["fractionPolyA"] = scoreStatsDf["fractionPolyA"]
 
 
-## 3. Compute for each donor the ratio between the number of MEI 
+## 3. Compute for each sample the ratio between the number of MEI 
 #################################################################
-# in the donor and the median number of MEI in the tumor type
+# in the sample and the median number of MEI in the tumor type
 #############################################################
 tumorTypes = set(rtCountsDf['tumorType'].tolist())
 
@@ -82,7 +82,7 @@ for tumorType in tumorTypes:
     medianRt = rtCountsDf[rtCountsDf['tumorType'] == tumorType]['nbTotal'].median()
     medianRt = medianRt + 1 # Add pseudocount of 1
 
-    ## compute for each donor of the current tumor type the ratio of nbMEI/medianNbMEI
+    ## compute for each sample of the current tumor type the ratio of nbMEI/medianNbMEI
     nbTotalFcSeries = pd.concat([nbTotalFcSeries, rtCountsDf[rtCountsDf['tumorType'] == tumorType]['nbTotal']/medianRt])
 
 ## Incorporate the fold change ratio into the dataframe
@@ -108,7 +108,7 @@ totalCounts = rtCountsDf.sum(axis=0)
 
 print "*** Counts before excluding samples"
 print "nbTotal: ", totalCounts["nbTotal"]
-print "nbSoloL1: ", totalCounts["nbSoloL1"]
+print "nbL1Solo: ", totalCounts["nbL1Solo"]
 print "nbAlu: ", totalCounts["nbAlu"]
 print "nbL1TD: ", totalCounts["nbL1TD"]
 print "nbSVA: ", totalCounts["nbSVA"]
@@ -123,7 +123,7 @@ totalCounts = rtCountsFilteredDf.sum(axis=0)
 
 print "*** Counts after excluding samples"
 print "nbTotal: ", totalCounts["nbTotal"]
-print "nbSoloL1: ", totalCounts["nbSoloL1"]
+print "nbL1Solo: ", totalCounts["nbL1Solo"]
 print "nbAlu: ", totalCounts["nbAlu"]
 print "nbL1TD: ", totalCounts["nbL1TD"]
 print "nbSVA: ", totalCounts["nbSVA"]

@@ -28,7 +28,7 @@ from operator import itemgetter, attrgetter, methodcaller
 
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
-parser.add_argument('inputPath', help='Tabular text file containing one row per donor with the following consecutive fields: donorId   tumorType vcfPath')
+parser.add_argument('inputPath', help='Tabular text file containing one row per sample with the following consecutive fields: sampleId   tumorType vcfPath')
 parser.add_argument('fileName', help='Output file name')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.')
 
@@ -57,7 +57,7 @@ outPath = outDir + '/' + fileName + '.tsv'
 outFile = open(outPath, 'w')
 
 ## Write file header in the output file
-row = "#donorId" + "\t" + "tumorType" + "\t" + "fractionPolyA" + "\n"     
+row = "#sampleId" + "\t" + "tumorType" + "\t" + "fractionPolyA" + "\n"     
 
 outFile.write(row)
 
@@ -68,11 +68,11 @@ for line in inputFile:
     line = line.rstrip('\n')
     line = line.split("\t")
 
-    donorId = line[0]  
+    sampleId = line[0]  
     tumorType = line[1]
     vcfPath = line[2]
 
-    print "Processing: ", donorId, tumorType, vcfPath
+    print "Processing: ", sampleId, tumorType, vcfPath
 
     # Create VCF object
     VCFObj = formats.VCF()
@@ -105,7 +105,7 @@ for line in inputFile:
 
                     nbPolyA += 1
 
-        ## Compute the proportion of MEI with 3' bkp for the given donor
+        ## Compute the proportion of MEI with 3' bkp for the given sample
         if nbTotal == 0:
             fractionPolyA = 0.0
         else:
@@ -113,7 +113,7 @@ for line in inputFile:
             fractionPolyA = float(nbPolyA) / nbTotal
 
         ## Write MEI counts into the output file
-        row = donorId + "\t" + tumorType + "\t" + str(fractionPolyA) + "\n"      
+        row = sampleId + "\t" + tumorType + "\t" + str(fractionPolyA) + "\n"      
         outFile.write(row)
 
 ## End ##
