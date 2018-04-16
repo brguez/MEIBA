@@ -1094,7 +1094,6 @@ class insertion():
 
         # a) Single cluster with the highest number of supporting reads 
         if (len(bestInformativeContigsList) == 1):
-            print "maxNbReads: ", maxNbReads, len(bestInformativeContigsList), bestInformativeContigsList
             bestInformativeContigObj = bestInformativeContigsList[0]
         
         # b)  Multiple possible clusters... use another criteria... NA is provisional...
@@ -1108,11 +1107,30 @@ class insertion():
         """
         """
 
-        # a) Unknown target site 
+        # a) At least one breakpoint not characterized
         if (informativeContigClippedEndObj == "NA") or (informativeContigClippedBegObj == "NA"):
-            targetSiteLen = "NA"
 
-        # b) Known target site as both breakpoints characterized
+            # a) L1-mediated Deletion. Use rearrangement beg and end rough coordinates to compute target site
+            if (self.grInfo == "DEL"):
+                insertionCoordList = self.coordinates.split("_")
+                chrom = str(insertionCoordList[0])
+                bkpAPos = int(insertionCoordList[1])
+                bkpBPos = int(insertionCoordList[2])
+                targetSiteLen = bkpAPos - bkpBPos
+
+            # b) L1-mediated Duplication. Use rearrangement beg and end rough coordinates to compute target site
+            elif (self.grInfo == "DUP"):
+                insertionCoordList = self.coordinates.split("_")
+                chrom = str(insertionCoordList[0])
+                bkpAPos = insertionCoordList[1]
+                bkpBPos = insertionCoordList[2]
+                targetSiteLen = bkpBPos - bkpAPos
+
+            # c) Standard insertion
+            else:
+                targetSiteLen = "NA"
+
+        # b) Both breakpoints characterized
         else:
 
             clippedBegPos = informativeContigClippedBegObj.bkpDict["pos"] 
@@ -1125,8 +1143,6 @@ class insertion():
             #              target site duplication
             if (clippedBegPos < clippedEndPos):
                 targetSiteLen = clippedEndPos - clippedBegPos
-                print 'TS DUP', self.coordinates, targetSiteLen
-
 
             ## b) Target Site Deletion 
             # ---------------*####clipped_end####
@@ -1135,7 +1151,6 @@ class insertion():
             #                 target site deletion            else:
             else:
                 targetSiteLen = clippedEndPos - clippedBegPos
-                print 'TS DEL', self.coordinates, targetSiteLen
 
         return targetSiteLen
 
@@ -1424,10 +1439,18 @@ class insertion():
                 NCA = informativeContigClippedEndObj.nbReads
                 CA = informativeContigClippedEndObj.clippedReadIds
 
-                bkpBPos = "NA"
                 bkpBContigSeq = "NA"
                 NCB = "."
                 CB = "NA"
+
+                # a) L1-mediated rearrangement. Use rearrangement end rough coordinates
+                if (self.grInfo in ["DEL", "DUP", "TRANS"]):
+                    insertionCoordList = self.coordinates.split("_")
+                    bkpBPos = insertionCoordList[2]
+
+                # b) Insertion do not associated with a rearrangement.
+                else:
+                    bkpBPos = "NA"
 
             else:
                 chrom = informativeContigClippedBegObj.bkpDict["chrom"]
@@ -1437,22 +1460,40 @@ class insertion():
                 NCA = informativeContigClippedBegObj.nbReads
                 CA = informativeContigClippedBegObj.clippedReadIds
 
-                bkpBPos = "NA"
                 bkpBContigSeq = "NA"               
                 NCB = "."
                 CB = "NA"
 
+                # a) L1-mediated rearrangement. Use rearrangement beg and end rough coordinates
+                if (self.grInfo in ["DEL", "DUP", "TRANS"]):
+                    insertionCoordList = self.coordinates.split("_")
+                    bkpBPos = insertionCoordList[1]
+
+                # b) Insertion do not associated with a rearrangement.
+                else:
+                    bkpBPos = "NA"
+
         # c) No breakpoint identified (Imprecise breakpoint)      
         else:
-            chrom, bkpAPos, cipos = self.imprecise_bkp()
             bkpAContigSeq = "NA"
             NCA = "."
             CA = "NA"
-
-            bkpBPos = "NA"
             bkpBContigSeq = "NA"
             NCB = "."
             CB = "NA"
+
+            # a) L1-mediated rearrangement. Use rearrangement beg and end rough coordinates
+            if (self.grInfo in ["DEL", "DUP", "TRANS"]):
+                insertionCoordList = self.coordinates.split("_")
+                chrom = insertionCoordList[0]
+                bkpAPos = insertionCoordList[1]
+                bkpBPos = insertionCoordList[2]
+                cipos = "NA"
+
+            # b) Insertion do not associated with a rearrangement. Imprecise bkp
+            else:
+                chrom, bkpAPos, cipos = self.imprecise_bkp()
+                bkpBPos = "NA"
 
         return chrom, bkpAPos, bkpBPos, bkpAContigSeq, bkpBContigSeq, NCA, NCB, CA, CB, cipos    
                  
@@ -1506,7 +1547,7 @@ class insertion():
         ## 2.4 Breakpoints
         self.chrom, self.bkpAPos, self.bkpBPos, self.bkpAContigSeq, self.bkpBContigSeq, self.NCA, self.NCB, self.CA, self.CB, self.cipos = self.breakpoints(informativeContigClippedEndObj, informativeContigClippedBegObj)
 
-        print "FEATURES: ", self.tdType, self.coordinates, self.targetSiteLen, self.mechanism, self.orientation, self.elementLength, self.elementRange, self.structure, self.score, self.bkpAPos, self.bkpBPos, self.bkpAContigSeq, self.bkpBContigSeq, self.NCA, self.NCB, self.CA, self.CB, self.cipos
+        #print "FEATURES: ", self.tdType, self.coordinates, self.targetSiteLen, self.mechanism, self.orientation, self.elementLength, self.elementRange, self.structure, self.score, self.bkpAPos, self.bkpBPos, self.bkpAContigSeq, self.bkpBContigSeq, self.NCA, self.NCB, self.CA, self.CB, self.cipos
 
 
     def convert2VCFline(self, genomeObj):

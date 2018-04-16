@@ -598,24 +598,26 @@ for line in insertions:
 
         insertionId = familyPlus + ":" + insertionType + ":" + chrPlus + "_" + endPlus + "_" + begMinus 
 
-        ### Refine discordant paired end clusters:
-        ## a) Positive cluster
-        filteredPlus = filterDiscordantCluster(chrPlus, int(begPlus), int(endPlus) + 100, readPairListPlus, tumourBamFile)
+        ### 0. Refine discordant paired end clusters:
+        ## A) Paired clusters
+        if (begMinus != "NA") and (begMinus != "UNK"):
+            filteredPlus = filterDiscordantCluster(chrPlus, int(begPlus), int(endPlus) + 100, readPairListPlus, tumourBamFile)
+            filteredMinus = filterDiscordantCluster(chrMinus, int(begMinus), int(endMinus) + 100, readPairListMinus, tumourBamFile)
 
-        ## b) Negative cluster
-        filteredMinus = filterDiscordantCluster(chrMinus, int(begMinus), int(endMinus) + 100, readPairListMinus, tumourBamFile)
+        ## B) Unpaired cluster
+        else:
+            filteredPlus = filterDiscordantCluster(chrPlus, int(begPlus), int(endPlus) + 100, readPairListPlus, tumourBamFile)
+            filteredMinus = False
 
         ## Discard those insertions with a high percentage of both-sides clipped reads supporting at least one of the clusters:
         if (filteredPlus == True) or (filteredMinus == True):
-            print "FILTERED: ", insertionId
             clusterBegFilteredList = []
             clusterEndFilteredList = []
 
         else:
-
             ### 1. Search for clipped reads
-            ## A) Paired cluster
-            if (chrMinus != "NA"):
+            ## A) Paired clusters
+            if (begMinus != "NA") and (begMinus != "UNK"):
                 clippedBegList, clippedEndList = getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, tumourBamFile)
                 clippedBegNormalList, clippedEndNormalList = getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, normalBamFile)
        
