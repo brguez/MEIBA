@@ -1483,7 +1483,7 @@ class insertion():
             if (self.grInfo in ["DEL", "DUP", "TRANS"]):
                 insertionCoordList = self.coordinates.split("_")
                 chrom = insertionCoordList[0]
-                bkpAPos = insertionCoordList[1]
+                bkpAPos = int(insertionCoordList[1])
                 bkpBPos = insertionCoordList[2]
                 cipos = "NA"
 
