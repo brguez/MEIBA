@@ -1110,21 +1110,18 @@ class insertion():
         # a) At least one breakpoint not characterized
         if (informativeContigClippedEndObj == "NA") or (informativeContigClippedBegObj == "NA"):
 
-            # a) L1-mediated Deletion. Use rearrangement beg and end rough coordinates to compute target site
-            if (self.grInfo == "DEL"):
-                insertionCoordList = self.coordinates.split("_")
-                chrom = str(insertionCoordList[0])
-                bkpAPos = int(insertionCoordList[1])
-                bkpBPos = int(insertionCoordList[2])
-                targetSiteLen = bkpAPos - bkpBPos
+            insertionCoordList = self.coordinates.split("_")
+            chrom = str(insertionCoordList[0])
+            bkpAPos = insertionCoordList[1]
+            bkpBPos = insertionCoordList[2]
 
-            # b) L1-mediated Duplication. Use rearrangement beg and end rough coordinates to compute target site
-            elif (self.grInfo == "DUP"):
-                insertionCoordList = self.coordinates.split("_")
-                chrom = str(insertionCoordList[0])
-                bkpAPos = insertionCoordList[1]
-                bkpBPos = insertionCoordList[2]
-                targetSiteLen = bkpBPos - bkpAPos
+            # a) L1-mediated Deletion. If available use rearrangement beg and end rough coordinates to compute target site deletion length
+            if (self.grInfo == "DEL") and (bkpBPos != "UNK") and (bkpBPos != "NA"):
+                targetSiteLen = int(bkpAPos) - int(bkpBPos)
+
+            # b) L1-mediated Duplication. If available use rearrangement beg and end rough coordinates to compute target site duplication length
+            elif (self.grInfo == "DUP") and (bkpBPos != "UNK") and (bkpBPos != "NA"):
+                targetSiteLen = int(bkpBPos) - int(bkpAPos)
 
             # c) Standard insertion
             else:
