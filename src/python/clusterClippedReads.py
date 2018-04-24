@@ -460,8 +460,8 @@ def filterDiscordantCluster(chrom, beg, end, readPairList, bamFile):
     ## Iterate over the alignments
     for alignmentObj in iterator:
 
-        ## Supporting discordant paired-end read
-        if alignmentObj.query_name in readPairList:
+        ## Supporting discordant paired-end read and cigar available
+        if (alignmentObj.query_name in readPairList) and (alignmentObj.cigartuples is not None):
 
             firstOperation = alignmentObj.cigartuples[0][0]
             lastOperation = alignmentObj.cigartuples[-1][0]
