@@ -4,7 +4,7 @@
 <<authors
 ******************************************************************************
 
-    TEIBA.sh
+    MEIBA.sh
 
     Transposable Element Insertion Breakpoint Analyzer (TEIBA)
 
