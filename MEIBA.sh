@@ -6,7 +6,7 @@
 
     MEIBA.sh
 
-    Transposable Element Insertion Breakpoint Analyzer (TEIBA)
+    Mobile Element Insertion Breakpoint Analyzer (MEIBA)
 
     Copyright (c) 2016-2018 Bernardo Rodríguez-Martín
 
@@ -17,9 +17,9 @@
 ******************************************************************************
 authors
 
-##### TEIBA
+##### MEIBA
 
-## TEIBA is aimed to characterize at base pair resolution a set of mobile element insertions provided as input throught local assembly and breakpoint analysis.
+## MEIBA is aimed to characterize at base pair resolution a set of mobile element insertions provided as input throught local assembly and breakpoint analysis.
 # It currently handles four types of insertion events:
 
 # - TD0: solo L1, Alu, SVA and ERVK insertions
@@ -74,18 +74,34 @@ function usageDoc
 {
 cat <<help
 
-**** TEIBA version $version ****
+**** MEIBA version $version ****
 
-Execute TEIBA on one dataset (sample).
+Execute MEIBA on one dataset (sample).
 
 *** USAGE
+
+PAIRED (TUMOUR & NORMAL PAIR):
     $0 -i <insertions> --tumour-bam <bam> --normal-bam <bam> --ref-dir <path> --sample-id <sample_identifier> --file-name <output_fileName> [OPTIONS]
 
+SINGLE:
+    $0 -i <insertions> --bam <bam> --ref-dir <path> --sample-id <sample_identifier> --file-name <output_fileName> [OPTIONS]	
+
 *** MANDATORY
+
+* PAIRED:
+
     -i|--insertions     <TSV>                                   TraFiC insertions file for a given sample.
     --tumour-bam        <BAM>                                   Tumour BAM file.
     --normal-bam        <BAM>                                   Matched normal BAM file.
-    --ref-dir           <PATH>                                  Path to the directory where TEIBA reference files are located.
+    --ref-dir           <PATH>                                  Path to the directory where MEIBA reference files are located.
+    --sample-id	        <STRING>                                Sample identifier to be incorporated in the SL field of the output VCF. 
+    --file-name	        <STRING>                                Output VCF name.
+
+* SINGLE
+
+    -i|--insertions     <TSV>                                   TraFiC insertions file for a given sample.
+    --bam               <BAM>                                   BAM file.
+    --ref-dir           <PATH>                                  Path to the directory where MEIBA reference files are located.
     --sample-id	        <STRING>                                Sample identifier to be incorporated in the SL field of the output VCF. 
     --file-name	        <STRING>                                Output VCF name.
 
@@ -128,7 +144,7 @@ help
 ################################
 function getoptions {
 
-ARGS=`getopt -o "i:g:d:o:h" -l "insertions:,tumour-bam:,normal-bam:,ref-dir:,sample-id:,file-name:,out-dir:,tmp-dir:,no-cleanup,help,annotation-steps:,subfamily,filters:,mechanism:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,score-GR:,germline-VCF:" \
+ARGS=`getopt -o "i:g:d:o:h" -l "insertions:,tumour-bam:,normal-bam:,bam:,ref-dir:,sample-id:,file-name:,out-dir:,tmp-dir:,no-cleanup,help,annotation-steps:,subfamily,filters:,mechanism:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,score-GR:,germline-VCF:" \
       -n "$0" -- "$@"`
 
 #Bad arguments
@@ -156,7 +172,8 @@ do
         --tumour-bam)
             if [ -n "$2" ];
             then
-                tumorBam=$2
+                bam=$2
+                mode="PAIRED"
             fi
             shift 2;;
 
@@ -166,6 +183,14 @@ do
                 normalBam=$2
             fi
             shift 2;;
+
+        --bam)
+            if [ -n "$2" ];
+            then
+                bam=$2
+                mode="SINGLE"
+	        fi
+	        shift 2;;
 
         --ref-dir)
             if [ -n "$2" ];
@@ -395,8 +420,8 @@ function cleanupFunc {
 # SETTING UP THE ENVIRONMENT
 ############################
 
-# TEIBA version
-version=0.8.3
+# MEIBA version
+version=0.8.5
 
 # Enable extended pattern matching
 shopt -s extglob
@@ -440,10 +465,21 @@ fi
 ##   ~~~~~~~~~~~~~~~~~~~
 
 ## Check that everything is ok:
+
+## A) PAIRED
+if [[ "$mode" == "PAIRED" ]];
+then
+    if [[ ! -s $bam ]]; then log "Tumour BAM file does not exist or is empty. Mandatory argument --tumour-bam" "ERROR" >&2; usageDoc; exit -1; fi
+    if [[ ! -s $normalBam ]]; then log "Normal BAM file does not exist or is empty. Mandatory argument --normal-bam" "ERROR" >&2; usageDoc; exit -1; fi
+
+## B) SINGLE
+else
+	if [[ ! -e $bam ]]; then log "The BAM provided do not exist. Mandatory argument --bam\n" "ERROR" >&2; usageDoc; exit -1; fi
+fi
+
+## Common
 if [[ ! -s $insertions ]]; then log "TraFiC MEI calls file does not exist or is empty. Mandatory argument -i|--insertions" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -s $tumorBam ]]; then log "Tumour BAM file does not exist or is empty. Mandatory argument --tumour-bam" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -s $normalBam ]]; then log "Normal BAM file does not exist or is empty. Mandatory argument --normal-bam" "ERROR" >&2; usageDoc; exit -1; fi
-if [[ ! -e $refDir ]]; then log "TEIBA reference dir does not exist. Mandatory argument --ref-dir" "ERROR" >&2; usageDoc; exit -1; fi
+if [[ ! -e $refDir ]]; then log "MEIBA reference dir does not exist. Mandatory argument --ref-dir" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ $sampleId == "" ]]; then log "Sample id not provided. Mandatory argument --sample-id" "ERROR" >&2; usageDoc; exit -1; fi
 if [[ $fileName == "" ]]; then log "Output file name not provided. Mandatory argument --file-name" "ERROR" >&2; usageDoc; exit -1; fi
 
@@ -640,7 +676,7 @@ srcRegDir=$outDir/SrcRegions
  
 ## Set environmental variables
 # The temporary directory will be exported as an environmental variable since it will
-# be used by every TEIBA's scripts
+# be used by every MEIBA's scripts
 export TMPDIR=$TMPDIR
 
 ## make sure the pipeline removes intermediate files even if it fails
@@ -650,6 +686,7 @@ trap cleanupFunc EXIT
 ########################
 # scripts
 EMPTYVCF=$pyDir/makeEmptyVCF.py
+CLIPPED_PAIRED=$pyDir/clusterClippedReads.paired.py
 CLIPPED=$pyDir/clusterClippedReads.py
 ALIGN_CONTIGS=$bashDir/alignContigs2reference.sh
 ADD_INFO=$awkDir/addInfo2insertionList.awk
@@ -668,15 +705,28 @@ genome=$refDir/$gemomeFileName
 ##################################
 
 printf "\n"
-header="TEIBA CONFIGURATION FOR $sampleId"
+header="MEIBA CONFIGURATION FOR $sampleId"
 echo $header
 eval "for i in {1..${#header}};do printf \"-\";done"
 printf "\n\n"
-printf "  %-34s %s\n\n" "TEIBA Version $version"
+printf "  %-34s %s\n\n" "MEIBA Version $version"
+printf "  %-34s %s\n\n" "Mode: $mode"
+
+
 printf "  %-34s %s\n" "***** MANDATORY ARGUMENTS *****"
 printf "  %-34s %s\n" "insertions:" "$insertions"
-printf "  %-34s %s\n" "tumorBam:" "$tumorBam"
-printf "  %-34s %s\n" "normalBam:" "$normalBam"
+
+## A) PAIRED
+if [[ "$mode" == "PAIRED" ]];
+then
+    printf "  %-34s %s\n" "tumorBam:" "$bam"
+    printf "  %-34s %s\n" "normalBam:" "$normalBam"
+
+## B) SINGLE
+else
+    printf "  %-34s %s\n" "bam:" "$bam"
+fi
+
 printf "  %-34s %s\n" "ref-dir:" "$refDir"
 printf "  %-34s %s\n" "sample-id:" "$sampleId"
 printf "  %-34s %s\n\n" "file-name:" "$fileName"
@@ -706,11 +756,10 @@ printf "  %-34s %s\n\n" "score-GR:" "$scoreGR"
 printf "  %-34s %s\n" "*** Files ***"
 printf "  %-34s %s\n\n" "germline-VCF:" "$germlineVCF"
 
-
 ##########
 ## START #
 ##########
-header="Executing TEIBA $version for $sampleId sample"
+header="Executing MEIBA $version for $sampleId sample"
 echo $header
 eval "for i in {1..${#header}};do printf \"-\";done"
 printf "\n\n"
@@ -744,7 +793,7 @@ then
 
     ## End
     end=$(date +%s)
-    printHeader "TEIBA for $sampleId completed in $(echo "($end-$start)/60" | bc -l | xargs printf "%.2f\n") min "
+    printHeader "MEIBA for $sampleId completed in $(echo "($end-$start)/60" | bc -l | xargs printf "%.2f\n") min "
 
     exit 0
 
@@ -822,7 +871,17 @@ step="CLUSTER-CLIPPED"
 startTime=$(date +%s)
 printHeader "Cluster clipped"
 log "Cluster clipped" $step
-run "python $CLIPPED $insertions $tumorBam $normalBam --outDir $clippedDir 1> $logsDir/1_clipped.out 2> $logsDir/1_clipped.err" "$ECHO"
+
+## A) PAIRED
+if [[ "$mode" == "PAIRED" ]];
+then
+    run "python $CLIPPED_PAIRED $insertions $bam $normalBam --outDir $clippedDir 1> $logsDir/1_clipped.out 2> $logsDir/1_clipped.err" "$ECHO"
+
+## B) SINGLE 
+else
+    run "python $CLIPPED $insertions $bam --outDir $clippedDir 1> $logsDir/1_clipped.out 2> $logsDir/1_clipped.err" "$ECHO"
+fi
+
 cp $clippedDir/allReadPairs.fa $outDir/allReadPairs.fa
 endTime=$(date +%s)
 printHeader "Step completed in $(echo "($endTime-$startTime)/60" | bc -l | xargs printf "%.2f\n") min"
@@ -1028,7 +1087,7 @@ then
     startTime=$(date +%s)
 
     log "Infering MEI subfamily" $step
-    run "python $SUBFAMILY $annotVCF $tumorBam $outDir/allReadPairs.fa $refDir $fileName -o $subfamilyDir 1> $logsDir/5_subfamily.out 2> $logsDir/5_subfamily.err" "$ECHO"
+    run "python $SUBFAMILY $annotVCF $bam $outDir/allReadPairs.fa $refDir $fileName -o $subfamilyDir 1> $logsDir/5_subfamily.out 2> $logsDir/5_subfamily.err" "$ECHO"
 
     if [ ! -s $subfamilyVCF ];
     then
@@ -1101,7 +1160,7 @@ if [[ "$cleanup" == "TRUE" ]]; then rm -r $filterDir $outDir/allReadPairs.fa; fi
 
 ## End
 end=$(date +%s)
-printHeader "TEIBA for $sampleId sample completed in $(echo "($end-$start)/60" | bc -l | xargs printf "%.2f\n") min "
+printHeader "MEIBA for $sampleId sample completed in $(echo "($end-$start)/60" | bc -l | xargs printf "%.2f\n") min "
 
 # disable extglob
 shopt -u extglob

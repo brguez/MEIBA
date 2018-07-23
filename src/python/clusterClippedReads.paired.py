@@ -418,6 +418,35 @@ def filterNbClusters(clusterBegList, clusterEndList, maxNbClusters):
     return filteredClusterBegList, filteredClusterEndList
 
 
+def clusterInMatchedNormal(clusterTumorList, clusterNormalList):
+    '''
+    '''
+    clusterTumorFilteredList = []
+    
+    ## For each clipped cluster in the tumour
+    for clusterTumorObj in clusterTumorList:
+        
+        filtered = False
+        begTumor = clusterTumorObj.bkpPos - 5
+        endTumor = clusterTumorObj.bkpPos + 5
+
+        ## For each clipped cluster in the normal
+        for clusterNormalObj in clusterNormalList:
+
+            begNormal = clusterNormalObj.bkpPos - 5 
+            endNormal = clusterNormalObj.bkpPos + 5
+
+            ## Filter those clusters matching with the normal
+            if overlap(begTumor, endTumor, begNormal, endNormal):
+                filtered = True
+       
+        ## Cluster not matching cluster in the normal
+        if not filtered:
+            clusterTumorFilteredList.append(clusterTumorObj)
+
+    return clusterTumorFilteredList          
+
+
 def filterDiscordantCluster(chrom, beg, end, readPairList, bamFile):
     '''
     '''
@@ -485,7 +514,8 @@ PICARD = os.environ['PICARD']
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= "")
 parser.add_argument('insertions', help='')
-parser.add_argument('bam', help='Bam file')
+parser.add_argument('tumourBam', help='Tumour bam file')
+parser.add_argument('normalBam', help='Matched normal bam file')
 parser.add_argument('--minNbReads', default=1, dest='minNbReads', type=int, help='Minimum number of clipped reads composing the cluster. Default: 1' )
 parser.add_argument('--maxNbReads', default=500, dest='maxNbReads', type=int, help='Maximum number of clipped reads composing the cluster. Default: 500' )
 parser.add_argument('--maxNbClusters', default=10, dest='maxNbClusters', type=int, help='Maximum number of clipped read clusters in the insertion region. Default: 10' )
@@ -493,7 +523,8 @@ parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='
 
 args = parser.parse_args()
 insertionsPath = args.insertions
-bam = args.bam
+tumourBam = args.tumourBam
+normalBam = args.normalBam
 minNbReads = args.minNbReads
 maxNbReads = args.maxNbReads
 maxNbClusters = args.maxNbClusters
@@ -506,7 +537,8 @@ scriptName = os.path.basename(sys.argv[0])
 print
 print "***** ", scriptName, " configuration *****"
 print "insertionsPath: ", insertionsPath
-print "bam: ", bam
+print "tumourBam: ", tumourBam
+print "normalBam: ", normalBam
 print "minNbReads: ", minNbReads
 print "maxNbReads: ", maxNbReads
 print "maxNbClusters: ", maxNbClusters
@@ -521,7 +553,8 @@ print
 insertions = open(insertionsPath, 'r')
 
 ## Open donor's BAM files for reading
-bamFile = pysam.AlignmentFile(bam, "rb")
+tumourBamFile = pysam.AlignmentFile(tumourBam, "rb")
+normalBamFile = pysam.AlignmentFile(normalBam, "rb")
 
 clustersDict = {}
 discordantReadPairList = []
@@ -568,12 +601,12 @@ for line in insertions:
         ### 0. Refine discordant paired end clusters:
         ## A) Paired clusters
         if (begMinus != "NA") and (begMinus != "UNK"):
-            filteredPlus = filterDiscordantCluster(chrPlus, int(begPlus), int(endPlus) + 100, readPairListPlus, bamFile)
-            filteredMinus = filterDiscordantCluster(chrMinus, int(begMinus), int(endMinus) + 100, readPairListMinus, bamFile)
+            filteredPlus = filterDiscordantCluster(chrPlus, int(begPlus), int(endPlus) + 100, readPairListPlus, tumourBamFile)
+            filteredMinus = filterDiscordantCluster(chrMinus, int(begMinus), int(endMinus) + 100, readPairListMinus, tumourBamFile)
 
         ## B) Unpaired cluster
         else:
-            filteredPlus = filterDiscordantCluster(chrPlus, int(begPlus), int(endPlus) + 100, readPairListPlus, bamFile)
+            filteredPlus = filterDiscordantCluster(chrPlus, int(begPlus), int(endPlus) + 100, readPairListPlus, tumourBamFile)
             filteredMinus = False
 
         ## Discard those insertions with a high percentage of both-sides clipped reads supporting at least one of the clusters:
@@ -585,27 +618,41 @@ for line in insertions:
             ### 1. Search for clipped reads
             ## A) Paired clusters
             if (begMinus != "NA") and (begMinus != "UNK"):
-                clippedBegList, clippedEndList = getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, bamFile)
+                clippedBegList, clippedEndList = getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, tumourBamFile)
+                clippedBegNormalList, clippedEndNormalList = getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, normalBamFile)
        
             ## B) Unpaired cluster
             else:
-                clippedBegList, clippedEndList = getClippedUnpairedCluster(chrPlus, begPlus, endPlus, bamFile)
+                clippedBegList, clippedEndList = getClippedUnpairedCluster(chrPlus, begPlus, endPlus, tumourBamFile)
+                clippedBegNormalList, clippedEndNormalList = getClippedUnpairedCluster(chrPlus, begPlus, endPlus, normalBamFile)
 
             ### 2. Cluster clipped reads:
             ### 2.1 Tumour
             clusterBegList = clusterCLipped(clippedBegList, "beg", minNbReads, maxNbReads)
             clusterEndList = clusterCLipped(clippedEndList, "end", minNbReads, maxNbReads)       
 
+            ### 2.2 Matched normal
+            clusterBegNormalList = clusterCLipped(clippedBegNormalList, "beg", 3, maxNbReads)
+            clusterEndNormalList = clusterCLipped(clippedEndNormalList, "end", 3, maxNbReads)       
+
             ### 3. Filter clusters of clipped reads:
             ## 3.1 Filter by the number of clipped-read clusters              
-            clusterBegFilteredList, clusterEndFilteredList = filterNbClusters(clusterBegList, clusterEndList, maxNbClusters)
+            clusterBegList, clusterEndList = filterNbClusters(clusterBegList, clusterEndList, maxNbClusters)
+    
+            ## 3.2 Filter those clusters that are also in the matched normal
+            ## Clipping at the begin
+            clusterBegFilteredList = clusterInMatchedNormal(clusterBegList, clusterBegNormalList)
+
+            ## Clipping at the end
+            clusterEndFilteredList = clusterInMatchedNormal(clusterEndList, clusterEndNormalList)
 
         ### 4. Add the 2 cluster lists to the dictionary:
         clustersDict[insertionId] = {}
         clustersDict[insertionId]["beg"] = clusterBegFilteredList
         clustersDict[insertionId]["end"] = clusterEndFilteredList
 
-bamFile.close()
+tumourBamFile.close()
+normalBamFile.close()
 
 ## 2) Make fasta containing the discordant paired-end reads + 
 ##############################################################
@@ -645,7 +692,7 @@ readPairsFile.close()
 ## 4. Extract read sequences with picard and generate fasta
 readPairsFasta = outDir + '/allReadPairs.fa'
 
-command = PICARD + ' FilterSamReads I=' + bam + ' O=/dev/stdout READ_LIST_FILE=' + readPairsPath + ' FILTER=includeReadList WRITE_READS_FILES=false VALIDATION_STRINGENCY=SILENT QUIET=true | samtools fasta - > '  + readPairsFasta
+command = PICARD + ' FilterSamReads I=' + tumourBam + ' O=/dev/stdout READ_LIST_FILE=' + readPairsPath + ' FILTER=includeReadList WRITE_READS_FILES=false VALIDATION_STRINGENCY=SILENT QUIET=true | samtools fasta - > '  + readPairsFasta
 print command
 os.system(command)
 
