@@ -84,33 +84,32 @@ print
 transductionsCountDf = pd.read_csv(transductionsCountFile, header=0, index_col=0, sep='\t')
 transductionsCountDf = transductionsCountDf.T 
 
-### Compute the number of transductions per donor
-nbTdPerDonorSeries = transductionsCountDf.sum(axis=1)
+### Compute the number of transductions per sample
+nbTdPersampleSeries = transductionsCountDf.sum(axis=1)
 
-nbTdPerDonorSeries.sort_values(ascending=False, inplace=True)
-
-# Save dataframe into output file
-outFilePath = outDir + '/nb_transductions_germline_source_per_donor.tsv'
-nbTdPerDonorSeries.to_csv(outFilePath, sep='\t') 
-
-
-### Compute the number of active source elements per donor
-nbActiveSrcElementsPerDonorSeries = transductionsCountDf.applymap(binary).sum(axis=1)
-
-nbActiveSrcElementsPerDonorSeries.sort_values(ascending=False, inplace=True)
+nbTdPersampleSeries.sort_values(ascending=False, inplace=True)
 
 # Save dataframe into output file
-outFilePath = outDir + '/nb_active_germline_source_elements_per_donor.tsv'
-nbActiveSrcElementsPerDonorSeries.to_csv(outFilePath, sep='\t') 
+outFilePath = outDir + '/nb_transductions_germline_source_per_sample.tsv'
+nbTdPersampleSeries.to_csv(outFilePath, sep='\t') 
+
+### Compute the number of active source elements per sample
+nbActiveSrcElementsPersampleSeries = transductionsCountDf.applymap(binary).sum(axis=1)
+
+nbActiveSrcElementsPersampleSeries.sort_values(ascending=False, inplace=True)
+
+# Save dataframe into output file
+outFilePath = outDir + '/nb_active_germline_source_elements_per_sample.tsv'
+nbActiveSrcElementsPersampleSeries.to_csv(outFilePath, sep='\t') 
 
 ### Average number of active source elements in those samples with retrotransposition activity
-nbActiveSrcElementsPerDonorFilteredSeries = nbActiveSrcElementsPerDonorSeries[nbActiveSrcElementsPerDonorSeries > 0]
+nbActiveSrcElementsPersampleFilteredSeries = nbActiveSrcElementsPersampleSeries[nbActiveSrcElementsPersampleSeries > 0]
 
-median = np.median(nbActiveSrcElementsPerDonorFilteredSeries.values)
-average = np.average(nbActiveSrcElementsPerDonorFilteredSeries.values)
+median = np.median(nbActiveSrcElementsPersampleFilteredSeries.values)
+average = np.average(nbActiveSrcElementsPersampleFilteredSeries.values)
 
 print "median_nb_active_germline_source_elements: ", median
-print "median_nb_active_germline_source_elements: ", average
+print "average_nb_active_germline_source_elements: ", average
 
 
 #### End

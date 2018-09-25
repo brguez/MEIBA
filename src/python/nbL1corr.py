@@ -47,13 +47,15 @@ sns.set_style("white")
 sns.set_style("ticks")
 
 ## Get user's input ##
-parser = argparse.ArgumentParser(description="Compute correlation between L1 retrotransposition rate and diverse genomic features (replication time, gene expression and gene density)")
-parser.add_argument('input', help='Genomic features table')
+parser = argparse.ArgumentParser(description="Compute correlation between L1 retrotransposition rate and the number of active L1 source elements")
+parser.add_argument('rtCounts', help='Retrotransposition couns per sample')
+parser.add_argument('nbActive', help='Number of active source elements per sample')
 parser.add_argument('palette', help='')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
-inputFile = args.input
+rtCounts = args.rtCounts
+nbActive = args.nbActive
 palette = args.palette
 outDir = args.outDir
 scriptName = os.path.basename(sys.argv[0])
@@ -61,13 +63,13 @@ scriptName = os.path.basename(sys.argv[0])
 ## Display configuration to standard output ##
 print
 print "***** ", scriptName, " configuration *****"
-print "inputFile: ", inputFile
+print "rtCounts: ", rtCounts
+print "nbActive: ", nbActive
 print "palette: ", palette
 print "outDir: ", outDir
 print
 print "***** Executing ", scriptName, ".... *****"
 print
-
 
 ## Start ## 
 
@@ -91,15 +93,14 @@ for line in paletteFile:
  
         colorTumorTypeDict[tumorType] = rgbColor
 
-print colorTumorTypeDict
+#### Load input tables
+rtCountsDf = pd.read_csv(rtCounts, header=0, sep='\t')
+nbActiveDf = pd.read_csv(nbActive, header=0, sep='\t')
+nbActiveDf.set_index('sampleId', inplace=True)
 
-#### Load input table
-inputDf = pd.read_csv(inputFile, header=0, sep='\t')
+## Add the number of active source elements to the counts dataframe
+rtCountsDf.insert(0, 'nbActiveSrc', nbActiveDf['nbActiveSrc'])
 
-#### Remove donors with 0 insertions
-filteredDf = inputDf[inputDf["nbL1"] > 0]
-  
-print "filteredDf: ", filteredDf
 
 #### Make scatterplot
 fig = plt.figure(figsize=(4,4))
@@ -107,14 +108,14 @@ ax = fig.add_subplot(1, 1, 1)
 
 for tumorType in sorted(colorTumorTypeDict.keys()):
     
-    dataframe = filteredDf[filteredDf["tumorType"] == tumorType]
+    dataframe = rtCountsDf[rtCountsDf["tumorType"] == tumorType]
 
     color = colorTumorTypeDict[tumorType]    
 
     nbL1List = dataframe["nbL1"].values
-    nbActiveList = dataframe["nbActive"].values
+    nbActiveList = dataframe["nbActiveSrc"].values
  
-    plt.scatter(nbL1List, nbActiveList, c=color, edgecolor='black', linewidth='1', s=40, alpha=0.8, label=tumorType)
+    plt.scatter(nbL1List, nbActiveList, c=color, edgecolor='black', linewidth='0.5', s=30, alpha=1, label=tumorType)
 
 ## Add axis labels
 plt.xlabel('Number somatic L1 insertions', fontsize=12)
@@ -125,7 +126,7 @@ plt.legend(ncol=2, loc=9, bbox_to_anchor=(0.5, -0.1))
 
 
 ## Compute and add correlation to the plot
-corr = stats.spearmanr(filteredDf["nbL1"], filteredDf["nbActive"])
+corr = stats.spearmanr(rtCountsDf["nbL1"], rtCountsDf["nbActiveSrc"])
 coefficient = format(corr[0], '.3f')
 pvalue = corr[1]
 text = 'spear_rho: ' + str(coefficient) + '; P = ' + str(pvalue)
@@ -134,8 +135,11 @@ ax.text(0.5, 0.1, text, transform = ax.transAxes)
 
 ## Save figure
 outPath = outDir + '/nbL1_nbActiveSrc_corr.pdf'
-
 plt.savefig(outPath)
+outPath = outDir + '/nbL1_nbActiveSrc_corr.svg'
+plt.savefig(outPath)
+
+
 
 ####
 header("Finished")

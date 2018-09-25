@@ -44,12 +44,12 @@ import scipy
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('transductionsCountFile', help='')
-parser.add_argument('donorMetadata', help='')
+parser.add_argument('sampleMetadata', help='')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
 transductionsCountFile = args.transductionsCountFile
-donorMetadata = args.donorMetadata
+sampleMetadata = args.sampleMetadata
 outDir = args.outDir
 
 scriptName = os.path.basename(sys.argv[0])
@@ -58,7 +58,7 @@ scriptName = os.path.basename(sys.argv[0])
 print
 print "***** ", scriptName, " configuration *****"
 print "transductionsCountFile: ", transductionsCountFile
-print "donorMetadata: ", donorMetadata
+print "sampleMetadata: ", sampleMetadata
 print "outDir: ", outDir
 print
 print "***** Executing ", scriptName, ".... *****"
@@ -70,15 +70,15 @@ print
 #### 0. Read metadata file
 ##########################
 # Initialize a dictionary with the following structure:
-# - dict: key(donorId) -> tumorType
+# - dict: key(sampleId) -> tumorType
 
-header("1. Read metadata file")
+header("0. Read metadata file")
 
-donorMetadataFile = open(donorMetadata, 'r')
-donorIdTumorTypeDict = {}
-donorIdAncestryDict = {}
+sampleMetadataFile = open(sampleMetadata, 'r')
+sampleIdTumorTypeDict = {}
+sampleIdAncestryDict = {}
 
-for line in donorMetadataFile:
+for line in sampleMetadataFile:
 
     # Skip header
     if not line.startswith("#"):
@@ -86,23 +86,22 @@ for line in donorMetadataFile:
         line = line.rstrip('\n')
         line = line.split('\t')
 
-        donorId = line[1]
-        #donorId = line[0]
-        donorExclusion = line[3]
         ancestry = line[4]
         histologyCount	= line[10]
         histologyExclusion = line[11]
         tumorHistology = line[12]
+        sampleIds = line[20]
+        sampleIdList = sampleIds.split(",")
 
-        ## Discard excluded donors for tumor types analysis (initial: 2813, after_excluding: 2704). 4 possible exclusion reasons:
-        # - TraFiC excluded (60)
+        ## Exclude samples from tumour type analysis. 4 possible exclusion reasons:
         # - Unknown histology (30)
         # - More than 1 possible histology (10)
         # - Excluded histology cohort (32)
-        if (donorExclusion == 'Whitelist') and (tumorHistology != "UNK") and (histologyCount == "1") and (histologyExclusion == "included") :
+        if (tumorHistology != "UNK") and (histologyCount == "1") and (histologyExclusion == "included"):
 
-            donorIdTumorTypeDict[donorId] = tumorHistology
-            donorIdAncestryDict[donorId] = ancestry
+            for sampleId in sampleIdList:
+                sampleIdTumorTypeDict[sampleId] = tumorHistology
+                sampleIdAncestryDict[sampleId] = ancestry
 
 
 #### 1. Compute the total number of transductions per source element in each tumor type
@@ -110,21 +109,21 @@ for line in donorMetadataFile:
 header("1. Compute the total number of transductions per source element in each tumor type")
 
 transductionsCountDf = pd.read_csv(transductionsCountFile, header=0, index_col=0, sep='\t')
-donorIdList = donorIdTumorTypeDict.keys()
+sampleIdList = sampleIdTumorTypeDict.keys()
 
-transductionsCountFilteredDf = transductionsCountDf.loc[:, donorIdList]
+transductionsCountFilteredDf = transductionsCountDf.loc[:, sampleIdList]
 
 ## Generate dictionary with the following format:
 # - dict: key(sourceElementId) -> dict2: key(tumorType) -> total_number_transductions
 nbTdPerTumorTypeDict = {}
 
-for sourceElementId, tdPerDonorSeries in transductionsCountFilteredDf.iterrows():
+for sourceElementId, tdPersampleSeries in transductionsCountFilteredDf.iterrows():
 
     nbTdPerTumorTypeDict[sourceElementId] = {}
         
-    for donorId, nbTd in tdPerDonorSeries.iteritems():
+    for sampleId, nbTd in tdPersampleSeries.iteritems():
 
-        tumorType = donorIdTumorTypeDict[donorId]
+        tumorType = sampleIdTumorTypeDict[sampleId]
         
         if tumorType not in nbTdPerTumorTypeDict[sourceElementId]:
             nbTdPerTumorTypeDict[sourceElementId][tumorType] = nbTd    
@@ -143,24 +142,21 @@ nbTdPerTumorTypeDf = nbTdPerTumorTypeDf.T
 outFilePath = outDir + '/germline_srcElements_tdPerTumorType.tsv'
 nbTdPerTumorTypeDf.to_csv(outFilePath, sep='\t') 
 
-
 #### 2. Compute the total number of transductions per source element in each ancestry
 #########################################################################################
 header("2. Compute the total number of transductions per source element in each ancestry")
-
 
 ## Generate dictionary with the following format:
 # - dict: key(sourceElementId) -> dict2: key(tumorType) -> total_number_transductions
 nbTdPerAncestryDict = {}
 
-for sourceElementId, tdPerDonorSeries in transductionsCountFilteredDf.iterrows():
+for sourceElementId, tdPersampleSeries in transductionsCountFilteredDf.iterrows():
 
     nbTdPerAncestryDict[sourceElementId] = {}
         
-    for donorId, nbTd in tdPerDonorSeries.iteritems():
+    for sampleId, nbTd in tdPersampleSeries.iteritems():
 
-        ancestry = donorIdAncestryDict[donorId]
-        #print "TIOO: ", donorId, ancestry, nbTd
+        ancestry = sampleIdAncestryDict[sampleId]
         
         if ancestry not in nbTdPerAncestryDict[sourceElementId]:
             nbTdPerAncestryDict[sourceElementId][ancestry] = nbTd    
@@ -168,7 +164,6 @@ for sourceElementId, tdPerDonorSeries in transductionsCountFilteredDf.iterrows()
         else:
             nbTdPerAncestryDict[sourceElementId][ancestry] += nbTd
 
-#print "nbTdPerAncestryDict: ", nbTdPerAncestryDict
 ## Create pandas dataframe from dictionary
 nbTdPerAncestryDf = pd.DataFrame(nbTdPerAncestryDict) 
 
@@ -219,26 +214,23 @@ for srcElementId in srcElementIds:
         ## Add source element contribution to dataframe
         srcElementContributionDf.loc[srcElementId, tumorType] = tdPercTumorType
 
-#print "test: ", srcElementContributionDf.sum(axis=0)
+# print "test: ", srcElementContributionDf.sum(axis=0)
 # Ok, all 100% as expected. 
 
-
-#### 3. Compute the contribution (%) of each source element to the total number of
+#### 4. Compute the contribution (%) of each source element to the total number of
 #################################################################################
 # transductions in each ancestry
 ####################################
 ### Notes:
 ## contribution(%) = nb_transductions_src_element/total_nb_transductions_ancestry
 
-header("3. Compute the contribution (%) of each source element to the total number of transductions in each ancestry")
+header("4. Compute the contribution (%) of each source element to the total number of transductions in each ancestry")
 
-#### 3.1 Select those tumor types with at least 1 transduction
+#### 4.1 Select those tumor types with at least 1 transduction
 ## Compute the total number of transductions per tumor type
 totalNbTdPerAncestrySerie = nbTdPerAncestryDf.sum(axis=0)
 
-print "totalNbTdPerAncestrySerie: ", totalNbTdPerAncestrySerie
-
-#### 3.2 Compute the source element contribution (in %) for the selected tumor types to the total number of transductions
+#### 4.2 Compute the source element contribution (in %) for the selected tumor types to the total number of transductions
 srcElementIds = nbTdPerAncestryDf.index
 ancestries = nbTdPerAncestryDf.columns
 
@@ -257,17 +249,17 @@ for srcElementId in srcElementIds:
         ## Add source element contribution to dataframe
         srcElementContributionAncestryDf.loc[srcElementId, ancestry] = tdPercAncestry
 
-# print "test: ", srcElementContributionAncestryDf.sum(axis=0)
-# Ok, all 100% as expected. 
+# print "test: ", srcElementContributionAncestryDf.sum(axis=0)
+# Ok, all 100% as expected. 
 
-#### 3. Compute the contribution (%) of each source element to 
+#### 5. Compute the contribution (%) of each source element to 
 ##############################################################
 # the total number of transductions in PCAWG
 #############################################
 
-header("3. Compute the contribution (%) of each source element to the total number of transductions in PCAWG")
+header("5. Compute the contribution (%) of each source element to the total number of transductions in PCAWG")
 
-#### 3.1 Incorporate the total number of transductions in PCAWG into the serie with the number of transductions per tumor type
+#### 5.1 Incorporate the total number of transductions in PCAWG into the serie with the number of transductions per tumor type
 ## Compute the total number of transductions in the PCAWG cohort
 totalNbTdPCAWG = transductionsCountDf.values.sum()
 
@@ -277,7 +269,7 @@ totalNbTdPerTumorTypeFilteredSerie["PCAWG"] = totalNbTdPCAWG
 ## Sort serie in descending order:
 totalNbTdPerTumorTypeSortedSerie = totalNbTdPerTumorTypeFilteredSerie.sort_values(ascending=False)
 
-#### 3.2 Incorporate the PCAWG source element contribution to the tumor type contribution dataframe
+#### 5.2 Incorporate the PCAWG source element contribution to the tumor type contribution dataframe
 ## Compute the total number of transductions per source element in PCAWG cohort
 nbTdPCAWGSerie = transductionsCountDf.sum(axis=1)
 
@@ -289,7 +281,7 @@ srcElementContributionPCAWGSerie = nbTdPCAWGSerie.apply(contribution)
 ## Add total PCAWG contribution to the dataframe with source element contribution across tumor types
 srcElementContributionDf["PCAWG"] = srcElementContributionPCAWGSerie
 
-#### 3.3 Generate tsv with the total number of transductions per source element in PCAWG
+#### 5.3 Generate tsv with the total number of transductions per source element in PCAWG
 ## Sort source elements
 nbTdPCAWGSortedSerie = nbTdPCAWGSerie.sort_values(ascending=False) # order the source elements in decreasing order. 
 
@@ -298,18 +290,18 @@ outFilePath = outDir + '/germline_srcElements_tdPCAWG.tsv'
 nbTdPCAWGSortedSerie.to_csv(outFilePath, sep='\t')
 
 
-#### 4. Sort and filter source element contribution dataframes
+#### 6. Sort and filter source element contribution dataframes
 ##############################################################
 
-header("4. Sort and filter source element contribution dataframes")
+header("6. Sort and filter source element contribution dataframes")
 
-#### 4.2 Filter dataframes
-### A) Group source elements contributing less than 1% into the category Other
-## Filter out those source elements contributing less than 1% to the total number of transductions in PCAWG
-srcElementContributionFilteredDf = srcElementContributionDf.loc[srcElementContributionDf['PCAWG'] >= 1]
+#### 6.1 Filter dataframes
+### A) Group source elements contributing less than 2% into the category Other
+## Filter out those source elements contributing less than 2% to the total number of transductions in PCAWG
+srcElementContributionFilteredDf = srcElementContributionDf.loc[srcElementContributionDf['PCAWG'] >= 2]
 
-## Group those elements contributing less than 1% into the category 'Other'
-srcElementOtherContributionDf = srcElementContributionDf.loc[srcElementContributionDf['PCAWG'] < 1]
+## Group those elements contributing less than 2% into the category 'Other'
+srcElementOtherContributionDf = srcElementContributionDf.loc[srcElementContributionDf['PCAWG'] < 2]
 
 nbSrcElementsOther = len(srcElementOtherContributionDf.index)
 
@@ -348,7 +340,7 @@ colName = "Other(" + str(nbTumorTypesOther) + ")"
 srcElementContributionFilteredDf[colName] = otherContributionSerie
 nbTdPerTumorTypeFilteredSerie[colName] = nbTdOther
 
-#### 4.2 Sort dataframes
+#### 6.2 Sort dataframes
 ## Sort source elements (rows) in descending order of transductions contribution to PCAWG 
 srcElementContributionSortedDf = srcElementContributionDf.sort_values('PCAWG', ascending=False)
 srcElementContributionFilteredSortedDf = srcElementContributionFilteredDf.sort_values('PCAWG', ascending=False)
@@ -372,7 +364,7 @@ srcElementContributionAncestryFilteredDf["PCAWG"] = srcElementContributionFilter
 nbTdPerAncestryFilteredDf = nbTdPerAncestryDf.loc[sourceElementList]
 nbTdPerAncestryFilteredDf["PCAWG"] = nbTdPCAWGSortedSerie
 
-#### 4.3 Save both unfiltered and filtered dataframes into a tsv
+#### 6.3 Save both unfiltered and filtered dataframes into a tsv
 
 ## Unfiltered dataframe
 outFilePath = outDir + '/germline_srcElements_contribution.tsv'
@@ -383,15 +375,15 @@ outFilePath = outDir + '/germline_srcElements_contribution.filtered.tsv'
 srcElementContributionFilteredSortedDf.to_csv(outFilePath, sep='\t') 
 
 
-#### 5. Make plots
+#### 7. Make plots
 #######################
 
-header("5. Make plots")
+header("7. Make plots")
 
 ## Set plotting style
 sns.set_style("whitegrid")
 
-#### 5.1 Prepare Data
+#### 7.1 Prepare Data
 
 ## transpose dataframes to have source elements as columns and tumor types as rows
 srcElementContributionSortedDf = srcElementContributionSortedDf.T
@@ -401,7 +393,7 @@ srcElementContributionFilteredSortedDf = srcElementContributionFilteredSortedDf.
 srcElementContributionSortedDf = srcElementContributionSortedDf.apply(lambda x: pd.to_numeric(x))
 srcElementContributionFilteredSortedDf = srcElementContributionFilteredSortedDf.apply(lambda x: pd.to_numeric(x))
 
-#### 5.2 Make heatmaps
+#### 7.2 Make heatmaps
 ### ** Not filtered dataframe **
 ## A) Source element contribution across tumor types
 fig = plt.figure(figsize=(60,20))
@@ -520,12 +512,7 @@ fileName = outDir + "/Pictures/totalNbTd_per_tumortype_heatmap.filtered.pdf"
 plt.savefig(fileName)
 
 
-#### 5.3 Make barplots
-
-print "srcElementContributionAncestryFilteredDf: ", srcElementContributionAncestryFilteredDf
-
-print "nbTdPerAncestryFilteredDf: ", nbTdPerAncestryFilteredDf
-
+#### 7.3 Make barplots
 for ancestry, contributionSeries in srcElementContributionAncestryFilteredDf.iteritems():
 
     # Initialize the matplotlib figure

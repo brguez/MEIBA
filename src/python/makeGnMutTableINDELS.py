@@ -30,7 +30,7 @@ import numpy as np
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('inputPath', help='')
-parser.add_argument('metadata', help='Tabular text file containing donor metadata info')
+parser.add_argument('metadata', help='Tabular text file containing sample metadata info')
 parser.add_argument('annot', help='Bed file containing gencode protein coding genes')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.')
 
@@ -56,37 +56,34 @@ print
 
 ## Start ##
 
-### 1. Read metadata file and create list of included donors 
-donorMetadataFile = open(metadata, 'r')
-donorIdList = []
+### 1. Read metadata file and create list of included samples 
+sampleMetadataFile = open(metadata, 'r')
+allSampleIdList = []
 sampleIdEqDict = {}
 
-## For donor's metadata:
-for line in donorMetadataFile:
+## For sample's metadata:
+for line in sampleMetadataFile:
     if not line.startswith("#"):
 
         line = line.rstrip('\n')
         line = line.split("\t")
-        
-        icgc_donor_id = line[1]
-        wgs_exclusion_trafic = line[3]
+       
         histology_exclusion_status = line[11]
-        tumor_wgs_specimen_count = line[18]
-        tumor_wgs_aliquot_id = line[21]
+        sampleIds = line[20]        
+        aliquotIds = line[21]
         
         ### I will discard:
-        #   - TraFiC blacklisted donors
-        #   - Donors with excluded histology
-        #   - Multi-sample donors      
-        if (wgs_exclusion_trafic == "Whitelist") and (histology_exclusion_status == "included") and (tumor_wgs_specimen_count == "1") :
+        #   - samples with excluded histology
+        if (histology_exclusion_status == "included"):
         
-            donorIdList.append(icgc_donor_id)
-            #donorIdList.append(tumor_wgs_aliquot_id)
-            sampleIdEqDict[tumor_wgs_aliquot_id] = icgc_donor_id
-           
+            sampleIdList = sampleIds.split(",")
+            aliquotIdList = aliquotIds.split(",")
 
-# print len(donorIdList), len(sampleIdEqDict)
-# 2681 2681, Ok!
+            for index, sampleId in enumerate(sampleIdList):
+                aliquotId = aliquotIdList[index]
+                sampleIdEqDict[aliquotId] = sampleId
+
+                allSampleIdList.append(sampleId)
 
 ### 2. Make list of protein coding genes
 annotFile = open(annot, 'r')
@@ -102,71 +99,56 @@ for line in annotFile:
         geneName = line[3]
         protCodingGnList.append(geneName)
 
-#print "protCodingGnList: ", protCodingGnList
-
-### 3. Initialize dictionary containing INDEL mutational status for gencode protein coding genes for each donor
+### 3. Initialize dictionary containing INDEL mutational status for gencode protein coding genes for each sample
 mutStatusDict = {}
 
-# For each donor
-for donorId in donorIdList:
+# For each sample
+for sampleId in allSampleIdList:
 
-    mutStatusDict[donorId]  = {}
+    mutStatusDict[sampleId]  = {}
 
     # For each protein coding gene
     for geneName in protCodingGnList:
 
-        mutStatusDict[donorId][geneName] = 0
-
-
-# print len(mutStatusDict)
-# 2681
+        mutStatusDict[sampleId][geneName] = 0
 
 ### 4. Read input file with exonic INDEL calls and update mutational status dictionary
 inputFile = open(inputPath, 'r')
 
-## For donor's metadata:
+## For sample's metadata:
 for line in inputFile:
     if not line.startswith("#"):
 
         line = line.rstrip('\n')
         line = line.split("\t")
-        # print "TIOO: ", line
 
         tumor_wgs_aliquot_id = line[0]
         geneName = line[6]
-        
-        # print "MOLA: ", tumor_wgs_aliquot_id, geneName
 
-        ## If included donor     
+        ## If included sample     
         if (tumor_wgs_aliquot_id in sampleIdEqDict): 
             
-            icgc_donor_id = sampleIdEqDict[tumor_wgs_aliquot_id] 
+            icgc_sample_id = sampleIdEqDict[tumor_wgs_aliquot_id] 
 
             ## If INDEL affecting gencode V19 gene
-            if (geneName in mutStatusDict[icgc_donor_id]):        
+            if (geneName in mutStatusDict[icgc_sample_id]):        
 
-                mutStatusDict[icgc_donor_id][geneName] = 1
+                mutStatusDict[icgc_sample_id][geneName] = 1
 
 ### 5. Convert dictionary into dataframew
-#            donorId1     donorId2     donorId3....
+#            sampleId1     sampleId2     sampleId3....
 # gene1      X1           Y1           Z1     
 # gene2      X2           Y2           Z2
 # ...
-
 mutStatusDict = mutStatusDict
 mutStatusDf =  pd.DataFrame(mutStatusDict)
 
 ## Convert to integers:
 mutStatusDf = mutStatusDf.apply(pd.to_numeric)
 
-# Tmp, select TP53
-# mutStatusDf = mutStatusDf.loc[['TP53', 'ATM']]
-
 # Save ordered dataframes into tsv
-outFilePath = outDir + '/protein_coding_INDELmut.tsv'
+outFilePath = outDir + '/proteinCoding_INDELmut.tsv'
 mutStatusDf.to_csv(outFilePath, sep='\t') 
-
-
 
 
 ## End ##

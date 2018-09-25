@@ -72,7 +72,7 @@ transductionsCountDf = pd.read_csv(transductionsCount, header=0, index_col=0, se
 transductionsCountDf = transductionsCountDf.T
 
 #### Select hot source L1
-hotSourceList = ["22q12.1", "Xp22.2-1", "6p22.1", "2q24.1", "7p12.3", "3q26.1"]
+hotSourceList = ["22q12.1", "Xp22.2-1", "Xp22.2-2", "3q21.1", "6p22.1", "2q24.1", "7p12.3", "3q26.1"]
 transductionsCountHotDf = transductionsCountDf[hotSourceList]
 
 #### Generate dataframe with the number of transductions per donor and source element

@@ -88,6 +88,7 @@ from scipy.stats import spearmanr
 ## Graphic style ##
 sns.set_style("white")
 sns.set_style("ticks")
+#sns.set(font="Verdana")
 
 ## Get user's input ##
 parser = argparse.ArgumentParser(description="Compute correlation between L1 retrotransposition rate and diverse genomic features (replication time, gene expression and gene density)")
@@ -114,67 +115,45 @@ print
 ##########################
 inputDf = pd.read_csv(inputFile, header=0, sep='\t')
 
-# print "inputDf: ", inputDf
+print "inputDf: ", inputDf
 
-#### 2. Number L1 insertions and median replication time correlation
-#####################################################################
+#### 2. Number L1 insertions and L1 endonuclease motif correlation
+###################################################################
+## Remove bins with a number of L1 EN motifs == 0
+# These will mostly  correspond to telomeric, centromeric regions
+filteredDf = inputDf[inputDf["nbL1Motif"] > 0]
+
+## Make plot
 fig = plt.figure(figsize=(6,6))
 ax1 = fig.add_subplot(1, 1, 1)
-plot = sns.jointplot("nbL1", "medianRT", data=inputDf, xlim=(0,30), kind="kde", space=0, dropna=True, cmap="Blues", stat_func=spearmanr)
-#sns.regplot("nbL1", "medianRT", data=inputDf, ax=plot.ax_joint, scatter=False)
+plot = sns.jointplot("nbL1", "nbL1Motif", data=filteredDf, xlim=(0,30), kind="kde", space=0, dropna=True, cmap="Blues", stat_func=spearmanr)
 
 ## Save figure
-outPath = outDir + '/nbL1_medianRT_correlation.pdf'
+outPath = outDir + '/nbL1_nbL1Motif_corr.pdf'
 plt.savefig(outPath)
 
-#### 3. Number L1 insertions and median expression correlation
-###############################################################
-
-## Remove bins with NA values for gene expression (no bins with NA expression actually)
-filteredDf = inputDf.dropna(subset=["medianExpr"]) 
-
-## Remove bins with expression level == 0
-# These will mostly  correspond to telomeric, centromeric regions
-filteredDf = filteredDf[filteredDf["medianExpr"] > 0]
-  
-## Add pseudocount to expression values (to avoid expr of 0) 
-pseudocount = 10
-filteredDf["medianExpr"] += pseudocount
-
-## Apply logarithm to expression values
-filteredDf["medianExpr"] += pseudocount
-
-filteredDf["log10MedianExpr"] = np.log10(filteredDf["medianExpr"])
-
-## Make plot
-fig = plt.figure(figsize=(6,6))
-ax2 = fig.add_subplot(1, 1, 1)
-plot = sns.jointplot("nbL1", "log10MedianExpr", data=filteredDf, xlim=(0,30), ylim=(1,7), shade_lowest=True, kind="kde", space=0, dropna=True, cmap="Blues", stat_func=spearmanr)
-#sns.regplot("nbL1", "log10MedianExpr", data=filteredDf, ax=plot.ax_joint, scatter=False)
-
-## Save figure
-outPath = outDir + '/nbL1_medianExpression_correlation.pdf'
+outPath = outDir + '/nbL1_nbL1Motif_corr.svg'
 plt.savefig(outPath)
 
-#### 4. Number L1 insertions and gene density correlation
+
+#### 3. Number L1 insertions and median replication time correlation
 #####################################################################
-## Remove bins with NA values for gene density (no bins with NA expression actually)
-filteredDf = inputDf.dropna(subset=["geneDensity"]) 
+## Remove bins with NA values for replication timing (one bin with NA expression)
+filteredDf = inputDf.dropna(subset=["medianRT"]) 
 
-## Remove bins with gene density == 0
-# These will mostly  correspond to telomeric, centromeric regions
-filteredDf = filteredDf[filteredDf["geneDensity"] > 0]
-
-print "filteredDf: ", filteredDf
-
+## Make plot
 fig = plt.figure(figsize=(6,6))
 ax1 = fig.add_subplot(1, 1, 1)
-plot = sns.jointplot("nbL1", "geneDensity", data=filteredDf, xlim=(0,30), kind="kde", space=0, dropna=True, cmap="Blues", stat_func=spearmanr)
-#sns.regplot("nbL1", "medianRT", data=inputDf, ax=plot.ax_joint, scatter=False)
+plot = sns.jointplot("nbL1", "medianRT", data=filteredDf, xlim=(0,30), kind="kde", space=0, dropna=True, cmap="Blues", stat_func=spearmanr)
 
 ## Save figure
-outPath = outDir + '/nbL1_geneDensity_correlation.pdf'
+outPath = outDir + '/nbL1_medianRT_corr.pdf'
 plt.savefig(outPath)
+
+outPath = outDir + '/nbL1_medianRT_corr.svg'
+plt.savefig(outPath)
+
+
 
 ####
 header("Finished")

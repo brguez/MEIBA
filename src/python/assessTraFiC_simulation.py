@@ -417,23 +417,24 @@ print "CORRELATION: ", pvalue,  text
 # Make scatterplot
 fig = plt.figure(figsize=(4,4))
 ax = fig.add_subplot(111)
-plt.scatter(predictedLenList, simLenList, color='#008000', alpha=.4, s=30)
+plt.scatter(predictedLenList, simLenList, color='#6497b1', alpha=.4, s=30)
 plt.xlim((0, (max(predictedLenList) + 500)))
 plt.ylim((0, (max(simLenList) + 500)))
-#plt.xlabel('Predicted', fontsize=12)
-#plt.ylabel('Simulated', fontsize=12)
-#ax.text(0.5, 0.1, text, transform = ax.transAxes)
+plt.xlabel('Predicted', fontsize=12)
+plt.ylabel('Simulated', fontsize=12)
+ax.text(0.5, 0.1, text, transform = ax.transAxes)
 
 
 ## Save figure 
+fileName = outDir + "/Pictures/length_corr.svg"
+plt.savefig(fileName)
+
 fileName = outDir + "/Pictures/length_corr.pdf"
 plt.savefig(fileName)
 
 
 ## 3.3 MEI strand
 ##################
-# strandDict:  {'25': {'consistent': 5243, 'inconsistent': 8}, '100': {'consistent': 8462, 'inconsistent': 18}, '75': {'consistent': 8246, 'inconsistent': 16}, '50': {'consistent': 7651, 'inconsistent': 11}}
-
 ## Prepare data
 consistentList = []
 inconsistentList = []

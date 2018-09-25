@@ -15,64 +15,27 @@ def info(string):
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, string
 
-####### CLASSES #######
-class cohort():
+def classify(nbMEI):
     """
-        .....................
-
-        Methods:
-        -
     """
-    def __init__(self, excludedDonorsList):
-        """
-        """
-        self.excludedDonorsList = excludedDonorsList
-        self.VCFdict = {}
+    ## a) None (0 insertions):
+    if (nbMEI == 0):
+        category = "None"
 
+    ## b) Low ([1-10] insertions):
+    elif (nbMEI > 0) and (nbMEI <= 10):
+        category = "Low"
 
-    def read_VCFs(self, inputPath):
-        """
-        """
-        inputFile = open(inputPath, 'r')
+    ## c) Moderate ((10-100] insertions):
+    elif (nbMEI > 10) and (nbMEI <= 100):
+        category = "Moderate"        
 
-        info("Read input VCFs ")
+    ## d) High (>100 insertions):
+    else:
+        category = "High"        
 
-        # Per iteration, read a VCF, generate a VCF object and add it to the cohort
-        for line in inputFile:
-            line = line.rstrip('\n')
-            line = line.split("\t")
+    return category
 
-            donorId = line[0]
-            tumorTypeList = line[1].split(",")
-            VCFfile = line[2]
-            
-            if (donorId not in self.excludedDonorsList) and ("UNK" not in tumorTypeList):
-
-                # Create VCF object
-                VCFObj = formats.VCF()
-
-                info("Reading " + VCFfile + "...")
-
-                # Input VCF available
-                if os.path.isfile(VCFfile):
-
-                    # Read VCF and add information to VCF object
-                    VCFObj.read_VCF(VCFfile)
-
-                    for tumorType in tumorTypeList:
-                    
-                        # Initialize the donor list for a given project if needed 
-                        if tumorType not in self.VCFdict:
-
-                            self.VCFdict[tumorType] = []   
-
-                        # Add donor VCF to cohort
-                        self.VCFdict[tumorType].append(VCFObj)
-                else:
-                    print "[ERROR] Input file does not exist"
-
-
-####### FUNCTIONS #######
 def autolabel(rects, ax, valuesList):
     # Get x-axis height to calculate label position from.
     (x_left, x_right) = ax.get_xlim()    
@@ -102,15 +65,16 @@ import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.patches as mpatches
 
+
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
-parser.add_argument('inputPath', help='Tabular text file containing one row per donor with the following consecutive fields: donorId tumorType vcf_path')
-parser.add_argument('metadata', help='Tabular text file containing donor metadata info')
+parser.add_argument('rtCounts', help='Tabular text file containing one row per sample with retrotransposition counts')
+parser.add_argument('histologyOrder', help='File containing histology ordering. One row per histology')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.')
 
 args = parser.parse_args()
-inputPath = args.inputPath
-metadata = args.metadata
+rtCounts = args.rtCounts
+histologyOrder = args.histologyOrder
 outDir = args.outDir
 
 scriptName = os.path.basename(sys.argv[0])
@@ -118,8 +82,8 @@ scriptName = os.path.basename(sys.argv[0])
 ## Display configuration to standard output ##
 print
 print "***** ", scriptName, " configuration *****"
-print "inputPath: ", inputPath
-print "metadata: ", metadata
+print "rtCounts: ", rtCounts
+print "histologyOrder: ", histologyOrder
 print "outDir: ", outDir
 print
 print "***** Executing ", scriptName, ".... *****"
@@ -128,146 +92,95 @@ print
 
 ## Start ##
 
-### 0. Read metadata file and create list of donors to be excluded
-donorMetadataFile = open(metadata, 'r')
-excludedDonorsList = []
+### 0. Read histology and create list with histology ordering
+histologyFile = open(histologyOrder, 'r')
+histologyList = []
 
-## For donor's metadata:
-for line in donorMetadataFile:
-    if not line.startswith("#"):
+for line in histologyFile:
+    line = line.rstrip('\n')
+    line = line.split("\t")
+    histology = line[0]
+    histologyList.append(histology)
 
-        line = line.rstrip('\n')
-        line = line.split("\t")
-        donorId = line[1]
-        traficExclusionStatus = line[3]
-        tumorTypeExclusionStatus = line[11]
+## Move Myeloid-MPN to the end as no z-score nor p-value due to no insertion found
+histologyList.append(histologyList.pop(histologyList.index('Myeloid-MPN')))
 
-        if (traficExclusionStatus == "Excluded") or (tumorTypeExclusionStatus == "Excluded"):
-            excludedDonorsList.append(donorId)
+### 1. Read counts file
+rtCountsDf = pd.read_csv(rtCounts, header=0, index_col=0, sep='\t')
 
-# print len(excludedDonorsList) # 91
-
-### 1. Initialize cohort object
-cohortObj = cohort(excludedDonorsList)
-
-### 2. Read VCF files, create VCF objects and organize them
-cohortObj.read_VCFs(inputPath)
-
-### 3. Make a dictionary containing per tumor type the number of samples with the following retrotransposition activity categories:
+### 2. Classify each sample in one of these categories:
 # None: 0 insertions
 # Low: 1-10 insertions
 # Moderate: 10-100 insertions
 # High: > 100 insertions
+rtCountsDf["category"] = rtCountsDf["nbTotal"].apply(classify)
 
-categoryCountsDict = {}
+# Save dataframe into tsv
+outFilePath = outDir + '/supplementaryTable2.selectedHistologies.categories.df'
+rtCountsDf.to_csv(outFilePath, sep='\t') 
 
-for tumorType in cohortObj.VCFdict:
-
-    ## Initialize category counts    
-    categoryCountsDict[tumorType] = {}
-    categoryCountsDict[tumorType]["None"] = 0
-    categoryCountsDict[tumorType]["Low"] = 0
-    categoryCountsDict[tumorType]["Moderate"] = 0
-    categoryCountsDict[tumorType]["High"] = 0
-
-    ## Count total number of donors per tumor type and number of donor per category
-    ## For each donor    
-    for VCFObj in cohortObj.VCFdict[tumorType]:
-
-        nbInsertions = 0
-
-        # For each MEI in a given donor
-        for MEIObj in VCFObj.lineList:
-        
-            # Only count MEI that passes the filters:
-            if (MEIObj.filter == "PASS"):
-                nbInsertions += 1
-        
-        ## a) None (0 insertions):
-        if (nbInsertions == 0):
-            categoryCountsDict[tumorType]["None"] += 1
-
-        ## b) Low ([1-10] insertions):
-        elif (nbInsertions > 0) and (nbInsertions <= 10):
-            categoryCountsDict[tumorType]["Low"] += 1
-
-        ## c) Moderate ((10-100] insertions):
-        elif (nbInsertions > 10) and (nbInsertions <= 100):
-            categoryCountsDict[tumorType]["Moderate"] += 1
-
-        ## d) High (>100 insertions):
-        elif (nbInsertions > 100):
-            categoryCountsDict[tumorType]["High"] += 1                
-
-        ## d) Error
-        else:
-            print "ERROR..."
-
-### 4. Make dataframe with the number of samples per category for each tumor type
+### 3. Make dataframe with the number of samples per category for each tumor type
 # Project codes: columns
 # Categories number of samples:
-#                   tumorType1 tumorType2 tumorType3....
-# 0_insertions      X1           Y1           Z1     
-# 1-10_insertions   X2           Y2           Z2
+#           tumorType1   tumorType2   tumorType3....
+# None      X1           Y1           Z1     
+# Low       X2           Y2           Z2
 # ...
-categoryCountsDataframe =  pd.DataFrame(categoryCountsDict)
+catCountsDf = rtCountsDf.groupby(["tumorType", "category"]).size().reset_index(name="nbSamples")
 
-### 5. Make dataframe with the percentage of samples per category for each tumor type
+## Rearrange dataframe
+catCountsDf = catCountsDf.set_index('category')
+
+catCountsDf = catCountsDf.pivot_table(values='nbSamples', index=catCountsDf.index, columns='tumorType', aggfunc='first')
+
+## Replace NaNs by 0s
+catCountsDf = catCountsDf.fillna(0)
+
+### 4. Make dataframe with the percentage of samples per category for each tumor type
 # Project codes: columns
 # Categories % samples:
 #                   tumorType1 tumorType2 tumorType3....
 # 0_insertions      X1%          Y1%          Z1%     
 # 1-10_insertions   X2%          Y2%          Z2%
 
-donorsPerTumorTypeSerie = categoryCountsDataframe.sum(axis=0)
+nbSamplesPerTumorTypeSerie = catCountsDf.sum(axis=0)
+categories = catCountsDf.index
+tumorTypes = catCountsDf.columns
 
-categories = categoryCountsDataframe.index
-projecCodes = categoryCountsDataframe.columns
-
-categoryPercDataframe = pd.DataFrame(index=categories, columns=projecCodes)
+catPercDf = pd.DataFrame(index=categories, columns=tumorTypes)
 
 # Iterate over row index labels (activity categories)
 for category in categories:
 
-    # Iterate over column index labels (project codes)
-    for tumorType in projecCodes:
+    # Iterate over column index labels (tumorTypes)
+    for tumorType in tumorTypes:
     
-        categoryCountTumorType = categoryCountsDataframe.loc[category, tumorType]
-        nbDonorsInTumortype = donorsPerTumorTypeSerie.loc[tumorType]
+        catCountTumorType = catCountsDf.loc[category, tumorType]
+        nbSamplesTumorType = nbSamplesPerTumorTypeSerie.loc[tumorType]
 
         # Compute the percentage
-        donorPercTumorType = float(categoryCountTumorType)/float(nbDonorsInTumortype) * 100
+        catPercTumorType = float(catCountTumorType)/float(nbSamplesTumorType) * 100
 
         # Add source element contribution to dataframe
-        categoryPercDataframe.loc[category, tumorType] = donorPercTumorType
+        catPercDf.loc[category, tumorType] = catPercTumorType
 
-# Order dataframe columns according to z-scores
-tumorTypeList = ['Eso-AdenoCA', 'Head-SCC', 'Lung-SCC', 'ColoRect-AdenoCA', 'Stomach-AdenoCA', 'Uterus-AdenoCA', 'Ovary-AdenoCA', 'Cervix-SCC', 'Myeloid-MDS', 'Biliary-AdenoCA', 'Bladder-TCC', 'Bone-Epith', 'Lymph-BNHL', 'Panc-AdenoCA', 'Lung-AdenoCA', 'Lymph-CLL', 'Prost-AdenoCA', 'Bone-Leiomyo', 'CNS-PiloAstro', 'CNS-Oligo', 'Breast-AdenoCA', 'Myeloid-MPN', 'CNS-GBM', 'Thy-AdenoCA', 'Bone-Osteosarc', 'Panc-Endocrine', 'Kidney-ChRCC', 'Myeloid-AML', 'Skin-Melanoma', 'CNS-Medullo', 'Kidney-RCC', 'Liver-HCC']
+### 5. Rearrange dataframe
+histologyList = list(reversed(histologyList))
 
-## Exclude "Myeloid-MDS" as single sample:
-tumorTypeList.remove('Myeloid-MDS')
-
-tumorTypeList = list(reversed(tumorTypeList))
-
-transposedDf = categoryPercDataframe.transpose()
-sortedDf = transposedDf.loc[tumorTypeList]
-categoryPercSortedDataframe = sortedDf.transpose()
+transposedDf = catPercDf.transpose()
+sortedDf = transposedDf.loc[histologyList]
+catPercSortedDf = sortedDf.transpose()
 
 ### 6. Make list per category containing the percentage of samples belonging to a given category in each tumor type
 # list 0 insertions [%tumorType1, %tumorType2, ... ]
 # list 1-10 insertions [%tumorType1, %tumorType2, ... ]
 # ...
+percHighList, percLowList, percModerateList, percNoneList = catPercSortedDf.values.tolist()
 
-percHighList, percLowList, percModerateList, percNoneList = categoryPercSortedDataframe.values.tolist()
-
-### 7. Make ordered list containing the number of donors per tumor type
-donorCountsSortedSeries = donorsPerTumorTypeSerie.reindex(tumorTypeList)
-
-###  8. Make bar plot
+###  7. Make bar plot
 ypos = np.arange(1, len(percHighList) + 1)    # the y locations for the groups
-
 height = 0.75      # the width of the bars: can also be len(x) sequence
-#fig = plt.figure(figsize=(5,3))
+
 fig = plt.figure(figsize=(3,7))
 ax = fig.add_subplot(111)
 ax.yaxis.set_label_position("right")
@@ -304,27 +217,30 @@ plt.axis((x0,
 
 ## Customize ticks
 plt.xticks(np.arange(0, 100.001, 10), fontsize=8)
-plt.yticks(ypos, tumorTypeList, fontsize=8)
+plt.yticks(ypos, histologyList, fontsize=8)
 
 # Rotate them
 locs, labels = plt.xticks()
 plt.setp(labels, rotation=90)
 
 ## Add the number of samples per tumor type on the top of each bar
-donorCountsList = donorCountsSortedSeries.values.tolist()
-autolabel(p4, ax, donorCountsList) ## autolabel function
+sampleCountsSortedSeries = nbSamplesPerTumorTypeSerie.reindex(histologyList)
+sampleCountsList = sampleCountsSortedSeries.values.tolist()
+autolabel(p4, ax, sampleCountsList) ## autolabel function
 
 ## Make legend
-#circle1 = mpatches.Circle((0, 0), 5, color='#DCDCDC', alpha=0.90)
-#circle2 = mpatches.Circle((0, 0), 5, color='#fff68f', alpha=0.90)
-#circle3 = mpatches.Circle((0, 0), 5, color='#fdb913', alpha=0.90)
-#circle4 = mpatches.Circle((0, 0), 5, color='#ff0000', alpha=0.90)
+circle1 = mpatches.Circle((0, 0), 5, color='#DCDCDC', alpha=0.90)
+circle2 = mpatches.Circle((0, 0), 5, color='#fff68f', alpha=0.90)
+circle3 = mpatches.Circle((0, 0), 5, color='#fdb913', alpha=0.90)
+circle4 = mpatches.Circle((0, 0), 5, color='#ff0000', alpha=0.90)
 
-#l = plt.figlegend((circle1, circle2, circle3, circle4), ('0', '[1-10]', '(10-100]', '>100'), loc='upper center', ncol=4, labelspacing=0.75, title="Number of retrotransposition events", fontsize=10, fancybox=True)
+l = plt.figlegend((circle1, circle2, circle3, circle4), ('0', '[1-10]', '(10-100]', '>100'), loc='upper center', ncol=4, labelspacing=0.75, title="# MEI", fontsize=10, fancybox=True)
 
 ## Save figure
-fileName = outDir + "/PCAWG_retrotranspositionRates_barPlot.pdf"
+fileName = outDir + "/Pictures/rtRates_histologies.pdf"
+plt.savefig(fileName)
 
+fileName = outDir + "/Pictures/rtRates_histologies.svg"
 plt.savefig(fileName)
 
 ## End ##

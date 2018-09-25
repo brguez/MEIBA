@@ -1,7 +1,9 @@
+library(RColorBrewer)
+library(MASS)
 
 ## Read input file
-table <- read.table(file = '/Users/brodriguez/Research/References/Annotations/H.sapiens/hg19/GenomicFeatures/supplementaryTable2.NA.tsv', sep = '\t', header = TRUE)
-
+table <- read.table(file = '/Users/brodriguez/Research/Projects/Pancancer/Somatic/Analysis/TEIBA_0.8.3/genomicDistribution/supplementaryTable4.alignable.tsv', sep = '\t', header = TRUE)
+table
 
 #### 1. Number of L1 and replication time scatterplot 
 ######################################################
@@ -12,12 +14,12 @@ dim(nbL1RT)
 
 head(nbL1RT)
 #nbL1 medianRT
-#1    0       NA
-#2    4       NA
-#3    1       NA
-#4    3       NA
-#5    8       NA
-#6   10       NA
+#1    0 627.9740
+#2    0 106.7028
+#3    0 141.8966
+#4    0 414.5490
+#5    5 798.0827
+#6    7 819.6064
 
 # Remove rows with replication time NA values:
 nbL1RT <- nbL1RT[complete.cases(nbL1RT), ]
@@ -26,15 +28,12 @@ dim(nbL1RT)
 # [1] 2734    2
 
 #### Make the scatterplot:
-#smoothScatter(nbL1RT)
-
 #Outfile:
-outDir <- "/Users/brodriguez/Research/Projects/Pancancer/Somatic/Analysis/TEIBA_0.6.5/genomicDistribution/Pictures/"
-outFile <- paste(outDir, "nbL1_medianRT_correlation2.pdf", sep="")
+outDir <- "/Users/brodriguez/Research/Projects/Pancancer/Somatic/Analysis/TEIBA_0.8.3/genomicDistribution/Pictures/"
+outFile <- paste(outDir, "nbL1_medianRT_corr4.pdf", sep="")
 pdf(outFile, width=4, height=4)
 
 # A color palette from blue to yellow to red
-library(RColorBrewer)
 k <- 11
 my.cols <- rev(brewer.pal(k, "RdYlBu"))
 
@@ -42,63 +41,7 @@ my.cols <- rev(brewer.pal(k, "RdYlBu"))
 z <- kde2d(nbL1RT$nbL1, nbL1RT$medianRT, n=50)
 
 # Make the base plot
-plot(nbL1RT, xlab="Number L1 insertions / Mb", ylab="Replication time", ylim=c(0,1200), pch=19, cex=.4)
-
-# Draw the colored contour lines
-contour(z, drawlabels=FALSE, nlevels=k, col=my.cols, add=TRUE, lwd=2)
-
-dev.off()
-
-#### 2. Number of L1 and median expression scatterplot 
-#######################################################
-
-#Read input data
-nbL1Expr <- table[,c("nbL1","medianExpr")]
-
-dim(nbL1Expr)
-# [1] 3053    2
-
-head(nbL1Expr)
-#nbL1 medianExpr
-#1    0       4664
-#2    4      39709
-#3    1     158014
-#4    3      54272
-#5    8        753
-#6   10        947
-
-# Remove rows with replication time NA values:
-nbL1Expr <- nbL1Expr[complete.cases(nbL1Expr), ]
-dim(nbL1Expr)
-
-##Remove bins with expression level == 0
-# These will mostly  correspond to telomeric, centromeric regions
-nbL1Expr <- nbL1Expr[(nbL1Expr$medianExpr != 0), ]
-dim(nbL1Expr)
-#[1] 2867    2
-
-##Apply log10 to the expression
-nbL1Expr$medianLog10Expr <- log10(nbL1Expr$medianExpr)
-
-nbL1Expr
-
-#### Make the scatterplot:
-#Outfile:
-outDir <- "/Users/brodriguez/Research/Projects/Pancancer/Somatic/Analysis/TEIBA_0.6.5/genomicDistribution/Pictures/"
-outFile <- paste(outDir, "nbL1_medianExpression_correlation2.pdf", sep="")
-pdf(outFile, width=4, height=4)
-
-#smoothScatter(nbL1RT)
-# A color palette from blue to yellow to red
-library(RColorBrewer)
-k <- 11
-my.cols <- rev(brewer.pal(k, "RdYlBu"))
-
-## compute 2D kernel density, see MASS book, pp. 130-131
-z <- kde2d(nbL1Expr$nbL1, nbL1Expr$medianLog10Expr, n=50)
-
-# Make the base plot
-plot(nbL1Expr$nbL1, nbL1Expr$medianLog10Expr, ylim=c(1,7), xlab="Number L1 insertions / Mb", ylab="log10 (Expression level)", pch=19, cex=.4)
+plot(nbL1RT, xlab="L1 insertions / Mb", ylab="Replication time", ylim=c(0,85), pch=19, cex=.4)
 
 # Draw the colored contour lines
 contour(z, drawlabels=FALSE, nlevels=k, col=my.cols, add=TRUE, lwd=2)
@@ -106,16 +49,16 @@ contour(z, drawlabels=FALSE, nlevels=k, col=my.cols, add=TRUE, lwd=2)
 dev.off()
 
 
-#### 3. Number of L1 and replication time scatterplot 
-######################################################
+#### 2. Number of L1 and L1 EN motif
+######################################
 #Read input data
-nbL1GnDensity <- table[,c("nbL1","geneDensity")]
+nbL1Motif <- table[,c("nbL1","nbL1Motif")]
 
-dim(nbL1GnDensity)
+dim(nbL1Motif)
 # [1] 3053    2
 
-head(nbL1GnDensity)
-#nbL1 geneDensity
+head(nbL1Motif)
+#nbL1 nbL1Motif
 #1    0       0.126
 #2    4       0.275
 #3    1       0.578
@@ -123,35 +66,27 @@ head(nbL1GnDensity)
 #5    8       0.000
 #6   10       0.241
 
-# Remove rows with gene density NA values:
-nbL1GnDensity <- nbL1GnDensity[complete.cases(nbL1GnDensity), ]
-dim(nbL1GnDensity)
-# [1] 2734    2
-
-##Remove bins with gene density == 0
+##Remove bins with number motif == 0
 # These will mostly  correspond to telomeric, centromeric regions
-nbL1GnDensity <- nbL1GnDensity[(nbL1GnDensity$geneDensity != 0), ]
-dim(nbL1GnDensity)
-#[1] 2634    2
+nbL1Motif <- nbL1Motif[(nbL1Motif$nbL1Motif != 0), ]
+dim(nbL1Motif)
+#[1] 2888    2
 
 #### Make the scatterplot:
-#smoothScatter(nbL1RT)
-
 #Outfile:
-outDir <- "/Users/brodriguez/Research/Projects/Pancancer/Somatic/Analysis/TEIBA_0.6.5/genomicDistribution/Pictures/"
-outFile <- paste(outDir, "nbL1_geneDensity_correlation2.pdf", sep="")
+outDir <- "/Users/brodriguez/Research/Projects/Pancancer/Somatic/Analysis/TEIBA_0.8.3/genomicDistribution/Pictures/"
+outFile <- paste(outDir, "nbL1_nbL1Motif_corr3.pdf", sep="")
 pdf(outFile, width=4, height=4)
 
 # A color palette from blue to yellow to red
-library(RColorBrewer)
 k <- 11
 my.cols <- rev(brewer.pal(k, "RdYlBu"))
 
 ## compute 2D kernel density, see MASS book, pp. 130-131
-z <- kde2d(nbL1GnDensity$nbL1, nbL1GnDensity$geneDensity, n=50)
+z <- kde2d(nbL1Motif$nbL1, nbL1Motif$nbL1Motif, n=50)
 
 # Make the base plot
-plot(nbL1GnDensity, xlab="Number L1 insertions / Mb", ylab="Gene density", pch=19, cex=.4)
+plot(nbL1Motif, xlab="L1 insertions / Mb", ylim=c(1,16800), ylab="L1 EN Motifs / Mb", pch=19, cex=.4)
 
 # Draw the colored contour lines
 contour(z, drawlabels=FALSE, nlevels=k, col=my.cols, add=TRUE, lwd=2)
