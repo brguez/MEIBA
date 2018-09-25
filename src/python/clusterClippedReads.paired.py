@@ -237,18 +237,18 @@ def overlap(begA, endA, begB, endB):
     return overlap
 
 
-def getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, bamFile):
+def getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, bamFile, windowSize):
     """
     """
     ## 1. Extract clipped reads for positive cluster
     chrom = chrPlus
 
     if (rgType == "DUP"):
-        beg = int(begPlus) - 50
-        end = int(begPlus) + 50
+        beg = int(begPlus) - windowSize
+        end = int(begPlus) + windowSize
     else:
-        beg = int(endPlus) + 100 - 50
-        end = int(endPlus) + 100 + 50
+        beg = int(endPlus) + 100 - windowSize
+        end = int(endPlus) + 100 + windowSize
 
     print "range_+: ", chrom, beg, end
     clippedBegPlusList, clippedEndPlusList = getClippedInterval(chrom, beg, end, bamFile)
@@ -257,14 +257,13 @@ def getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endM
     chrom = chrMinus
 
     if (rgType == "DUP"):
-        beg = int(endMinus) + 100 - 50
-        end = int(endMinus) + 100 + 50
+        beg = int(endMinus) + 100 - windowSize
+        end = int(endMinus) + 100 + windowSize
 
     else:
-        beg = int(begMinus) - 50
-        end = int(begMinus) + 50
+        beg = int(begMinus) - windowSize
+        end = int(begMinus) + windowSize
         
-    print "range_-: ", chrom, beg, end
     clippedBegMinusList, clippedEndMinusList = getClippedInterval(chrom, beg, end, bamFile)
 
     ## 3. Merge clipped read lists:
@@ -274,23 +273,21 @@ def getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endM
     return clippedBegList, clippedEndList
 
 
-def getClippedUnpairedCluster(chrPlus, begPlus, endPlus, bamFile):
+def getClippedUnpairedCluster(chrPlus, begPlus, endPlus, bamFile, windowSize):
     """
     """
     ## 1. Extract clipped reads for cluster beginning
     chrom = chrPlus
-    beg = int(begPlus) - 50
-    end = int(begPlus) + 50
-    
-    print "range_beg: ", chrom, beg, end
+    beg = int(begPlus) - windowSize
+    end = int(begPlus) + windowSize
+   
     clippedBegClusterBegList, clippedEndClusterBegList = getClippedInterval(chrom, beg, end, bamFile)
 
     ## 2. Extract clipped reads for cluster ending
     chrom = chrPlus
-    beg = int(endPlus) + 100 - 50
-    end = int(endPlus) + 100 + 50
+    beg = int(endPlus) + 100 - windowSize
+    end = int(endPlus) + 100 + windowSize
 
-    print "range_end: ", chrom, beg, end
     clippedBegClusterEndList, clippedEndClusterEndList = getClippedInterval(chrom, beg, end, bamFile)
 
     ## 3. Merge clipped read lists:
@@ -516,6 +513,7 @@ parser = argparse.ArgumentParser(description= "")
 parser.add_argument('insertions', help='')
 parser.add_argument('tumourBam', help='Tumour bam file')
 parser.add_argument('normalBam', help='Matched normal bam file')
+parser.add_argument('--windowSize', default=50, dest='windowSize', type=int, help='Window size to search for clipped read clusters from discordant read-pair clusters ends. Default=50bp' )
 parser.add_argument('--minNbReads', default=1, dest='minNbReads', type=int, help='Minimum number of clipped reads composing the cluster. Default: 1' )
 parser.add_argument('--maxNbReads', default=500, dest='maxNbReads', type=int, help='Maximum number of clipped reads composing the cluster. Default: 500' )
 parser.add_argument('--maxNbClusters', default=10, dest='maxNbClusters', type=int, help='Maximum number of clipped read clusters in the insertion region. Default: 10' )
@@ -525,6 +523,7 @@ args = parser.parse_args()
 insertionsPath = args.insertions
 tumourBam = args.tumourBam
 normalBam = args.normalBam
+windowSize = args.windowSize
 minNbReads = args.minNbReads
 maxNbReads = args.maxNbReads
 maxNbClusters = args.maxNbClusters
@@ -539,6 +538,7 @@ print "***** ", scriptName, " configuration *****"
 print "insertionsPath: ", insertionsPath
 print "tumourBam: ", tumourBam
 print "normalBam: ", normalBam
+print "windowSize: ", windowSize
 print "minNbReads: ", minNbReads
 print "maxNbReads: ", maxNbReads
 print "maxNbClusters: ", maxNbClusters
@@ -546,6 +546,7 @@ print "outDir: ", outDir
 print
 print "***** Executing ", scriptName, ".... *****"
 print
+
 
 ## Start ## 
 
@@ -618,13 +619,13 @@ for line in insertions:
             ### 1. Search for clipped reads
             ## A) Paired clusters
             if (begMinus != "NA") and (begMinus != "UNK"):
-                clippedBegList, clippedEndList = getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, tumourBamFile)
-                clippedBegNormalList, clippedEndNormalList = getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, normalBamFile)
+                clippedBegList, clippedEndList = getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, tumourBamFile, windowSize)
+                clippedBegNormalList, clippedEndNormalList = getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endMinus, rgType, normalBamFile, windowSize)
        
             ## B) Unpaired cluster
             else:
-                clippedBegList, clippedEndList = getClippedUnpairedCluster(chrPlus, begPlus, endPlus, tumourBamFile)
-                clippedBegNormalList, clippedEndNormalList = getClippedUnpairedCluster(chrPlus, begPlus, endPlus, normalBamFile)
+                clippedBegList, clippedEndList = getClippedUnpairedCluster(chrPlus, begPlus, endPlus, tumourBamFile, windowSize)
+                clippedBegNormalList, clippedEndNormalList = getClippedUnpairedCluster(chrPlus, begPlus, endPlus, normalBamFile, windowSize)
 
             ### 2. Cluster clipped reads:
             ### 2.1 Tumour

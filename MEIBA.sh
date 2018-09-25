@@ -107,8 +107,9 @@ SINGLE:
 
 *** [OPTIONS] can be:
 * General:
+    --window-size       <INTEGER>                               Window size to search for clipped read clusters from discordant read-pair clusters ends. Default=50bp
     -o|--out-dir        <PATH>                                  Output directory. Default current working directory.
-    --tmp-dir		<PATH>		                        Temporary directory. Default /tmp.
+    --tmp-dir		<PATH>		                        Temporary directory. Default=/tmp.
     --no-cleanup	                                        Keep intermediate files.
     -h|--help			                                Display usage information
 
@@ -124,14 +125,14 @@ SINGLE:
                                                                 Default='SCORE,DUP,FPSOURCE'.
 
     --mechanism         <(MECHANISM_1)>, ...,<(MECHANISM_N)>    List of insertion mechanisms to be taken into account. 3 possible mechanisms:
-                                                                TPRT, EI AND DPA. Default: 'TPRT,EI,DPA'.
-    --score-L1-TD0      <INTEGER>                               Minimum assembly score for solo L1 insertions. Default 2.
-    --score-L1-TD1      <INTEGER>                               Minimum assembly score for L1 partnered transductions. Default 2.
-    --score-L1-TD2      <INTEGER>                               Minimum assembly score for L1 orphan transductions. Default 2.
-    --score-Alu         <INTEGER>                               Minimum assembly score for Alu insertions. Default 2.
-    --score-SVA         <INTEGER>                               Minimum assembly score for SVA insertions. Default 2.
-    --score-ERVK        <INTEGER>                               Minimum assembly score for ERVK insertions. Default 2.
-    --score-PSD         <INTEGER>                               Minimum assembly score for processed-pseudogene (PSD) insertions. Default 2.
+                                                                TPRT, EI AND DPA. Default='TPRT,EI,DPA'.
+    --score-L1-TD0      <INTEGER>                               Minimum assembly score for solo L1 insertions. Default=2.
+    --score-L1-TD1      <INTEGER>                               Minimum assembly score for L1 partnered transductions. Default=2.
+    --score-L1-TD2      <INTEGER>                               Minimum assembly score for L1 orphan transductions. Default=2.
+    --score-Alu         <INTEGER>                               Minimum assembly score for Alu insertions. Default=2.
+    --score-SVA         <INTEGER>                               Minimum assembly score for SVA insertions. Default=2.
+    --score-ERVK        <INTEGER>                               Minimum assembly score for ERVK insertions. Default=2.
+    --score-PSD         <INTEGER>                               Minimum assembly score for processed-pseudogene (PSD) insertions. Default=2.
 
 * Files:
     --germline-VCF      <VCF>                                   VCF with germline MEI calls for a given donor. If provided, input insertions are considered to be somatic.
@@ -144,7 +145,7 @@ help
 ################################
 function getoptions {
 
-ARGS=`getopt -o "i:g:d:o:h" -l "insertions:,tumour-bam:,normal-bam:,bam:,ref-dir:,sample-id:,file-name:,out-dir:,tmp-dir:,no-cleanup,help,annotation-steps:,subfamily,filters:,mechanism:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,score-GR:,germline-VCF:" \
+ARGS=`getopt -o "i:g:d:o:h" -l "insertions:,tumour-bam:,normal-bam:,bam:,ref-dir:,sample-id:,file-name:,window-size:,out-dir:,tmp-dir:,no-cleanup,help,annotation-steps:,subfamily,filters:,mechanism:,score-L1-TD0:,score-L1-TD1:,score-L1-TD2:,score-Alu:,score-SVA:,score-ERVK:,score-PSD:,score-GR:,germline-VCF:" \
       -n "$0" -- "$@"`
 
 #Bad arguments
@@ -215,6 +216,13 @@ do
 
         ## OPTIONS
         # General:
+        --window-size)
+            if [ -n "$2" ];
+            then
+                windowSize=$2
+            fi
+            shift 2;;
+
         -o|--out-dir)
             if [ -n "$2" ];
             then
@@ -421,7 +429,7 @@ function cleanupFunc {
 ############################
 
 # MEIBA version
-version=0.8.5
+version=0.8.6
 
 # Enable extended pattern matching
 shopt -s extglob
@@ -488,6 +496,13 @@ if [[ $fileName == "" ]]; then log "Output file name not provided. Mandatory arg
 ##   ~~~~~~~~~~~~~~~~~~
 
 #### General
+
+## Window size:
+if [[ "$windowSize" == "" ]];
+then
+    windowSize=50;
+fi
+
 ## Output directory
 if [[ "$outDir" == "" ]];
 then
@@ -733,6 +748,7 @@ printf "  %-34s %s\n\n" "file-name:" "$fileName"
 
 printf "  %-34s %s\n" "***** OPTIONAL ARGUMENTS *****"
 printf "  %-34s %s\n" "*** General ***"
+printf "  %-34s %s\n" "window-size:" "$windowSize"
 printf "  %-34s %s\n" "out-dir:" "$outDir"
 printf "  %-34s %s\n" "tmp-dir:" "$TMPDIR"
 printf "  %-34s %s\n\n" "cleanup:" "$cleanup"
@@ -755,6 +771,8 @@ printf "  %-34s %s\n\n" "score-GR:" "$scoreGR"
 
 printf "  %-34s %s\n" "*** Files ***"
 printf "  %-34s %s\n\n" "germline-VCF:" "$germlineVCF"
+
+
 
 ##########
 ## START #
@@ -799,7 +817,7 @@ then
 
 fi
 
-# 2) For each orphan transduction (TD2) event, extract source region +/- $windowSize to use as target in BLAT alignment.
+# 2) For each orphan transduction (TD2) event, extract source region +/- $windowSizeTD to use as target in BLAT alignment.
 ########################################################################################################################
 # Each fasta will be named according to this convention:
 ########################################################
@@ -813,7 +831,7 @@ fi
 #    - end: insertion end
 
 ## parameters
-windowSize=1000
+windowSizeTD=1000
 
 ## Make source region fasta directory:
 if [[ ! -d $srcRegDir ]]; then mkdir $srcRegDir; fi
@@ -829,7 +847,7 @@ log "Extracting region downstream of source element for orphan transductions" $s
 cat $insertions | while read chrP begP endP nReadsP famP readsP chrM begM endM nReadsM famM readsM tdType cytobandId sourceType chrSrc begSrc endSrc strSrc begTd endTd lenRna lenTd psdGene chrExA begExA endExA chrExB begExB endExB grType; do
     if [[ $tdType == "TD2" ]]; then
         targetRegionFile=${famP}":"${tdType}":"${chrP}"_"${endP}"_"${begM}".src.fa"
-        extractRegion $genome $chrSrc $begTd $endTd $windowSize $tdType $srcRegDir/$targetRegionFile
+        extractRegion $genome $chrSrc $begTd $endTd $windowSizeTD $tdType $srcRegDir/$targetRegionFile
     elif [[ $tdType == "PSD" ]]; then
         # sanity check: are both source exons on the same chromosome?
         if [[ "$chrExA" -ne "$chrExB" ]]; then
@@ -839,7 +857,7 @@ cat $insertions | while read chrP begP endP nReadsP famP readsP chrM begM endM n
         [[ $begExA -lt $begExB ]] && begEx=$begExA || begEx=$begExB
         [[ $endExA -gt $endExB ]] && endEx=$endExA || endEx=$endExB
         targetRegionFile=${famP}":"${tdType}":"${chrP}"_"${endP}"_"${begM}".src.fa"
-        extractRegion $genome $chrExA $begEx $endEx $windowSize $tdType $srcRegDir/$targetRegionFile
+        extractRegion $genome $chrExA $begEx $endEx $windowSizeTD $tdType $srcRegDir/$targetRegionFile
     fi
 done
 
@@ -875,11 +893,11 @@ log "Cluster clipped" $step
 ## A) PAIRED
 if [[ "$mode" == "PAIRED" ]];
 then
-    run "python $CLIPPED_PAIRED $insertions $bam $normalBam --outDir $clippedDir 1> $logsDir/1_clipped.out 2> $logsDir/1_clipped.err" "$ECHO"
+    run "python $CLIPPED_PAIRED $insertions $bam $normalBam --windowSize $windowSize --outDir $clippedDir 1> $logsDir/1_clipped.out 2> $logsDir/1_clipped.err" "$ECHO"
 
 ## B) SINGLE 
 else
-    run "python $CLIPPED $insertions $bam --outDir $clippedDir 1> $logsDir/1_clipped.out 2> $logsDir/1_clipped.err" "$ECHO"
+    run "python $CLIPPED $insertions $bam --windowSize $windowSize --outDir $clippedDir 1> $logsDir/1_clipped.out 2> $logsDir/1_clipped.err" "$ECHO"
 fi
 
 cp $clippedDir/allReadPairs.fa $outDir/allReadPairs.fa
