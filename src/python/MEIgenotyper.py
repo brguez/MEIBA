@@ -98,156 +98,131 @@ def worker(VCFObj, donorIdBamPathList, maxDist, minClipped, minMapQual, minREF, 
         bamFile = pysam.AlignmentFile(BAMPath, "rb")
 
         ## Genotype each MEI polymorphism for the current donor
-        for VCFlineObj in VCFObj.lineList:
-
+        for VCFlineObj in VCFObj.lineList:            
             genotype = genotypeMEI(bamFile, VCFlineObj, maxDist, minClipped, minMapQual, minREF, hetVaf, homVaf, gender, PARregionDict)
             VCFlineObj.genotypesDict[donorId] = genotype
 
         subHeader("Finished " + donorId + " genotyping")
         bamFile.close()
 
-    info( threadId + ' finished')
-
+    info(threadId + ' finished')
 
 
 def genotypeMEI(bamFile, VCFlineObj, maxDist, minClipped, minMapQual, minREF, hetVaf, homVaf, gender, PARregionDict):
     '''
     '''
 
-    subHeader("Genotype " + VCFlineObj.infoDict["CLASS"] + ":" + VCFlineObj.chrom + "_" + str(VCFlineObj.pos) + " with a CIPOS of " + VCFlineObj.infoDict["CIPOS"])
-    chrom = str(VCFlineObj.chrom)
+    subHeader("Genotype " + VCFlineObj.infoDict["CLASS"] + ":" + VCFlineObj.chrom + "_" + str(VCFlineObj.pos) + " with a SCORE of " + VCFlineObj.infoDict["SCORE"])
+    
+    ### 1) ESTIMATE VAF ###
+    ## A) Insertion with score 1 and 2.  
+    if VCFlineObj.infoDict["SCORE"] in ["1", "2"]:
+        nbReadsALT, totalNbReads, vaf = ["NA", "NA", "NA"]
 
-    ### 1. Compute VAF
-    ## 1.1) Estimate VAF for MEI breakpoint A
-    msg = "Breakpoint A VAF"
-    if debugBool == True: info(msg)
-    bkpPos = int(VCFlineObj.pos)
+    ## B) Insertion with score 3 and 4. Estimate VAF from the only available breakpoint
+    elif VCFlineObj.infoDict["SCORE"] in ["3", "4"]:
 
-    ## a) Insertion absent in reference genome
-    # ------------------__TSD__*********TE******AAA__TSD__------------- Donor genome
-    #                          bkpB                bkpA
-    # -------------------------------__TSD__--------------------------- Reference genome
-    #                                bkpA   bkpB
-    # * Clipping at the beginning of the read
-    if (VCFlineObj.alt == "<MEI>"):
+        ## 1. Estimate VAF 
+        chrom = str(VCFlineObj.chrom)
+        bkpPos = int(VCFlineObj.pos)
+        clippedSide = VCFlineObj.infoDict["CCO"]
+        nbReadsALT, totalNbReads, vaf = computeBkpVaf(bamFile, chrom, bkpPos, clippedSide, maxDist, minMapQual)
 
-        nbReadsALT_A, totalNbReads_A, vaf_A = computeBkpVaf(bamFile, chrom, bkpPos, "Beg", maxDist, minMapQual)
-
-    ## b) Insertion in reference genome and absent in donor genome
-    # -------------------------------__TSD__--------------------------- Donor genome
-    #                                bkpB   bkpA                           
-    # ------------------__TSD__*********TE******AAA__TSD__------------- Reference genome genome
-    #                          bkpA                bkpB
-    # * Clipping at the ending of the read
-    elif (VCFlineObj.ref == "<MEI>"):
-        
-        nbReadsALT_A, totalNbReads_A, vaf_A = computeBkpVaf(bamFile, chrom, bkpPos, "End", maxDist, minMapQual)
-
-    ## c) Raise error...  
+        ## 2. Set VAF as 0 if alternative allele supported less than X clipped reads 
+        if (nbReadsALT < minClipped):
+            vaf = 0
+     
+    ## C) Insertion with score 5. Estimate VAF from the two available breakpoints 
     else:
-        msg="Incorrectly formated VCF line"
-        info(msg)
+    
+        chrom = str(VCFlineObj.chrom)
+        clippedSideA, clippedSideB = VCFlineObj.infoDict["CCO"].split("-")
+    
+        ## 1. Estimate VAF for MEI breakpoint A
+        msg = "Breakpoint A VAF"
+        if debugBool == True: info(msg)
+        bkpPos = int(VCFlineObj.pos)
+        nbReadsALT_A, totalNbReads_A, vaf_A = computeBkpVaf(bamFile, chrom, bkpPos, clippedSideA, maxDist, minMapQual)
 
-    ## 1.2) Estimate VAF for MEI breakpoint B if possible
-    # A) Second breakpoint information available
-    if ('BKPB' in VCFlineObj.infoDict):
-
+        ## 2. Estimate VAF for MEI breakpoint B
         msg = "Breakpoint B VAF"
         if debugBool == True: info(msg)
         bkpPos = int(VCFlineObj.infoDict["BKPB"])
-
-        ## a) Insertion absent in reference genome
-        # * Clipping at the ending of the read
-        if (VCFlineObj.alt == "<MEI>"):
-        
-            nbReadsALT_B, totalNbReads_B, vaf_B = computeBkpVaf(bamFile, chrom, bkpPos, "End", maxDist, minMapQual)
-
-        ## b) Insertion in reference genome and absent in donor genome
-        # * Clipping at the beginning of the read
-        elif (VCFlineObj.ref == "<MEI>"):
-
-            nbReadsALT_B, totalNbReads_B, vaf_B = computeBkpVaf(bamFile, chrom, bkpPos, "Beg", maxDist, minMapQual)
-
-        ## c) Raise error...  
-        else:
-            msg="Incorrectly formated VCF line"
-            info(msg)
-
-        ### Compute average VAF for the MEI (bkpA and bkpB)
+        nbReadsALT_B, totalNbReads_B, vaf_B = computeBkpVaf(bamFile, chrom, bkpPos, clippedSideB, maxDist, minMapQual)
+    
+        ### 3. Compute average VAF for the MEI (bkpA and bkpB)
         msg = "Average VAF"
         if debugBool == True: info(msg)
-        nbReadsALT, totalNbReads, vaf = computeAverageVaf(nbReadsALT_A, totalNbReads_A, vaf_A, nbReadsALT_B, totalNbReads_B, vaf_B, minClipped)
+        nbReadsALT, totalNbReads, vaf = computeAverageVaf(nbReadsALT_A, totalNbReads_A, vaf_A, nbReadsALT_B, totalNbReads_B, vaf_B, minClipped)    
 
-    # B) Breakpoint B information not available (use bkp A information)
+    ### 2) COMPUTE GENOTYPE FROM VAF ESTIMATION ###
+    ### A) Insertion with score 1 and 2. Set genotype as unknown 
+    if VCFlineObj.infoDict["SCORE"] in ["1", "2"]:
+        genotypeField = '.:.:.'
+        
+    ### B) Insertion with VAF estimation available. Compute genotype
     else:
-        nbReadsALT = nbReadsALT_A
-        totalNbReads = totalNbReads_A
-        vaf = vaf_A
-        
-    ### 2. Determine donor genotype for the current variant
-    ## Different criteria depending on if haploid or diploid variant. 
-
-    ## A) Haploid variant. Three conditions have to be fulfilled:
-    # 1a. The individual is a male 
-    # 2a. The variant is in a sexual chromosome (X or Y) 
-    # 3a. The variant is outside the 2 pseudo-autosomal regions: PAR1 and PAR2
-    
-    ## B) Diploid variant. At least one of these three conditions has to be fulfilled:
-    # 1b. Individual is a female. All the female chromosomes are diploid. 
-    # 2b. The variant is in a autosomal chromosome
-    # 3b. The individual is a male and the variant is in a sexual chromosome (X or Y) within one of the pseudo autosomal (PAR) regions
-    
-    nbReadsREF = totalNbReads - nbReadsALT
-
-    msg = "Donor gender: " + gender + "\n"
-    if debugBool == True: info(msg)
-
-    ## A) Haploid variant. At least one of these fulfilled:
-    # 1a. The individual is a male 
-    # 2a. The variant is in a sexual chromosome (X or Y) 
-    if (gender == "male") and ((VCFlineObj.chrom == "X") or (VCFlineObj.chrom == "Y")):
-        
-        targetPARDict = PARregionDict[VCFlineObj.chrom]
-
-        MEIpos = VCFlineObj.pos
-        PAR1beg = targetPARDict['PAR#1'][0]
-        PAR1end = targetPARDict['PAR#1'][1]
-        PAR2beg = targetPARDict['PAR#2'][0]
-        PAR2end = targetPARDict['PAR#2'][1]
-
+            
+        ## Different criteria depending on if haploid or diploid variant. 
+        ## a) Haploid variant. Three conditions have to be fulfilled:
+        # 1a. The individual is a male 
+        # 2a. The variant is in a sexual chromosome (X or Y) 
         # 3a. The variant is outside the 2 pseudo-autosomal regions: PAR1 and PAR2
-        if (not overlap(MEIpos, MEIpos, PAR1beg, PAR1end)) and (not overlap(MEIpos, MEIpos, PAR2beg, PAR2end)):
+    
+        ## b) Diploid variant. At least one of these three conditions has to be fulfilled:
+        # 1b. Individual is a female. All the female chromosomes are diploid. 
+        # 2b. The variant is in a autosomal chromosome
+        # 3b. The individual is a male and the variant is in a sexual chromosome (X or Y) within one of the pseudo autosomal (PAR) regions
+    
+        nbReadsREF = totalNbReads - nbReadsALT
 
-            genotype = haploidGt(vaf, homVaf, nbReadsREF, minREF)
+        msg = "Donor gender: " + gender + "\n"
+        if debugBool == True: info(msg)
 
-        ## B) Diploid variant.Condition fulfilled:
-        # 3b. The individual is a male and the variant is in a sexual chromosome (X or Y) within one of the pseudo autosomal (PAR) regions                  
+        ## a) Haploid variant. At least one of these fulfilled:
+        # 1a. The individual is a male 
+        # 2a. The variant is in a sexual chromosome (X or Y) 
+        if (gender == "male") and ((VCFlineObj.chrom == "X") or (VCFlineObj.chrom == "Y")):
+        
+            targetPARDict = PARregionDict[VCFlineObj.chrom]
+
+            MEIpos = VCFlineObj.pos
+            PAR1beg = targetPARDict['PAR#1'][0]
+            PAR1end = targetPARDict['PAR#1'][1]
+            PAR2beg = targetPARDict['PAR#2'][0]
+            PAR2end = targetPARDict['PAR#2'][1]
+
+            # 3a. The variant is outside the 2 pseudo-autosomal regions: PAR1 and PAR2
+            if (not overlap(MEIpos, MEIpos, PAR1beg, PAR1end)) and (not overlap(MEIpos, MEIpos, PAR2beg, PAR2end)):
+
+                genotype = haploidGt(vaf, homVaf, nbReadsREF, minREF)
+
+            ## b) Diploid variant.Condition fulfilled:
+            # 3b. The individual is a male and the variant is in a sexual chromosome (X or Y) within one of the pseudo autosomal (PAR) regions                  
+            else:
+
+                genotype = diploidGt(vaf, homVaf, hetVaf, nbReadsREF, minREF)
+
+        ## b) Diploid variant. Several possible conditions:
+        # 1b. Individual is a female. All the female chromosomes are diploid. 
+        # 2b. The variant is in a autosomal chromosome
         else:
 
             genotype = diploidGt(vaf, homVaf, hetVaf, nbReadsREF, minREF)
 
-    ## B) Diploid variant. Several possible conditions:
-    # 1b. Individual is a female. All the female chromosomes are diploid. 
-    # 2b. The variant is in a autosomal chromosome
-    else:
+        ## Make genotype field and return output
+        genotypeField = genotype + ':' + str(nbReadsALT) + ':' + str(totalNbReads)
 
-        genotype = diploidGt(vaf, homVaf, hetVaf, nbReadsREF, minREF)
-
-    msg = "MEI genotype (genotype, nbReadsALT, totalNbReads, VAF): " + genotype + " " + str(nbReadsALT) + " " + str(totalNbReads) + " " + str(vaf) + "\n"
-    if debugBool == True: info(msg)
-
-    ## Make genotype field and return output
-    genotypeField = genotype + ':' + str(nbReadsALT) + ':' + str(totalNbReads)
-
+    msg = "MEI genotype (genotype, nbReadsALT, totalNbReads, VAF): " + " " + VCFlineObj.infoDict["SCORE"] + " " + genotypeField + " " + str(nbReadsALT) + " " + str(totalNbReads) + " " + str(vaf) + "\n"
+    info(msg)
+        
     return (genotypeField)
 
 
-
-def computeBkpVaf(bamFile, chrom, bkpPos, clippingPos, maxDist, minMapQual):
+def computeBkpVaf(bamFile, chrom, bkpPos, clippedSide, maxDist, minMapQual):
     '''
     '''
-
-    tag = "VAF-" + clippingPos
+    tag = "VAF-" + clippedSide
 
     ### 1.Count the number of reads supporting the reference and alternative allele
     nbReadsREF = 0
@@ -318,7 +293,7 @@ def computeBkpVaf(bamFile, chrom, bkpPos, clippingPos, maxDist, minMapQual):
                 # A) Clipping at the beginning of the read while not at the end
                 # *******--------- (clipped bases: *)
                 
-                if (clippingPos == "Beg") and ((firstOperation == 4) or (firstOperation == 5)) and ((lastOperation != 4) and (lastOperation != 5)):
+                if (clippedSide == "beg") and ((firstOperation == 4) or (firstOperation == 5)) and ((lastOperation != 4) and (lastOperation != 5)):
 
                     # a) clipping breakpoint within range 
                     # beg <---------> end
@@ -331,7 +306,7 @@ def computeBkpVaf(bamFile, chrom, bkpPos, clippingPos, maxDist, minMapQual):
 
                 # B) Clipping at the end of the read while not at the beginning
                 # ---------******* (clipped bases: *)
-                elif (clippingPos == "End") and ((lastOperation == 4) or (lastOperation == 5)) and ((firstOperation != 4) and (firstOperation != 5)):
+                elif (clippedSide == "end") and ((lastOperation == 4) or (lastOperation == 5)) and ((firstOperation != 4) and (firstOperation != 5)):
 
                     # a) clipping breakpoint within range
                     ## beg <---------> end
@@ -379,25 +354,29 @@ def computeAverageVaf(nbReadsALT_A, totalNbReads_A, vaf_A, nbReadsALT_B, totalNb
     '''
     '''
 
-    ## a) Both breakpoints supported by at least X clipped-reads (default: 5)
+    ## a) Both breakpoints supported by at least X clipped-reads
+    # Compute the mean
     if (nbReadsALT_A >= minClipped) and (nbReadsALT_B >= minClipped):
         nbReadsALT = int(nbReadsALT_A + nbReadsALT_B) / 2
         totalNbReads = int(totalNbReads_A + totalNbReads_B) / 2
         vaf = float(nbReadsALT) / totalNbReads
 
-    ## b) Breakpoint A supported by at least X clipped-reads (default: 5)
+    ## b) Breakpoint A supported by at least X clipped-reads 
+    # Use bkpA vaf alone since bkpB not well supported
     elif (nbReadsALT_A >= minClipped):
         nbReadsALT = nbReadsALT_A
         totalNbReads = totalNbReads_A
         vaf = vaf_A
 
-    ## c) Breakpoint B supported by at least X clipped-reads (default: 5)
+    ## c) Breakpoint B supported by at least X clipped-reads
+    # Use bkpB vaf alone since bkpA not well supported
     elif (nbReadsALT_B >= minClipped):
         nbReadsALT = nbReadsALT_B
         totalNbReads = totalNbReads_B
         vaf = vaf_B
 
-    ## d) No breakpoint supported by at least X clipped-reads (default: 5)
+    ## d) No breakpoint supported by at least X clipped-reads 
+    # Set vaf to 0
     else:
         nbReadsALT = int(nbReadsALT_A + nbReadsALT_B) / 2
         totalNbReads =  int(totalNbReads_A + totalNbReads_B) / 2
