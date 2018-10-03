@@ -263,6 +263,7 @@ class VCF():
 ##INFO=<ID=MECHANISM,Number=1,Type=String,Description="Insertion mechanism (TPRT: target primed reverse transcription, EI: endonuclease independent, DPA: double poly-A)>
 ##INFO=<ID=MANUAL,Number=0,Type=Flag,Description="MEI manually verified through BAM inspection">
 ##INFO=<ID=BKPB,Number=1,Type=Integer,Description="MEI right-most breakpoint position (bkpB). Left-most breakpoint position (bkpA) represented in the POS field">
+##INFO=<ID=CCO,Number=1,Type=Integer,Description="Clipped read clusters orientation: beg (clipping at the read begins) and end (clipping at the read ends). First orientation corresponds to the bkpA, while second to the bkpB. >
 ##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoint">
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
 ##INFO=<ID=STRUCT,Number=1,Type=String,Description="Mobile element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
@@ -370,7 +371,7 @@ class VCFline():
         """
 
         ## Create list containing the order of info fields 
-        infoOrder = [ "SVTYPE", "TYPE", "SCORE", "CLASS", "SUBFAMILY", "PDIV", "MECHANISM", "MANUAL", "BKPB", "CIPOS", "STRAND", "STRUCT", "LEN", "RANGE", "TSLEN", "SRCID", "SRCTYPE", "SRC", "POLYMORPHIC", "NOVEL", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GR", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "DP", "DN", "CA", "CB" ]
+        infoOrder = [ "SVTYPE", "TYPE", "SCORE", "CLASS", "SUBFAMILY", "PDIV", "MECHANISM", "MANUAL", "BKPB", "CCO", "CIPOS", "STRAND", "STRUCT", "LEN", "RANGE", "TSLEN", "SRCID", "SRCTYPE", "SRC", "POLYMORPHIC", "NOVEL", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GR", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "DP", "DN", "CA", "CB", "NI-NANO", "LEN-NANO", "FAMILY-NANO"]
 
         flagList = ["POLYMORPHIC", "NOVEL", "COSMIC", "CPG" , "MANUAL"]
 
