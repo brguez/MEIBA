@@ -1,21 +1,65 @@
 #!/usr/bin/env python
 #coding: utf-8
 
+### Functions ###
+def header(string):
+    """
+        Display  header
+    """
+    timeInfo = time.strftime("%Y-%m-%d %H:%M")
+    print '\n', timeInfo, "****", string, "****"
+
+
+def average_read_len(bam, sampleSize):
+    """
+        Compute the average read length based on a subset of reads. Reads selected following bam sorting order
+        It is much faster than randomly subsampling and I would expect the output to be the same.  
+    """
+
+    bamFile = pysam.AlignmentFile(BAMPath, "rb")
+
+    nbReads = 0
+    readLengthList = []
+
+    for alignment in bamFile.fetch():
+
+        # Only select properly mapped read pairs
+        if (alignment.is_unmapped == False) and (alignment.is_proper_pair == True):
+
+            readLen = alignment.infer_read_length()
+            readLengthList.append(readLen)        
+            nbReads += 1
+
+            if (nbReads == sampleSize):
+                break
+
+    avReadLen = int(numpy.mean(readLengthList))
+    bamFile.close()
+
+    return avReadLen
+
+
+
 ## Load modules/libraries
 import sys
 import argparse
 import os
 import errno
+import pysam
+import numpy
+import time
 
 ## Get user's input
-parser = argparse.ArgumentParser(description='Produce a correctly formated file for executing breakpoint assembly pipeline on the germline insertions from a given donor')
-parser.add_argument('insertions', help='TraFiC germline retrotransposon insertions for a given donor')
-parser.add_argument('sampleId', help='Donor id')
+parser = argparse.ArgumentParser(description='Produce a correctly formated file for executing breakpoint assembly pipeline on the germline insertions from a given sample')
+parser.add_argument('insertions', help='TraFiC germline retrotransposon insertions for a given sample')
+parser.add_argument('bam', help='Sample BAM file')
+parser.add_argument('sampleId', help='Sample id. Output file will be named accordingly')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
 insertionsPath = args.insertions
-normal_wgs_aliquot_id = args.sampleId
+BAMPath = args.bam
+sampleId = args.sampleId
 outDir = args.outDir
 
 scriptName = os.path.basename(sys.argv[0])
@@ -24,7 +68,8 @@ scriptName = os.path.basename(sys.argv[0])
 print
 print "***** ", scriptName, " configuration *****"
 print "insertions: ", insertionsPath
-print "sampleId: ", normal_wgs_aliquot_id 
+print "bam: ", BAMPath
+print "sampleId: ", sampleId
 print "outDir: ", outDir
 print
 
@@ -33,8 +78,23 @@ print
 print "..."
 print
 
-## Create output file with insertions:
-outPath = outDir + "/" + normal_wgs_aliquot_id + ".germline.td0.tsv"
+
+#### Infer average read length from bam file
+#############################################
+header("1. Infer average read length from bam file")
+
+sampleSize = 10000
+
+avReadLen = average_read_len(BAMPath, sampleSize)
+
+print "AVERAGE_READ_LENGTH: ", avReadLen
+
+
+#### Create output file with insertions
+########################################
+header("2. Create output file with insertions")
+
+outPath = outDir + "/" + sampleId + ".germline.td0.tsv"
 outFile = open(outPath, "w" )
 
 # Print header into the output file
@@ -55,13 +115,13 @@ for line in insertions:
        
         chromPlus = fieldsList[0]
         begPlus = fieldsList[1] 
-        endPlus = fieldsList[2]  
+        endPlus = str(int(fieldsList[2]) + avReadLen) 
         nbReadsPlus = fieldsList[3]
         classPlus = fieldsList[4]
         readListPlus = fieldsList[5]
         chromMinus = fieldsList[6]
         begMinus = fieldsList[7] 
-        endMinus = fieldsList[8]   
+        endMinus = str(int(fieldsList[8]) + avReadLen)   
         nbReadsMinus = fieldsList[9] 
         classMinus = fieldsList[10]
         readListMinus = fieldsList[11]

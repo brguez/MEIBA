@@ -3,6 +3,14 @@
 
 
 ### Functions ###
+def header(string):
+    """
+        Display  header
+    """
+    timeInfo = time.strftime("%Y-%m-%d %H:%M")
+    print '\n', timeInfo, "****", string, "****"
+
+
 def overlap(begA, endA, begB, endB):
 
     """
@@ -38,15 +46,49 @@ def overlap(begA, endA, begB, endB):
     return overlap
 
 
+def average_read_len(bam, sampleSize):
+    """
+        Compute the average read length based on a subset of reads. Reads selected following bam sorting order
+        It is much faster than randomly subsampling and I would expect the output to be the same.  
+    """
+
+    bamFile = pysam.AlignmentFile(BAMPath, "rb")
+
+    nbReads = 0
+    readLengthList = []
+
+    for alignment in bamFile.fetch():
+
+        # Only select properly mapped read pairs
+        if (alignment.is_unmapped == False) and (alignment.is_proper_pair == True):
+
+            readLen = alignment.infer_read_length()
+            readLengthList.append(readLen)        
+            nbReads += 1
+
+            if (nbReads == sampleSize):
+                break
+
+    avReadLen = int(numpy.mean(readLengthList))
+    bamFile.close()
+
+    return avReadLen
+
+
+
 ## Load modules/libraries
 import sys
 import argparse
 import os
 import errno
+import pysam
+import numpy
+import time
 
 ## Get user's input
 parser = argparse.ArgumentParser(description= "Produce a correctly formated file for executing breakpoint assembly pipeline on the somatic insertions from a given donor")
 parser.add_argument('traficOut', help='Main TraFiC output file')
+parser.add_argument('bam', help='Sample BAM file')
 parser.add_argument('clusterPaths', help='Path to td0, td1 and td2 TraFiC cluster files')
 parser.add_argument('sourceMetadataPath', help='Path to source elements metadata file')
 parser.add_argument('outFileName', help='Output file name')
@@ -54,6 +96,7 @@ parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='
 
 args = parser.parse_args()
 traficOut = args.traficOut
+BAMPath = args.bam
 clusterPaths = args.clusterPaths
 sourceMetadataPath = args.sourceMetadataPath
 outFileName = args.outFileName
@@ -66,6 +109,7 @@ scriptName = os.path.basename(sys.argv[0])
 print
 print "***** ", scriptName, " configuration *****"
 print "traficOut: ", traficOut
+print "bam: ", BAMPath
 print "clusters: ", clusterPaths
 print "sourceMetadataPath: ", sourceMetadataPath
 print "outFileName: ", outFileName
@@ -78,7 +122,21 @@ print "..."
 print
 
 
-### 1) Read main TraFiC output file and gather transductions info in a dictionary
+#### Infer average read length from bam file
+#############################################
+header("1. Infer average read length from bam file")
+
+sampleSize = 10000
+
+avReadLen = average_read_len(BAMPath, sampleSize)
+
+print "AVERAGE_READ_LENGTH: ", avReadLen
+
+
+#### Read main TraFiC output file and save transductions info in a dictionary
+#################################################################################
+header("2. Read main TraFiC output file and save transductions info in a dictionary")
+
 traficOut = open(traficOut, 'r')
 tdInfoDict = {}
 
@@ -121,8 +179,12 @@ for line in traficOut:
         tdInfoDict[insertionId]["tdLen"] = tdLen
 
 
-### 2) Read source elements metadata dictionary and generate a dictionary with the following structure:
+#### Read source elements metadata dictionary and generate a dictionary
+#########################################################################
+# dictionary structure:
 # dict1 -> Key(chrom) -> tuple(cytobandId, sourceCoord)
+
+header("3. Read source elements metadata dictionary and generate a dictionary")
 
 sourceMetadata = open(sourceMetadataPath, 'r')
 sourceMetadataDict = {}
@@ -149,7 +211,11 @@ for line in sourceMetadata:
         sourceMetadataDict[chrom].append(sourceTuple)
 
 
-### 3) Read TraFiC clusters output files and generate a single properly formated file for breakpoint assembly. 
+### Read TraFiC clusters output files and generate a single properly formated file for breakpoint assembly. 
+############################################################################################################
+
+header("4. Read TraFiC clusters output files and generate a single properly formated file for breakpoint assembly")
+
 ## Create output file with insertions:
 outPath = outDir + "/" + outFileName + ".TraFiC.tsv"
 outFile = open(outPath, "w" )
@@ -181,18 +247,18 @@ for line in clusterPaths:
         
             chromPlus = fieldsList[0]
             begPlus = fieldsList[1] 
-            endPlus = fieldsList[2]  
+            endPlus = str(int(fieldsList[2]) + avReadLen) 
             nbReadsPlus = fieldsList[3]
             classPlus = fieldsList[4]
             readListPlus = fieldsList[5]
             chromMinus = fieldsList[6]
             begMinus = fieldsList[7] 
-            endMinus = fieldsList[8]   
+            endMinus = str(int(fieldsList[8]) + avReadLen)   
             nbReadsMinus = fieldsList[9] 
             classMinus = fieldsList[10]
             readListMinus = fieldsList[11]
 
-            insertionId = classPlus + '_' + chromPlus + "_" + str(int(endPlus)+100) + "_" + begMinus           
+            insertionId = classPlus + '_' + chromPlus + "_" + str(endPlus) + "_" + begMinus           
 
             ## Select only insertions into TraFiC final output file and discard repeated insertions
             if (insertionId in tdInfoDict) and (insertionId not in insertionList):

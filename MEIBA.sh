@@ -429,7 +429,7 @@ function cleanupFunc {
 ############################
 
 # MEIBA version
-version=0.8.6
+version=0.8.7
 
 # Enable extended pattern matching
 shopt -s extglob

@@ -247,8 +247,8 @@ def getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endM
         beg = int(begPlus) - windowSize
         end = int(begPlus) + windowSize
     else:
-        beg = int(endPlus) + 100 - windowSize
-        end = int(endPlus) + 100 + windowSize
+        beg = int(endPlus) - windowSize
+        end = int(endPlus) + windowSize
 
     clippedBegPlusList, clippedEndPlusList = getClippedInterval(chrom, beg, end, bamFile)
 
@@ -256,8 +256,8 @@ def getClippedPairedClusters(chrPlus, begPlus, endPlus, chrMinus, begMinus, endM
     chrom = chrMinus
 
     if (rgType == "DUP"):
-        beg = int(endMinus) + 100 - windowSize
-        end = int(endMinus) + 100 + windowSize
+        beg = int(endMinus) - windowSize
+        end = int(endMinus) + windowSize
 
     else:
         beg = int(begMinus) - windowSize
@@ -286,8 +286,8 @@ def getClippedUnpairedCluster(chrPlus, begPlus, endPlus, bamFile, windowSize):
 
     ## 2. Extract clipped reads for cluster ending
     chrom = chrPlus
-    beg = int(endPlus) + 100 - windowSize
-    end = int(endPlus) + 100 + windowSize
+    beg = int(endPlus) - windowSize
+    end = int(endPlus) + windowSize
 
     print "range_end: ", chrom, beg, end
     clippedBegClusterEndList, clippedEndClusterEndList = getClippedInterval(chrom, beg, end, bamFile)
@@ -570,12 +570,12 @@ for line in insertions:
         ### 0. Refine discordant paired end clusters:
         ## A) Paired clusters
         if (begMinus != "NA") and (begMinus != "UNK"):
-            filteredPlus = filterDiscordantCluster(chrPlus, int(begPlus), int(endPlus) + 100, readPairListPlus, bamFile)
-            filteredMinus = filterDiscordantCluster(chrMinus, int(begMinus), int(endMinus) + 100, readPairListMinus, bamFile)
+            filteredPlus = filterDiscordantCluster(chrPlus, int(begPlus), int(endPlus), readPairListPlus, bamFile)
+            filteredMinus = filterDiscordantCluster(chrMinus, int(begMinus), int(endMinus), readPairListMinus, bamFile)
 
         ## B) Unpaired cluster
         else:
-            filteredPlus = filterDiscordantCluster(chrPlus, int(begPlus), int(endPlus) + 100, readPairListPlus, bamFile)
+            filteredPlus = filterDiscordantCluster(chrPlus, int(begPlus), int(endPlus), readPairListPlus, bamFile)
             filteredMinus = False
 
         ## Discard those insertions with a high percentage of both-sides clipped reads supporting at least one of the clusters:
@@ -664,7 +664,7 @@ for insertionId in clustersDict:
     clusterBegList = clustersDict[insertionId]["beg"] 
     clusterEndList = clustersDict[insertionId]["end"]   
 
-    print "--- clusterBeg ---"
+    #print "--- clusterBeg ---"
     for clusterObj in clusterBegList:
         clusterId = clusterObj.chrom + "_" + str(clusterObj.bkpPos) + "_" + clusterObj.clippedSide + "_" + str(clusterObj.nbReads()) 
         consensusDir = tmpDir + '/' + clusterId

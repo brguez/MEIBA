@@ -123,13 +123,13 @@ for line in insertions:
         
         chromPlus = fieldsList[0]
         begPlus = fieldsList[1] 
-        endPlus = fieldsList[2]  
+        endPlus = str(int(fieldsList[2]) + 100) 
         nbReadsPlus = fieldsList[3]
         classPlus = fieldsList[4]
         readListPlus = fieldsList[5]
         chromMinus = fieldsList[6]
         begMinus = fieldsList[7] 
-        endMinus = fieldsList[8]   
+        endMinus = str(int(fieldsList[8]) + 100)   
         nbReadsMinus = fieldsList[9] 
         classMinus = fieldsList[10]
         readListMinus = fieldsList[11]
