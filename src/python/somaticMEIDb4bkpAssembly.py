@@ -369,7 +369,7 @@ for line in donorMetadata:
         
             ## Create text file with insertions:
 
-            insertionsPath = outDonorDir + "/" + tumor_wgs_aliquot_id + ".somatic.td0_td1_td2.tsv"
+            insertionsPath = outDonorDir + "/" + tumor_wgs_aliquot_id + ".somatic.TraFiC.tsv"
             outFile = open(insertionsPath, "w" )
 
             # Print header into the output file
