@@ -889,6 +889,7 @@ class insertion():
         self.chrom = "NA"
         self.bkpAPos = "NA"
         self.bkpBPos = "NA"
+        self.CCO = "NA"
         self.bkpAContigSeq = "NA"
         self.bkpBContigSeq = "NA"
 
@@ -1181,8 +1182,7 @@ class insertion():
             
         ## A) Solo integration or partnered transduction
         if (self.tdType == "TD0") or (self.tdType == "TD1"):
-            print "LOROLOO: ", self.tdType, alignmentObj.tSize, alignmentObj.tBeg, alignmentObj.tName
-   
+  
             elementLength = alignmentObj.tSize - alignmentObj.tBeg
             elementRange = str(alignmentObj.tBeg) + '-' + str(alignmentObj.tSize)
 
@@ -1406,12 +1406,15 @@ class insertion():
                 bkpAContigSeq = informativeContigClippedEndObj.bkpDict["bkpSeq"]
                 NCA = informativeContigClippedEndObj.nbReads
                 CA = informativeContigClippedEndObj.clippedReadIds
-
+                
                 bkpBPos = informativeContigClippedBegObj.bkpDict["pos"]
                 bkpBContigSeq = informativeContigClippedBegObj.bkpDict["bkpSeq"]
                 NCB = informativeContigClippedBegObj.nbReads
                 CB = informativeContigClippedBegObj.clippedReadIds
 
+                ## Clipped clusters orientation
+                CCO = informativeContigClippedEndObj.clippedSide + '-' + informativeContigClippedBegObj.clippedSide
+                
             else:
 
                 bkpAPos = informativeContigClippedBegObj.bkpDict["pos"] 
@@ -1423,6 +1426,9 @@ class insertion():
                 bkpBContigSeq = informativeContigClippedEndObj.bkpDict["bkpSeq"]
                 NCB = informativeContigClippedEndObj.nbReads
                 CB = informativeContigClippedEndObj.clippedReadIds
+
+                ## Clipped clusters orientation
+                CCO = informativeContigClippedBegObj.clippedSide + '-' + informativeContigClippedEndObj.clippedSide
 
         # b) One breakpoint identified
         elif (self.score == '4') or (self.score == '3'):
@@ -1439,6 +1445,9 @@ class insertion():
                 bkpBContigSeq = "NA"
                 NCB = "."
                 CB = "NA"
+
+                ## Clipped clusters orientation
+                CCO = informativeContigClippedEndObj.clippedSide
 
                 # a) L1-mediated rearrangement. Use rearrangement end rough coordinates
                 if (self.grInfo in ["DEL", "DUP", "TRANS"]):
@@ -1461,6 +1470,9 @@ class insertion():
                 NCB = "."
                 CB = "NA"
 
+                ## Clipped clusters orientation
+                CCO = informativeContigClippedBegObj.clippedSide
+
                 # a) L1-mediated rearrangement. Use rearrangement beg and end rough coordinates
                 if (self.grInfo in ["DEL", "DUP", "TRANS"]):
                     insertionCoordList = self.coordinates.split("_")
@@ -1479,6 +1491,9 @@ class insertion():
             NCB = "."
             CB = "NA"
 
+            ## Clipped clusters orientation
+            CCO = "NA"
+
             # a) L1-mediated rearrangement. Use rearrangement beg and end rough coordinates
             if (self.grInfo in ["DEL", "DUP", "TRANS"]):
                 insertionCoordList = self.coordinates.split("_")
@@ -1492,7 +1507,7 @@ class insertion():
                 chrom, bkpAPos, cipos = self.imprecise_bkp()
                 bkpBPos = "NA"
 
-        return chrom, bkpAPos, bkpBPos, bkpAContigSeq, bkpBContigSeq, NCA, NCB, CA, CB, cipos    
+        return chrom, bkpAPos, bkpBPos, CCO, bkpAContigSeq, bkpBContigSeq, NCA, NCB, CA, CB, cipos    
                  
     def find_insertionBkp(self):
         """
@@ -1542,9 +1557,7 @@ class insertion():
         self.score = self.insertion_score(informativeContigClippedEndObj, informativeContigClippedBegObj)
 
         ## 2.4 Breakpoints
-        self.chrom, self.bkpAPos, self.bkpBPos, self.bkpAContigSeq, self.bkpBContigSeq, self.NCA, self.NCB, self.CA, self.CB, self.cipos = self.breakpoints(informativeContigClippedEndObj, informativeContigClippedBegObj)
-
-        #print "FEATURES: ", self.tdType, self.coordinates, self.targetSiteLen, self.mechanism, self.orientation, self.elementLength, self.elementRange, self.structure, self.score, self.bkpAPos, self.bkpBPos, self.bkpAContigSeq, self.bkpBContigSeq, self.NCA, self.NCB, self.CA, self.CB, self.cipos
+        self.chrom, self.bkpAPos, self.bkpBPos, self.CCO, self.bkpAContigSeq, self.bkpBContigSeq, self.NCA, self.NCB, self.CA, self.CB, self.cipos = self.breakpoints(informativeContigClippedEndObj, informativeContigClippedBegObj)
 
 
     def convert2VCFline(self, genomeObj):
@@ -1558,7 +1571,7 @@ class insertion():
         ALT = "<MEI>"
         QUAL = "."
         FILTER = "."
-        INFO = "SVTYPE=<MEI>;TYPE=" + self.tdType + ";SCORE=" + str(self.score) + ";CLASS=" + self.family + ";MECHANISM=" + self.mechanism + ";BKPB=" + str(self.bkpBPos) + ";CIPOS=" + str(self.cipos) + ";STRAND=" + self.orientation + ";STRUCT=" + self.structure + ";LEN=" + str(self.elementLength) + ";RANGE=" + str(self.elementRange) + ";TSLEN=" + str(self.targetSiteLen) + ";SRCID=" + self.cytobandId + ";SRCTYPE=" + self.sourceElementType + ";SRC=" + self.sourceElementCoord + ";TDC=" + self.tdCoord + ";TDLEN=" + self.tdLen + ";TDLENR=" + self.tdLenRna + ";SRCGENE=" + self.srcgene + ";GR=" + self.grInfo + ";CONTIGA=" + self.bkpAContigSeq + ";CONTIGB=" + self.bkpBContigSeq + ";DP=" + self.DP + ";DN=" + self.DN + ";CA=" + self.CA + ";CB=" + self.CB 
+        INFO = "SVTYPE=<MEI>;TYPE=" + self.tdType + ";SCORE=" + str(self.score) + ";CLASS=" + self.family + ";MECHANISM=" + self.mechanism + ";BKPB=" + str(self.bkpBPos) + ";CCO=" + str(self.CCO) + ";CIPOS=" + str(self.cipos) + ";STRAND=" + self.orientation + ";STRUCT=" + self.structure + ";LEN=" + str(self.elementLength) + ";RANGE=" + str(self.elementRange) + ";TSLEN=" + str(self.targetSiteLen) + ";SRCID=" + self.cytobandId + ";SRCTYPE=" + self.sourceElementType + ";SRC=" + self.sourceElementCoord + ";TDC=" + self.tdCoord + ";TDLEN=" + self.tdLen + ";TDLENR=" + self.tdLenRna + ";SRCGENE=" + self.srcgene + ";GR=" + self.grInfo + ";CONTIGA=" + self.bkpAContigSeq + ";CONTIGB=" + self.bkpBContigSeq + ";DP=" + self.DP + ";DN=" + self.DN + ";CA=" + self.CA + ";CB=" + self.CB 
         FORMAT = "NDP:NDN:NCA:NCB:SL"
         NDP = str(self.NDP)
         NDN = str(self.NDN)
