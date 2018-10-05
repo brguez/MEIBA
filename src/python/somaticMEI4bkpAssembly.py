@@ -217,7 +217,7 @@ for line in sourceMetadata:
 header("4. Read TraFiC clusters output files and generate a single properly formated file for breakpoint assembly")
 
 ## Create output file with insertions:
-outPath = outDir + "/" + outFileName + ".TraFiC.tsv"
+outPath = outDir + "/" + outFileName + ".somatic.td0_td1_td2.tsv"
 outFile = open(outPath, "w" )
 
 # Print header into the output file

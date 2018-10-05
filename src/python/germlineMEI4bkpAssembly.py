@@ -95,6 +95,7 @@ print "AVERAGE_READ_LENGTH: ", avReadLen
 header("2. Create output file with insertions")
 
 outPath = outDir + "/" + sampleId + ".germline.td0.tsv"
+
 outFile = open(outPath, "w" )
 
 # Print header into the output file

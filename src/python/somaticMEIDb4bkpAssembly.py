@@ -368,6 +368,7 @@ for line in donorMetadata:
                     raise
         
             ## Create text file with insertions:
+
             insertionsPath = outDonorDir + "/" + tumor_wgs_aliquot_id + ".somatic.td0_td1_td2.tsv"
             outFile = open(insertionsPath, "w" )
 
