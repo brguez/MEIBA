@@ -89,7 +89,7 @@ for line in metadata:
         
         fieldsList = line.split("\t")
 
-        donorId = fieldsList[0]
+        donorId = fieldsList[1]
         gender = fieldsList[5]
 
         genderDict[donorId] = gender
