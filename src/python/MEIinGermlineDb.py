@@ -108,9 +108,10 @@ class MEIdb():
                 beg = line[1]
                 end = line[2]
                 MEIClass = line[3]
-                database = line[4]
+                idList = line[4]
+                dbList = line[5]
 
-                MEIObj = MEI(chrom, beg, end, MEIClass, database)
+                MEIObj = MEI(chrom, beg, end, MEIClass, idList, dbList)
 
                 ## Create nested dictionaries as needed
                 # A) First MEI of a given class
@@ -134,14 +135,15 @@ class MEIdb():
 class MEI():
     """
     """
-    def __init__(self, chrom, beg, end, MEIClass, database):
+    def __init__(self, chrom, beg, end, MEIClass, idList, dbList):
         """
         """
         self.chrom = chrom
         self.beg = int(beg)
         self.end = int(end)
         self.MEIClass = MEIClass
-        self.database = database
+        self.idList = idList
+        self.dbList = dbList
 
 
 #### MAIN ####
@@ -219,6 +221,12 @@ for MEIobj in VCFObj.lineList:
     end = int(MEIobj.infoDict["BKPB"]) if "BKPB" in MEIobj.infoDict else MEIobj.pos
     iClass = MEIobj.infoDict["CLASS"]
 
+    ## Initialize relevant fields. Set as unknown
+    MEIobj.infoDict["GERMDB"] = "UNK"
+    MEIobj.infoDict["IDS"] = "UNK"
+    MEIobj.info = MEIobj.make_info()
+
+
     info("Checking if " + chrom + ":" + str(beg) + "-" +  str(end) + ":" + iClass + " MEI is in the germline database..." )
                   
     ## There are germline MEI of the same class and in the same chromosome
@@ -227,13 +235,13 @@ for MEIobj in VCFObj.lineList:
         ## For each germline MEI in the same chromosome check if it overlaps the current somatic MEI
         for germlineMEIobj in germlineMEIdb.MEIDict[iClass][chrom].itervalues():
 
-            status, nbBases = overlap(beg, end, germlineMEIobj.beg, germlineMEIobj.end, 10) 
+            status, nbBases = overlap(beg, end, germlineMEIobj.beg, germlineMEIobj.end, 100) 
 
-            # PCAWG MEI overlaps a MEI in the 1KGP database 
+            # PCAWG MEI overlaps a MEI in the germline database 
             if (status != "not"):
 
-                #print "OVERLAP: ", beg, end, germlineMEIobj.beg, germlineMEIobj.end, germlineMEIobj.database               
-                MEIobj.infoDict["GERMDB"] = germlineMEIobj.database
+                MEIobj.infoDict["GERMDB"] = germlineMEIobj.dbList
+                MEIobj.infoDict["IDS"] = germlineMEIobj.idList
 
                 # Redefine info attribute with updated information
                 MEIobj.info = MEIobj.make_info()

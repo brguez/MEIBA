@@ -256,15 +256,16 @@ class VCF():
         chunk3 = """
 ##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Type of structural variant.">
 ##INFO=<ID=TYPE,Number=1,Type=String,Description="Insertion type (TD0: solo, TD1: partnered-3'transduction, TD2: orphan-3'transduction, PSD: processed-pseudogene)>
-##INFO=<ID=SCORE,Number=1,Type=Integer,Description="Insertion score (5: 5' and 3' breakpoints (bkp) identified, 4: 3'bkp identified, 3: 5'bkp identified, 2: no bkp identified, 1: inconsistent (contradictory insertion features))">
 ##INFO=<ID=CLASS,Number=1,Type=String,Description="Mobile element family (L1, ALU, SVA or ERVK)">
 ##INFO=<ID=SUBFAMILY,Number=1,Type=String,Description="Mobile element subfamily">
-##INFO=<ID=PDIV,Number=1,Type=Integer,Description="Percentage divergence with respect to consensus mobile element subfamily">
+##INFO=<ID=PDIV,Number=1,Type=Float,Description="Percentage divergence with respect to consensus mobile element subfamily">
 ##INFO=<ID=MECHANISM,Number=1,Type=String,Description="Insertion mechanism (TPRT: target primed reverse transcription, EI: endonuclease independent, DPA: double poly-A)>
+##INFO=<ID=GR,Number=1,Type=String,Description="L1-mediated genomic rearrangement (DEL: deletion, DUP: duplication or TRANS: translocation)">
 ##INFO=<ID=MANUAL,Number=0,Type=Flag,Description="MEI manually verified through BAM inspection">
+##INFO=<ID=SCORE,Number=1,Type=Integer,Description="Insertion score (5: 5' and 3' breakpoints (bkp) identified, 4: 3'bkp identified, 3: 5'bkp identified, 2: no bkp identified, 1: inconsistent (contradictory insertion features))">
 ##INFO=<ID=BKPB,Number=1,Type=Integer,Description="MEI right-most breakpoint position (bkpB). Left-most breakpoint position (bkpA) represented in the POS field">
-##INFO=<ID=CCO,Number=1,Type=Integer,Description="Clipped read clusters orientation: beg (clipping at the read begins) and end (clipping at the read ends). First orientation corresponds to the bkpA, while second to the bkpB. >
 ##INFO=<ID=CIPOS,Number=1,Type=Integer,Description="Confidence interval around insertion breakpoint">
+##INFO=<ID=CCO,Number=1,Type=String,Description="Clipped read clusters orientation: beg (clipping at the read begins) and end (clipping at the read ends). First orientation corresponds to the bkpA, while second to the bkpB. >
 ##INFO=<ID=STRAND,Number=1,Type=String,Description="Insertion DNA strand (+ or -)">
 ##INFO=<ID=STRUCT,Number=1,Type=String,Description="Mobile element structure (INV: 5'inverted, DEL: 5'deleted, FULL: full-length)">
 ##INFO=<ID=LEN,Number=1,Type=Integer,Description="Mobile element length">
@@ -277,8 +278,6 @@ class VCF():
 ##INFO=<ID=TDLEN,Number=1,Type=Integer,Description="Transduced region length">
 ##INFO=<ID=TDLENR,Number=1,Type=Integer,Description="Transduced region length at RNA level">
 ##INFO=<ID=SRCGENE,Number=1,Type=String,Description="Source gene of the processed pseudogene insertion">
-##INFO=<ID=GR,Number=1,Type=String,Description="L1-mediated genomic rearrangement (DEL: deletion, DUP: duplication or TRANS: translocation)">
-##INFO=<ID=GERMDB,Number=1,Type=String,Description="MEI reported as germline in a database">
 ##INFO=<ID=REGION,Number=1,Type=String,Description="Genomic region where the mobile element is inserted (exonic, splicing, ncRNA, UTR5, UTR3, intronic, upstream, downstream, intergenic)">
 ##INFO=<ID=GENE,Number=1,Type=String,Description="HUGO gene symbol">
 ##INFO=<ID=ROLE,Number=1,Type=String,Description="Role in cancer (oncogene, TSG: tumor suppressor gene, oncogene/TSG: both roles)">
@@ -286,6 +285,17 @@ class VCF():
 ##INFO=<ID=CPG,Number=0,Type=Flag,Description="Reported as cancer predisposition gene in 10.1038/nature12981 (DOI).">
 ##INFO=<ID=REP,Number=1,Type=String,Description="Repetitive element overlapping the insertion breakpoints">
 ##INFO=<ID=DIV,Number=1,Type=Integer,Description="Millidivergence of the overlapping repetitive element with respect a consensus sequence">
+##INFO=<ID=GERMDB,Number=.,Type=String,Description="List of sources that previously reported this event">
+##INFO=<ID=IDS,Number=.,Type=String,Description="List of identifiers assigned to this event. Same order as in GERMDB">
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Total number of alternate alleles in called genotypes">
+##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
+##INFO=<ID=AF,Number=A,Type=Float,Description="Estimated allele frequency in the range (0,1)">
+##INFO=<ID=NS,Number=1,Type=Integer,Description="Number of samples with data">
+##INFO=<ID=AFR_AF,Number=A,Type=Float,Description="Allele frequency in the AFR populations calculated from AC and AN, in the range (0,1)">
+##INFO=<ID=AMR_AF,Number=A,Type=Float,Description="Allele frequency in the AMR populations calculated from AC and AN, in the range (0,1)">
+##INFO=<ID=EAS_AF,Number=A,Type=Float,Description="Allele frequency in the EAS populations calculated from AC and AN, in the range (0,1)">
+##INFO=<ID=EUR_AF,Number=A,Type=Float,Description="Allele frequency in the EUR populations calculated from AC and AN, in the range (0,1)">
+##INFO=<ID=SAS_AF,Number=A,Type=Float,Description="Allele frequency in the SAS populations calculated from AC and AN, in the range (0,1)">
 ##INFO=<ID=CONTIGA,Number=1,Type=String,Description="Assembled contig sequence spanning bkpA">
 ##INFO=<ID=CONTIGB,Number=1,Type=String,Description="Assembled contig sequence spanning bkpB">
 ##INFO=<ID=DP,Number=.,Type=String,Description="Discordant read-pairs Positive cluster">
@@ -371,9 +381,9 @@ class VCFline():
         """
 
         ## Create list containing the order of info fields 
-        infoOrder = [ "SVTYPE", "TYPE", "SCORE", "CLASS", "SUBFAMILY", "PDIV", "MECHANISM", "MANUAL", "BKPB", "CCO", "CIPOS", "STRAND", "STRUCT", "LEN", "RANGE", "TSLEN", "SRCID", "SRCTYPE", "SRC", "POLYMORPHIC", "NOVEL", "TDC", "TDLEN", "TDLENR", "SRCGENE", "GR", "GERMDB", "REGION", "GENE", "ROLE", "COSMIC", "CPG", "REP", "DIV", "CONTIGA", "CONTIGB", "DP", "DN", "CA", "CB", "NI-NANO", "LEN-NANO", "FAMILY-NANO"]
+        infoOrder = ['SVTYPE', 'TYPE', 'CLASS', 'SUBFAMILY', 'PDIV', 'MECHANISM', 'GR', 'MANUAL', 'SCORE', 'BKPB', 'CIPOS', 'CCO', 'STRAND', 'STRUCT', 'LEN', 'RANGE', 'TSLEN', 'SRCID', 'SRCTYPE', 'SRC', 'TDC', 'TDLEN', 'TDLENR', 'SRCGENE', 'REGION', 'GENE', 'ROLE', 'COSMIC', 'CPG', 'REP', 'DIV', 'GERMDB', 'IDS', 'AC', 'AN', 'AF', 'NS', 'AFR_AF', 'AMR_AF', 'EAS_AF', 'EUR_AF', 'SAS_AF', 'CONTIGA', 'CONTIGB', 'DP', 'DN', 'CA', 'CB']
 
-        flagList = ["POLYMORPHIC", "NOVEL", "COSMIC", "CPG" , "MANUAL"]
+        flagList = ['COSMIC', 'CPG' , 'MANUAL']
 
         ## Create info string in the correct order from dictionary
         infoList = []
