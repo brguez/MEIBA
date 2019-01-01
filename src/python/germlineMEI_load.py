@@ -116,8 +116,7 @@ for line in metadataFile:
         line = line.rstrip('\n')
         line = line.split('\t')
 
-        donorId = line[0]
-        donorExclusion = line[3]
+        donorId = line[1]
         ancestry = line[4]
         projectCode = line[9]
 
@@ -125,12 +124,11 @@ for line in metadataFile:
         histologyExclusion = line[11]
         tumorHistology = line[12]
 
-        ## Discard excluded donors for tumor types analysis (initial: 2813, after_excluding: 2743). 4 possible exclusion reasons:
-        # - TraFiC excluded (22)
+        ## Exclude donors for tumor type analysis (total: 30 + 10 + 32 = 72). 3 possible exclusion reasons:
         # - Unknown histology (30)
         # - More than 1 possible histology (10)
         # - Excluded histology cohort (32)
-        if (donorExclusion == 'Whitelist') and (tumorHistology != "UNK") and (histologyCount == "1") and (histologyExclusion == "included") :
+        if (tumorHistology != "UNK") and (histologyCount == "1") and (histologyExclusion == "included") :
          
             metadataDict[donorId] = {}
             metadataDict[donorId]['ancestry'] = ancestry
@@ -140,13 +138,13 @@ for line in metadataFile:
 metadataDf = pd.DataFrame(metadataDict) 
 metadataDf = metadataDf.T
 
+
 #### 1. Read input multi-sample VCF and generate a VCF object
 ###############################################################
 header("1. Process multi-sample VCF as input")
 
 VCFObj = formats.VCF()
 donorIdList = VCFObj.read_VCF_multiSample(inputVCF)
-
 
 #### 2. Build dictionaries with donor genotypes
 ################################################

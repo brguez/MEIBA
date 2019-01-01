@@ -125,6 +125,14 @@ def organizeMEI(MEIList):
         return MEIDict
 
 
+def make_autopct(values):
+    def my_autopct(pct):
+        total = sum(values)
+        val = int(round(pct*total/100.0))
+        return '{p:.2f}%  ({v:d})'.format(p=pct,v=val)
+    return my_autopct
+
+
 #### MAIN ####
 
 ## Import modules ##
@@ -169,8 +177,8 @@ header("1. Read PCAWG VCF")
 
 ## ReadVCF
 VCFObj = formats.VCF()
-donorIdList = VCFObj.read_VCF_multiSample(VCF)
-
+#donorIdList = VCFObj.read_VCF_multiSample(VCF)
+VCFObj.read_VCF(VCF)
 
 ##### 2. Final number of Alu, L1, SVA and ERVK
 ###############################################
@@ -196,6 +204,24 @@ for MEIObj in VCFObj.lineList:
 for MEIclass in nbMEIDict:
     nbMEI = nbMEIDict[MEIclass]
     print "nb_MEI: ", MEIclass, nbMEI
+
+### Make pie chart with the counts
+values = [nbMEIDict['Alu'], nbMEIDict['L1'], nbMEIDict['SVA'], nbMEIDict['ERVK']]
+labels = ['Alu', 'L1', 'SVA', 'ERVK']
+
+print values, labels
+
+plt.pie(values, labels=labels, pctdistance=1.2, labeldistance=1, autopct=make_autopct(values))
+plt.axis('equal')  
+plt.tight_layout()
+
+fileName = outDir + "/Pictures/germline_MEI_counts_piechart.pdf"
+plt.savefig(fileName)
+
+fileName = outDir + "/Pictures/germline_MEI_counts_piechart.svg"
+plt.savefig(fileName)
+
+sys.exit(1)
 
 ##### 3. Median size of SV sites.
 ################################

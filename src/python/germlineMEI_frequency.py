@@ -29,135 +29,121 @@ def info(string):
 
 def variantFrequencies(MEIObj, donorIdAncestryDict):
     """
-    For a variant absent in the reference genome compute its allele count and frequency for the complete PCAWG cohort and for each echnicity
+    For a variant absent in the reference genome compute its allele count and frequency for the complete cohort and for each echnicity
     """
 
     ancestryCodesList = set(donorIdAncestryDict.values())
 
-    # Initialize allele count dictionary   
-    alleleCountDict = {}
-    alleleCountDict['PCAWG'] = 0
+    ## Initialize alternative allele count dictionary   
+    altAlleleCountDict = {}
+    altAlleleCountDict['COHORT'] = 0
 
     for ancestry in ancestryCodesList:
-        alleleCountDict[ancestry] = 0
+        altAlleleCountDict[ancestry] = 0
 
-    ## Total number of chromosome copies in the population
-    # Will be used for computing the allele frequency
-    # If no missing genotypes would be == Number of donors * 2 (diploid, two copies of a given chromosome)
-    nbChromDict = {}
-    nbChromDict['PCAWG'] = 0 
+    ## Initialize total allele count dictionary
+    # If no missing genotypes, for variants in automosomal chromosomes would be == Number of donors * 2 (diploid, two alleles in a given chromosome)
+    totalAlleleCountDict = {}
+    totalAlleleCountDict['COHORT'] = 0 
 
     for ancestry in ancestryCodesList:
-        nbChromDict[ancestry] = 0
+        totalAlleleCountDict[ancestry] = 0
 
-    # For each donor and genotype
+    ## For each donor and genotype
     for donorId, genotypeField in MEIObj.genotypesDict.iteritems():
 
         genotypeFieldList = genotypeField.split(":")
         genotype = genotypeFieldList[0]
 
         ancestry = donorIdAncestryDict[donorId]
-    
-        # print "TIO: ", donorId, ancestry, genotype
            
-        # a) Heterozygous
-        if (genotype == "0/1"):
 
-            nbChromDict['PCAWG'] += 2
-            nbChromDict[ancestry] += 2
-
-            alleleCountDict['PCAWG'] += 1     
-            alleleCountDict[ancestry] += 1     
-
-        # b) Homozygous alternative
-        elif (genotype == "1/1"):
+        # a) Homozygous alternative
+        if (genotype == "1/1"):
     
-            nbChromDict['PCAWG'] += 2
-            nbChromDict[ancestry] += 2
+            totalAlleleCountDict['COHORT'] += 2
+            totalAlleleCountDict[ancestry] += 2
 
-            alleleCountDict['PCAWG'] += 2
-            alleleCountDict[ancestry] += 2
+            altAlleleCountDict['COHORT'] += 2
+            altAlleleCountDict[ancestry] += 2
 
-        # c) Homozygous reference
-        elif (genotype == "0/0"):
-    
-            nbChromDict['PCAWG'] += 2
-            nbChromDict[ancestry] += 2
+        # b) Heterozygous
+        elif (genotype == "0/1"):
 
-        # d) Haploid carrier (males X and Y outside PAR region)
+            totalAlleleCountDict['COHORT'] += 2
+            totalAlleleCountDict[ancestry] += 2
+
+            altAlleleCountDict['COHORT'] += 1     
+            altAlleleCountDict[ancestry] += 1     
+
+       
+        # c) Haploid carrier (males X and Y outside PAR region)
         elif (genotype == "1"):
 
-            nbChromDict['PCAWG'] += 1
-            nbChromDict[ancestry] += 1
+            totalAlleleCountDict['COHORT'] += 1
+            totalAlleleCountDict[ancestry] += 1
 
-            alleleCountDict['PCAWG'] += 1     
-            alleleCountDict[ancestry] += 1     
+            altAlleleCountDict['COHORT'] += 1     
+            altAlleleCountDict[ancestry] += 1     
          
+        # d) Homozygous reference
+        elif (genotype == "0/0"):
+    
+            totalAlleleCountDict['COHORT'] += 2
+            totalAlleleCountDict[ancestry] += 2
+
         # e) Haploid not carrier (males X and Y outside PAR region)
         elif (genotype == "0"):
 
-            nbChromDict['PCAWG'] += 1
-            nbChromDict[ancestry] += 1 
+            totalAlleleCountDict['COHORT'] += 1
+            totalAlleleCountDict[ancestry] += 1 
                 
 
     ## Compute overall and per echnicity variant allele frequencies
     alleleFreqDict = {}
      
     # a) Allele freq. estimation not available for those insertions with unknown genotype in all the donors
-    if (nbChromDict['PCAWG'] == 0):
-        alleleFreqDict['PCAWG'] = "UNK" 
+    if (totalAlleleCountDict['COHORT'] == 0):
+        alleleFreqDict['COHORT'] = "UNK" 
    
     # b) Allele freq. estimation available 
     else:
-        alleleFreqDict['PCAWG'] = float(alleleCountDict['PCAWG'])/float(nbChromDict['PCAWG'])
+        alleleFreqDict['COHORT'] = float(altAlleleCountDict['COHORT'])/float(totalAlleleCountDict['COHORT'])
     
     for ancestry in ancestryCodesList:
 
         # a) Allele freq. estimation not available for those insertions with unknown genotype in all the donors
-        if (nbChromDict[ancestry] == 0):
+        if (totalAlleleCountDict[ancestry] == 0):
             alleleFreqDict[ancestry] = "UNK" 
    
         # b) Allele freq. estimation available 
         else:    
-            alleleFreqDict[ancestry] = float(alleleCountDict[ancestry])/float(nbChromDict[ancestry])
+            alleleFreqDict[ancestry] = float(altAlleleCountDict[ancestry])/float(totalAlleleCountDict[ancestry])
 
-    ## A) Novel insertion
-    if ('GERMDB' not in MEIObj.infoDict):
-
-        alleleFreqDict["novelty"] = "novel"
-  
-    ## B) Not novel insertion
-    else:
-
-        alleleFreqDict["novelty"] = "known"
-
-
-    return alleleCountDict, alleleFreqDict
-
+    return altAlleleCountDict, totalAlleleCountDict, alleleFreqDict
 
 
 def variantFrequencies_ref(MEIObj, donorIdAncestryDict):
     """
-    For a variant in the reference genome compute its allele count and frequency for the complete PCAWG cohort and for each echnicity
+    For a variant in the reference genome compute its allele count and frequency for the complete cohort and for each echnicity
     """
 
     ancestryCodesList = set(donorIdAncestryDict.values())
 
-    # Initialize allele count dictionary   
-    alleleCountDict = {}
-    alleleCountDict['PCAWG'] = 0
+    ## Initialize alternative allele count dictionary   
+    altAlleleCountDict = {}
+    altAlleleCountDict['COHORT'] = 0
 
     for ancestry in ancestryCodesList:
-        alleleCountDict[ancestry] = 0
+        altAlleleCountDict[ancestry] = 0
 
-    ## Total number of chromosome copies in the population
-    # Will be used for computing the allele frequency
-    # If no missing genotypes would be == Number of donors * 2 (diploid, two copies of a given chromosome)
-    nbChromDict = {}
-    nbChromDict['PCAWG'] = 0 
+    ## Initialize total allele count dictionary
+    # If no missing genotypes, for variants in automosomal chromosomes would be == Number of donors * 2 (diploid, two alleles in a given chromosome)
+    totalAlleleCountDict = {}
+    totalAlleleCountDict['COHORT'] = 0 
 
     for ancestry in ancestryCodesList:
-        nbChromDict[ancestry] = 0
+        totalAlleleCountDict[ancestry] = 0
 
     # For each donor and genotype
     for donorId, genotypeField in MEIObj.genotypesDict.iteritems():
@@ -167,68 +153,69 @@ def variantFrequencies_ref(MEIObj, donorIdAncestryDict):
 
         ancestry = donorIdAncestryDict[donorId]
 
-        # a) Heterozygous
-        if (genotype == "0/1"):
-
-            nbChromDict['PCAWG'] += 2
-            nbChromDict[ancestry] += 2
-
-            alleleCountDict['PCAWG'] += 1     
-            alleleCountDict[ancestry] += 1     
-
-        # b) Homozygous alternative (MEI absent)
-        elif (genotype == "1/1"):
+        # a) Homozygous reference (MEI present)
+        if (genotype == "0/0"):
     
-            nbChromDict['PCAWG'] += 2
-            nbChromDict[ancestry] += 2
-
-        # c) Homozygous reference (MEI present)
-        elif (genotype == "0/0"):
+            totalAlleleCountDict['COHORT'] += 2
+            totalAlleleCountDict[ancestry] += 2
     
-            nbChromDict['PCAWG'] += 2
-            nbChromDict[ancestry] += 2
-    
-            alleleCountDict['PCAWG'] += 2
-            alleleCountDict[ancestry] += 2
+            altAlleleCountDict['COHORT'] += 2
+            altAlleleCountDict[ancestry] += 2
 
-        # d) Haploid not carrier (males X and Y outside PAR region)
-        elif (genotype == "1"):
+        # b) Heterozygous
+        elif (genotype == "0/1"):
 
-            nbChromDict['PCAWG'] += 1
-            nbChromDict[ancestry] += 1
-            
-        # e) Haploid carrier (males X and Y outside PAR region)
+            totalAlleleCountDict['COHORT'] += 2
+            totalAlleleCountDict[ancestry] += 2
+
+            altAlleleCountDict['COHORT'] += 1     
+            altAlleleCountDict[ancestry] += 1     
+
+        # c) Haploid carrier (males X and Y outside PAR region)
         elif (genotype == "0"):
 
-            nbChromDict['PCAWG'] += 1
-            nbChromDict[ancestry] += 1 
+            totalAlleleCountDict['COHORT'] += 1
+            totalAlleleCountDict[ancestry] += 1 
                 
-            alleleCountDict['PCAWG'] += 1     
-            alleleCountDict[ancestry] += 1     
+            altAlleleCountDict['COHORT'] += 1     
+            altAlleleCountDict[ancestry] += 1  
+
+        # d) Homozygous alternative (MEI absent)
+        elif (genotype == "1/1"):
+    
+            totalAlleleCountDict['COHORT'] += 2
+            totalAlleleCountDict[ancestry] += 2
+
+        # e) Haploid not carrier (males X and Y outside PAR region)
+        elif (genotype == "1"):
+
+            totalAlleleCountDict['COHORT'] += 1
+            totalAlleleCountDict[ancestry] += 1
+            
 
     ## Compute overall and per echnicity variant allele frequencies
     alleleFreqDict = {}
      
     # a) Allele freq. estimation not available for those insertions with unknown genotype in all the donors
-    if (nbChromDict['PCAWG'] == 0):
-        alleleFreqDict['PCAWG'] = "UNK" 
+    if (totalAlleleCountDict['COHORT'] == 0):
+        alleleFreqDict['COHORT'] = "UNK" 
    
     # b) Allele freq. estimation available 
     else:
-        alleleFreqDict['PCAWG'] = float(alleleCountDict['PCAWG'])/float(nbChromDict['PCAWG'])
+        alleleFreqDict['COHORT'] = float(altAlleleCountDict['COHORT'])/float(totalAlleleCountDict['COHORT'])
     
     for ancestry in ancestryCodesList:
 
         # a) Allele freq. estimation not available for those insertions with unknown genotype in all the donors
-        if (nbChromDict[ancestry] == 0):
+        if (totalAlleleCountDict[ancestry] == 0):
             alleleFreqDict[ancestry] = "UNK" 
    
         # b) Allele freq. estimation available 
         else:    
-            alleleFreqDict[ancestry] = float(alleleCountDict[ancestry])/float(nbChromDict[ancestry])
+            alleleFreqDict[ancestry] = float(altAlleleCountDict[ancestry])/float(totalAlleleCountDict[ancestry])
 
 
-    return alleleCountDict, alleleFreqDict
+    return altAlleleCountDict, totalAlleleCountDict, alleleFreqDict
 
 
 #### MAIN ####
@@ -249,7 +236,7 @@ import formats
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
 parser.add_argument('vcf', help='Multisample VCF containing genotyped MEI')
-parser.add_argument('metadata', help='PCAWG donor metadata')
+parser.add_argument('metadata', help='COHORT donor metadata')
 parser.add_argument('fileName', help='Output file name')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
@@ -289,7 +276,7 @@ for line in metadataFile:
         line = line.rstrip('\n')
         line = line.split('\t')
 
-        donorId = line[0]
+        donorId = line[1]
         ancestry = line[4]
 
         donorIdAncestryDict[donorId] = ancestry
@@ -302,22 +289,26 @@ header("1. Process multi-sample VCF as input")
 VCFObj = formats.VCF()
 donorIdList = VCFObj.read_VCF_multiSample(inputVCF)
 
+
 #### 2. Compute for each germline MEI that passes the filters its allele count and frequency
 #############################################################################################
-# Allele count and frequency computed overall and across the different echnicities. 
+# Allele count and frequency computed overall and for the different echnicities. 
 
 header("2. Compute for each germline MEI that passes the filters its allele count and frequency")
 
-alleleCountDict = {}
+altAlleleCountDict = {}
 alleleFreqDict = {}
+totalAlleleCountDict = {}
 
 ## For each MEI
 for MEIObj in VCFObj.lineList:
 
-    ## Select only those MEI that passes all the filters
-    if (MEIObj.filter == "PASS"):
+    ## Select only those MEI that passes all the filters or without filtering info
+    if (MEIObj.filter == "PASS") or (MEIObj.filter == "."):
 
         ## MEI identifier
+        MEIid = ''
+
         ## A) MEI correspond to a germline source element -> use source element identifier
         if ('SRCID' in MEIObj.infoDict):
 
@@ -328,60 +319,84 @@ for MEIObj in VCFObj.lineList:
     
             MEIid = MEIObj.infoDict["CLASS"] + '_' + MEIObj.chrom + '_' + str(MEIObj.pos)
 
-        ## Compute MEI allele count and frequencies
-        alleleCountDict[MEIid] = {}
+        ## Compute MEI allele counts and frequencies
+        altAlleleCountDict[MEIid] = {}
+        totalAlleleCountDict[MEIid] = {}
         alleleFreqDict[MEIid] = {}
-    
+
         # A) MEI absent in reference genome
         if (MEIObj.alt == "<MEI>"):
                      
-            alleleCountDictTmp, alleleFreqDictTmp = variantFrequencies(MEIObj, donorIdAncestryDict)
-    
-            # Add MEI allele counts and frequencies to the dict
-            alleleCountDict[MEIid] = alleleCountDictTmp
-            alleleFreqDict[MEIid] = alleleFreqDictTmp
+            altAlleleCountDict[MEIid], totalAlleleCountDict[MEIid], alleleFreqDict[MEIid] = variantFrequencies(MEIObj, donorIdAncestryDict)
     
         # B) MEI in the reference genome 
         elif (MEIObj.ref == "<MEI>"):
             
-            alleleCountDictTmp, alleleFreqDictTmp = variantFrequencies_ref(MEIObj, donorIdAncestryDict)
+            altAlleleCountDict[MEIid], totalAlleleCountDict[MEIid], alleleFreqDict[MEIid] = variantFrequencies_ref(MEIObj, donorIdAncestryDict)
      
-            # Add MEI allele counts and frequencies to the dict
-            alleleCountDict[MEIid] = alleleCountDictTmp
-            alleleFreqDict[MEIid] = alleleFreqDictTmp
-    
-        # C) Raise error...  
+        # C) Raise error 
         else:
             msg="Incorrectly formated VCF line"
             info(msg)
-     
+            continue
+
+        ### Add allele counts and frequencies to the info dictionary in the VCF entry
+        MEIObj.infoDict["AC"] = altAlleleCountDict[MEIid]['COHORT']
+        MEIObj.infoDict["AN"] = totalAlleleCountDict[MEIid]['COHORT']   
+        MEIObj.infoDict["AF"] = alleleFreqDict[MEIid]['COHORT']                
+        MEIObj.infoDict["AFR_AF"] = alleleFreqDict[MEIid]['AFR']
+        MEIObj.infoDict["AMR_AF"] = alleleFreqDict[MEIid]['AMR']
+        MEIObj.infoDict["EAS_AF"] = alleleFreqDict[MEIid]['ASN']
+        MEIObj.infoDict["EUR_AF"] = alleleFreqDict[MEIid]['EUR']
+        MEIObj.infoDict["SAS_AF"] = alleleFreqDict[MEIid]['SAN']
+        
+        ## Update info string
+        MEIObj.info = MEIObj.make_info()
+
+
+#### 3. Write multisample VCF with new fields into a file
+############################################################
+
+header("3. Write multisample VCF with new fields into a file")
+
+outFilePath = outDir + '/' + fileName + '.freq.vcf'
+
+## Write header
+VCFObj.write_header(outFilePath)
+
+## Write variants
+VCFObj.write_variants_multiSample(donorIdList, outFilePath)
     
-#### 3. Convert dictionaries into dataframes and generate output table
-########################################################################
+
+#### 4. Write summary tables with allele counts and frequencies
+#################################################################
 # For allele count and frequency generate a table with the following format:
-#                     PCAWG EUR ASN ...
+#                     COHORT EUR ASN ...
 # source_element1     X1    Y1  Z1
 # source_element2     X2    Y2  Z2
 # ...
 
-header("3. Convert dictionaries into dataframes and generate output table")
+header("4. Write summary tables with allele counts and frequencies")
 
-### 3.1 MEI allele count 
+### 4.1 MEI allele count 
 # Create pandas dataframe from dictionary
-alleleCountDf = pd.DataFrame(alleleCountDict) 
+alleleCountDf = pd.DataFrame(altAlleleCountDict) 
 
 # transpose to have MEI as rows 
 alleleCountDf = alleleCountDf.T 
 
+print 'alleleCountDf: ', alleleCountDf
+
 # Reorder columns and remove UNK columns:
-colOrder = ['PCAWG', 'EUR', 'ASN', 'AFR', 'SAN', 'AMR']
+colOrder = ['COHORT', 'EUR', 'ASN', 'AFR', 'SAN', 'AMR'] # PCAWG
+
 alleleCountDf = alleleCountDf[colOrder]
 
 # Save output into tsv
 outFilePath = outDir + '/' + fileName + '.alleleCount.tsv'
 alleleCountDf.to_csv(outFilePath, sep='\t') 
 
-### 3.1 MEI allele frequency 
+### 4.2 MEI allele frequency 
 # Create pandas dataframe from dictionary
 alleleFreqDf = pd.DataFrame(alleleFreqDict) 
 
@@ -389,13 +404,12 @@ alleleFreqDf = pd.DataFrame(alleleFreqDict)
 alleleFreqDf = alleleFreqDf.T 
 
 # Reorder columns and remove UNK columns:
-colOrder = ['PCAWG', 'EUR', 'ASN', 'AFR', 'SAN', 'AMR', 'novelty']
+colOrder = ['COHORT', 'EUR', 'ASN', 'AFR', 'SAN', 'AMR']
 alleleFreqDf = alleleFreqDf[colOrder]
 
 # Save output into tsv
 outFilePath = outDir + '/' + fileName + '.alleleFreq.tsv'
 alleleFreqDf.to_csv(outFilePath, sep='\t') 
-
 
 #### End
 header("FINISH!!")

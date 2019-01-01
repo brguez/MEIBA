@@ -85,7 +85,7 @@ header("2. Make plots")
 header("2.1 Make allele counts scatterplot")
 
 ### Organize the data for plotting
-alleleCountList =  alleleCountsDf['PCAWG'].tolist()
+alleleCountList =  alleleCountsDf['COHORT'].tolist()
 
 alleleCountTuple = [(i, alleleCountList.count(i)) for i in set(alleleCountList)]
 tmpList = map(list, zip(*alleleCountTuple))
@@ -93,12 +93,9 @@ alleleCountList = tmpList[0]
 nbMEIList = tmpList[1]
 
 ### Make plot
-fig = plt.figure(figsize=(8,8))
-fig.suptitle('Allele count spectrum', fontsize=16)
+fig = plt.figure(figsize=(6,6))
 ax = fig.add_subplot(1, 1, 1)
-plt.scatter(alleleCountList, nbMEIList, color='#008000', alpha=.4)
-plt.xlabel("Variant allele count", fontsize=14)
-plt.ylabel("# MEI")
+plt.scatter(alleleCountList, nbMEIList, color='#87CEFA', edgecolor='black', linewidth='0.5', s=20, alpha=0.7) 
 ax.set_xscale('log', basex=10)
 ax.set_yscale('log', basex=10)
 plt.xlim(0.5, max(alleleCountList) + 100)
@@ -124,15 +121,20 @@ ax.set_yticks(yPosList)
 ax.set_yticklabels(yPosList)
 
 ## Save figure
-outFile = outDir + '/' + fileName + ".alleleCount.pdf"
+outFile = outDir + '/' + fileName + ".alleleCount2.pdf"
 fig.savefig(outFile)
 
+outFile = outDir + '/' + fileName + ".alleleCount2.svg"
+fig.savefig(outFile)
+
+outFile = outDir + '/' + fileName + ".alleleCount2.png"
+fig.savefig(outFile)
 
 #### 2.2 Make allele frequencies histogram
 header("2.2 Make allele frequencies histogram")
 
 ### Organize the data for plotting
-alleleFreqsList =  alleleFreqsDf['PCAWG'].tolist()
+alleleFreqsList =  alleleFreqsDf['COHORT'].tolist()
 
 ## Make plot
 fig = plt.figure(figsize=(8,8))

@@ -26,6 +26,30 @@ def info(string):
     timeInfo = time.strftime("%Y-%m-%d %H:%M")
     print timeInfo, string
 
+def pointSize(alleleFreq):
+    """
+    """
+    pointSizes = [20*1.25**n for n in range(0,11)]
+    index = int(alleleFreq / 10)
+    pointSize = pointSizes[index]
+
+    return pointSize
+
+def classify(cluster, percSamples):
+    """
+    """
+    if cluster !=  -1:
+        activityType = 'no-hot' 
+
+    elif percSamples >= 2:
+        activityType = 'strombolian'
+    
+    else:
+        activityType = 'plinian'
+
+    return activityType
+
+
 #### MAIN ####
 
 ## Import modules ##
@@ -34,145 +58,185 @@ import sys
 import os.path
 import formats
 import time
-import scipy.stats as stats
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
 import seaborn as sns
+from scipy import stats
+import formats
 
-## Graphic style ##
+## Graphic style ##
 sns.set_style("white")
 sns.set_style("ticks")
 
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
-parser.add_argument('inputFile', help='tsv with the number of different MEI per donor')
-parser.add_argument('fileName', help='Output file name')
+parser.add_argument('rtCounts', help='')
+parser.add_argument('metrics', help='')
+parser.add_argument('vcf', help='')
+parser.add_argument('metadata', help='')
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
-inputFile = args.inputFile
-fileName = args.fileName
+rtCounts = args.rtCounts
+metrics = args.metrics
+vcf = args.vcf
+metadata = args.metadata
+
 outDir = args.outDir
 scriptName = os.path.basename(sys.argv[0])
 
 ## Display configuration to standard output ##
 print
 print "***** ", scriptName, " configuration *****"
-print "inputFile: ", inputFile
-print "fileName: ", fileName
+print "rtCounts: ", rtCounts
+print "metrics: ", metrics
+print "vcf: ", vcf
+print "metadata: ", metadata
 print "outDir: ", outDir
 print
 print "***** Executing ", scriptName, ".... *****"
 print
 
+
 ## Start ## 
 
-#### 1. Load input table:
-##########################
-header("1. Load input table")
-loadDf = pd.read_csv(inputFile, header=0, index_col=0, sep='\t')
+#### Read input 
+################
+rtCountsDf = pd.read_csv(rtCounts, header=0, index_col=0, sep='\t')
+metricsDf = pd.read_csv(metrics, header=0, index_col=0, sep='\t')
 
-#### 2. Make plots:
-###################
-header("2. Make plots")
+## Read VCF file
+VCFObj = formats.VCF()
+donorIdList = VCFObj.read_VCF_multiSample(vcf)
 
-#### 2.1 Number of elements per donor and ancestry
-header("2.1 Number of elements per donor and ancestry")
+## Make dict with donor id equivalencies
+metadata = open(metadata, 'r')
+donorIdEq = {}
 
-## Remove donors with unkown ancestry:
-loadFilteredDf = loadDf[loadDf['ancestry'] != "UNK"]
+## For sample's metadata:
+for line in metadata:
+    if not line.startswith("#"):
 
-## Order ancestries in alphabetically order
-orderList = sorted(set(loadFilteredDf['ancestry'].tolist()))
+        line = line.rstrip('\n')
+        line = line.split("\t")
+       
+        submitterDonorId = line[0]
+        donorId = line[1]
+        histology = line[12]
+        donorIdEq[submitterDonorId] = (donorId, histology)
 
-### Plotting
-fig = plt.figure(figsize=(5,6))
+#### Initialize donor load dictionary
+######################################
+donorLoad = {}
 
-# Create the violin plot
-ax = sns.violinplot(x='ancestry', y='nbMEI', data=loadFilteredDf, palette="muted", order=orderList, cut=0, scale="width")
+for donorId in donorIdList:
+    donorId = donorIdEq[donorId][0]
+    donorLoad[donorId] = {}
+    donorLoad[donorId]['src'] = 0
+    donorLoad[donorId]['hot'] = 0
+    donorLoad[donorId]['plinian'] = 0
+    donorLoad[donorId]['strombolian'] = 0
+    donorLoad[donorId]['histology'] = ''
 
-## Modify axis labels
-ax.set(xlabel='', ylabel='# Events')
-plt.xticks(rotation=60)
+print 'donorLoad: ', donorLoad
 
-# Remove top and right axes
-ax.get_xaxis().tick_bottom()
-ax.get_yaxis().tick_left()
+#### Fill donor load dictionary
+#################################
+for MEIObj in VCFObj.lineList:
 
-# Add a horizontal grid to the plot, but make it very light in color
-# so we can use it for reading data values but not be distracting
-ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-ax.set_axisbelow(True)
+    SRCID = MEIObj.infoDict['SRCID']
 
-## Save figure
-outFile = outDir + '/' + fileName + ".ancestries.pdf"
-fig.savefig(outFile)
+    ## Select only those MEI that passes all the filters and that are active in PCAWG cohort
+    if (MEIObj.filter == "PASS") and (SRCID in metricsDf.index):
+
+        activityType = metricsDf.loc[SRCID]['activityType']
+
+        # A) MEI absent in reference genome
+        if (MEIObj.alt == "<MEI>"):
+
+            # For each donor and genotype
+            for donorId, genotypeField in MEIObj.genotypesDict.iteritems():
+                donorId, histology = donorIdEq[donorId]
+                genotypeFieldList = genotypeField.split(":")
+                genotype = genotypeFieldList[0]   
+
+                if donorLoad[donorId]['histology'] == '':
+                    donorLoad[donorId]['histology'] = histology             
+
+                # a) Carrier
+                if (genotype == '1/1') or (genotype == '0/1') or (genotype == '1'):
+                    donorLoad[donorId]['src'] += 1
+
+                    if activityType == 'strombolian':
+                        donorLoad[donorId]['hot'] += 1
+                        donorLoad[donorId]['strombolian'] += 1
+
+                    elif activityType == 'plinian':
+                        donorLoad[donorId]['hot'] += 1
+                        donorLoad[donorId]['plinian'] += 1
+
+                # c) Not carrier
+
+        ## B) MEI in the reference genome 
+        elif (MEIObj.ref == "<MEI>"):
+
+            # For each donor and genotype
+            for donorId, genotypeField in MEIObj.genotypesDict.iteritems():
+                donorId, histology = donorIdEq[donorId]
+                genotypeFieldList = genotypeField.split(":")
+                genotype = genotypeFieldList[0]
+
+                if donorLoad[donorId]['histology'] == '':
+                    donorLoad[donorId]['histology'] = histology  
+
+                # a) Carrier
+                if (genotype == '0/0') or (genotype == '0/1') or (genotype == '0'):
+
+                    donorLoad[donorId]['src'] += 1
+
+                    if activityType == 'strombolian':
+                        donorLoad[donorId]['hot'] += 1
+                        donorLoad[donorId]['strombolian'] += 1
+
+                    elif activityType == 'plinian':
+                        donorLoad[donorId]['hot'] += 1
+                        donorLoad[donorId]['plinian'] += 1
+
+                # c) Not carrier
+
+    print '-------------------------'
 
 
-#### 2.2 Number of elements per donor and project code
-header("2.2 Number of elements per donor and project code")
-
-## Order project codes in alphabetically order
-orderList = sorted(set(loadDf['projectCode'].tolist()))
-
-### Plotting
-
-fig = plt.figure(figsize=(18,6))
-
-# Create the violin plot
-ax = sns.violinplot(x='projectCode', y='nbMEI', data=loadDf, palette="muted", order=orderList, cut=0, scale="width")
-
-## Modify axis labels
-ax.set(xlabel='', ylabel='# Events')
-plt.xticks(rotation=90)
-
-# Remove top and right axes
-ax.get_xaxis().tick_bottom()
-ax.get_yaxis().tick_left()
-
-# Add a horizontal grid to the plot, but make it very light in color
-# so we can use it for reading data values but not be distracting
-ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-ax.set_axisbelow(True)
-
-## Save figure
-outFile = outDir + '/' + fileName + ".projectCodes.pdf"
-fig.savefig(outFile)
+print 'donorLoad: ', donorLoad
 
 
-#### 2.3 Number of elements per donor and histology tumor type
-header("2.3 Number of elements per donor and histology tumor type")
+#### Convert dictionary into dataframe and incorporate RT counts
+#######################################
 
-## Remove donors with unkown tumor histology:
-loadFilteredDf = loadDf[loadDf['tumorHistology'] != "UNK"]
+## Create list of tuples
+tuples = []
+for donorId in donorLoad:
+    nbL1 = rtCountsDf.loc[donorId]['nbL1']
+    nbSrc = donorLoad[donorId]['src']
+    nbHot = donorLoad[donorId]['hot']
+    nbStrombolian = donorLoad[donorId]['strombolian']
+    nbPlinian = donorLoad[donorId]['plinian']
+    histology = donorLoad[donorId]['histology']
 
-## Order histology tumour types in alphabetically order
-orderList = sorted(set(loadFilteredDf['tumorHistology'].tolist()))
 
-### Plotting
+    tuples.append((donorId, histology, nbL1, nbSrc, nbHot, nbStrombolian, nbPlinian))
 
-fig = plt.figure(figsize=(20,5))
+## Create dataframe
+loadDf = pd.DataFrame(tuples, columns=['donorId', 'histology', 'nbL1', 'nbSrc', 'nbHot', 'nbStrombolian', 'nbPlinian'])
+loadDf.set_index('donorId', inplace=True)
 
-# Create the violin plot
-ax = sns.violinplot(x='tumorHistology', y='nbMEI', data=loadFilteredDf, palette="muted", order=orderList, cut=0, scale="width")
+## Save metrics into file
+outFilePath = outDir + '/source_elements_load.tsv'
+loadDf.to_csv(outFilePath, sep='\t') 
 
-## Modify axis labels
-ax.set(xlabel='', ylabel='# Events')
-plt.xticks(rotation=90)
-
-# Remove top and right axes
-ax.get_xaxis().tick_bottom()
-ax.get_yaxis().tick_left()
-
-# Add a horizontal grid to the plot, but make it very light in color
-# so we can use it for reading data values but not be distracting
-ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-ax.set_axisbelow(True)
-
-## Save figure
-outFile = outDir + '/' + fileName + ".histologies.pdf"
-fig.savefig(outFile)
+print 'loadDf: ', loadDf
 
 ####
 header("Finished")
+
