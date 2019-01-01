@@ -27,6 +27,7 @@ def info(string):
     print timeInfo, string
 
 
+
 #### MAIN ####
 
 ## Import modules ##
@@ -34,21 +35,22 @@ import argparse
 import sys
 import os.path
 import time
+import numpy as np
+import pandas as pd
 import formats
 
 ## Get user's input ##
 parser = argparse.ArgumentParser(description= """""")
-parser.add_argument('vcf', help='VCF containing MEI')
-parser.add_argument('fileName', help='Output file name')
-parser.add_argument('--overHang', default=500, dest='overHang', type=int, help='Bed coordinates will be defined as (beg-overHang) and (end+overHang). Default: 500' )
-parser.add_argument('--filter', action='store_true', dest='filter', help='Flag to filter out insertions that do have PASS filtering status.')
+parser.add_argument('vcf', help='VCF containing MEI called with TraFiC-mem')
+parser.add_argument('sampleId', help='Sample identifier. Output file will be named accordingly')
+parser.add_argument('--overhang', default=0, dest='overhang', type=int, help='Extend beg and end interval with +- X base pairs. Default: 0')
+
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
 inputVCF = args.vcf
-fileName = args.fileName
-overHang = args.overHang
-filterBool = args.filter
+sampleId = args.sampleId
+overhang = args.overhang
 outDir = args.outDir
 
 scriptName = os.path.basename(sys.argv[0])
@@ -57,9 +59,8 @@ scriptName = os.path.basename(sys.argv[0])
 print
 print "***** ", scriptName, " configuration *****"
 print "vcf: ", inputVCF
-print "fileName: ", fileName
-print "overHang: ", overHang
-print "filterBool: ", filterBool
+print "sampleId: ", sampleId
+print "overhang: ", overhang
 print "outDir: ", outDir
 print
 print "***** Executing ", scriptName, ".... *****"
@@ -69,44 +70,47 @@ print
 ## Start ## 
 
 #### 1. Read input VCF and generate a VCF object
-#################################################
-header("1. Process VCF as input")
+###################################################
+header("1. Read input VCF and generate a VCF object")
 
 VCFObj = formats.VCF()
 VCFObj.read_VCF(inputVCF)
 
-#### 2. Write each MEI as a BED data line
-##########################################
-header("2. Write each MEI as a BED data line")
 
-# Open output file
-outFilePath = outDir + '/' + fileName + '.bed'
+#### 2. Select MEI, extract relevant information and produce bed
+######################################################################
+
+header("2. Select MEI, extract relevant information and produce bed")
+
+## Write header
+outFilePath = outDir + '/MEI_' + sampleId + '.bed'
 outFile = open(outFilePath, 'w')
 
-# Write header:
-row = '#chrom' + "\t" + 'beg' +  "\t" + 'end' + "\t" + 'iClass' + "\t" + 'iType' + "\t" + 'srcId' + '\t' + "GR" + "\n"
+
+fieldsList = ['#chrom', 'beg', 'end', 'family', 'length']
+row = '\t'.join(fieldsList) + '\n' 
 outFile.write(row)
 
-## For each MEI
-for MEIObj in VCFObj.lineList:
+## For each SV in the VCF
+for VCFline in VCFObj.lineList:
 
-    ## If filter enabled select only those MEI that passes all the filters
-    # If not enabled select all the MEI
-    if (filterBool == False) or (filterBool == True and MEIObj.filter == "PASS"):
+    ## Select MEI that passes the filters
+    if (VCFline.filter == 'PASS'):
+        
+		## Define beginning and end coordinates       
+		beg = str(VCFline.pos - overhang)
+		end = str(int(VCFline.infoDict['BKPB']) + overhang) if 'BKPB' in VCFline.infoDict else str(VCFline.pos + overhang)
+		family = VCFline.infoDict['CLASS']
+		length = VCFline.infoDict['LEN'] if 'LEN' in VCFline.infoDict else 'NA'
+		
+        ## Write into output file
+		fieldsList = [VCFline.chrom, beg, end, family, length]
 
-        chrom = MEIObj.chrom
-        beg = str(MEIObj.pos - overHang)
-        end = str(int(MEIObj.infoDict['BKPB']) + overHang) if 'BKPB' in MEIObj.infoDict else str(MEIObj.pos + overHang)
-        iClass = MEIObj.infoDict["CLASS"]
-        iType = MEIObj.infoDict["TYPE"]
-        srcId = MEIObj.infoDict['SRCID'] if 'SRCID' in MEIObj.infoDict else 'NA' 
-        GR = MEIObj.infoDict['GR'] if 'GR' in MEIObj.infoDict else 'NA' 
-        score =  MEIObj.infoDict['SCORE']
-        row = chrom + '\t' + beg + '\t' + end + '\t' + iClass + '\t' + iType + '\t' + srcId + '\t' + GR + '\t' + score + '\n'
-        outFile.write(row)
-       
+		row = '\t'.join(fieldsList) + '\n' 
 
+		outFile.write(row)
+
+        
 #### End
 header("FINISH!!")
-
 
