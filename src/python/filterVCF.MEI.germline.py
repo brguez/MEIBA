@@ -685,6 +685,34 @@ def germlineFilter(somaticMEIObj, germlineMEIDict):
     return filterStatus
 
 
+def lenFilter(MEIObj):
+    """    
+    Filter out MEI with an aberrant length
+    """
+    filterStatus = 'PASS'
+    
+    # Available length for the MEI
+    if ('LEN' in MEIObj.infoDict):
+        MEIlen = int(MEIObj.infoDict['LEN'])
+        family =  MEIObj.infoDict['CLASS']
+
+        # Negative length
+        if (MEIlen < 0):
+            filterStatus = 'LEN'
+        
+        # Much longer than MEI consensus sequence
+        elif (family == 'L1') and (MEIlen > 6500):
+            filterStatus = 'LEN'
+
+        elif (family == 'SVA') and (MEIlen > 2000):
+            filterStatus = 'LEN'
+
+        elif (family == 'Alu') and (MEIlen > 400):
+            filterStatus = 'LEN'
+
+    return filterStatus
+
+
 #### MAIN ####
 
 ## Import modules ##
@@ -700,7 +728,7 @@ from operator import attrgetter
 parser = argparse.ArgumentParser(description= "Applies a set of filters to a VCF file and set filter field as PASS or as a list with all the filters a given MEI failed to pass")
 parser.add_argument('VCF', help='VCF file to be filtered')
 parser.add_argument('donorId', help='Donor Id')
-parser.add_argument('filters', help='List of filters to be applied out of 8 possible filtering criteria: SCORE, REP, DUP, FPSOURCE, GERMLINE, CLIPPED, MECHANISM, SUBFAMILY.')
+parser.add_argument('filters', help='List of filters to be applied out of 8 possible filtering criteria: SCORE, REP, DUP, FPSOURCE, GERMLINE, CLIPPED, MECHANISM, SUBFAMILY, LEN.')
 parser.add_argument('--score-L1-TD0', default=2, dest='scoreL1_TD0', type=int, help='Minimum assembly score for solo L1 insertions. Default 2.' )
 parser.add_argument('--score-L1-TD1', default=2, dest='scoreL1_TD1', type=int, help='Minimum assembly score for L1 partnered transductions. Default 2.' )
 parser.add_argument('--score-L1-TD2', default=2, dest='scoreL1_TD2', type=int, help='Minimum assembly score for L1 orphan transductions. Default 2.' )
@@ -712,7 +740,6 @@ parser.add_argument('--min-clipped', default=2, dest='minClipped', type=int, hel
 parser.add_argument('--max-divergence', default=150, dest='maxDiv', type=int, help='Maximum millidivergence. Default: 150.' )
 parser.add_argument('--mechanism', default='TPRT,EI,DPA', dest='mechanism', type=str, help='List of insertion mechanisms to be taken into account. 3 possible mechanisms: TPRT, EI AND DPA. Default: TPRT,EI,DPA.' )
 parser.add_argument('--germline-VCF', default=False, dest='germlineVCF', help=' VCF with germline MEI calls for the same donor. If provided, input insertions are considered to be somatic. Necesary for GERMLINE filtering.' )
-
 parser.add_argument('-o', '--outDir', default=os.getcwd(), dest='outDir', help='output directory. Default: current working directory.' )
 
 args = parser.parse_args()
@@ -786,24 +813,24 @@ if 'GERMLINE' in filterList:
         germlineMEIDict = organizeMEI(germlineVCFObj.lineList)
         
 
-#### 1. Create somatic VCF object and read input VCF
+#### 1. Create germline VCF object and read input VCF
 VCFObj = formats.VCF()
 VCFObj.read_VCF(inputVCF)
 
-#### 2. Find somatic duplicated insertions
+#### 2. Find germline duplicated insertions
 # Duplicated filtering flag provided
 if "DUP" in filterList:
     dupList = findDuplicates(VCFObj.lineList)
 
     print "number_duplicates: ", len(dupList), dupList
 
-#### 3. Organize somatic MEI into a dictionary. 
-# False positive somatic source element filtering flag provided
+#### 3. Organize germline MEI into a dictionary. 
+# False positive germline source element filtering flag provided
 if "FPSOURCE" in filterList:
-    somaticMEIDict = organizeMEI(VCFObj.lineList)
+    germlineMEIDict = organizeMEI(VCFObj.lineList)
 
-#### 4. Filter somatic MEI
-# Iterate over each somatic MEI in the VCF
+#### 4. Filter germline MEI
+# Iterate over each germline MEI in the VCF
 for VCFlineObj in VCFObj.lineList:
 
     failedFiltersList = []
@@ -815,7 +842,7 @@ for VCFlineObj in VCFObj.lineList:
     subHeader(msg) 
  
     ### 4.1  Insertion mechanism filter:
-    if "MECHANISM" in filterList:
+    if ("MECHANISM" in filterList) and (RTclass != "ERVK"):
         mechanismList = mechanism.split(',')
         insertionMechanism = VCFlineObj.infoDict["MECHANISM"] if 'MECHANISM' in VCFlineObj.infoDict else 'NA'
 
@@ -898,8 +925,7 @@ for VCFlineObj in VCFObj.lineList:
     
 
     ### 4.3 Repeats filter:
-    ## Do not apply this filter to L1 insertions (insertions on repeats are usually problematic for shorter elements as Alu or SVA. This is not the case of L1)
-    if ("REP" in filterList) and (RTclass != "L1"):
+    if ("REP" in filterList):
          
         msg = "Apply repeats filter"
         log("REPEATS", msg)
@@ -948,7 +974,7 @@ for VCFlineObj in VCFObj.lineList:
         msg = "False positive somatic source element filter"
         log("FPSOURCE", msg)
     
-        filterStatus = falseSomaticSrcFilter(VCFlineObj, somaticMEIDict)
+        filterStatus = falseSomaticSrcFilter(VCFlineObj, germlineMEIDict)
 
         # Insertion does not pass the filter
         if (filterStatus != 'PASS'):
@@ -1000,6 +1026,21 @@ for VCFlineObj in VCFObj.lineList:
 
         msg = "Filtering status: " + str(failedFiltersList)
         log("SUBFAMILY", msg)   
+
+    ### 4.9 MEI length filter:
+    ## Introduce new filtering step to filter out MEI with an abnormal length
+    if ("LEN" in filterList):
+
+        msg = "Apply MEI length filter"
+        log("LEN", msg)
+        filterStatus = lenFilter(VCFlineObj)
+
+        # Insertion does not pass the filter
+        if (filterStatus != 'PASS'):
+            failedFiltersList.append(filterStatus)
+
+        msg = "Filtering status: " + str(failedFiltersList)
+        log("LEN", msg) 
 
     ###  Set filter VCF field:
     if (len(failedFiltersList) == 0):
