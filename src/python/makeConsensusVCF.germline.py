@@ -188,7 +188,7 @@ def clusterMEI(MEIList):
 
                     msg = "Initialize first cluster"
                     log("CLUSTER", msg) 
-                    clusterObj = MEIcluster(MEIObj, 15) # Allow up to 15 nucleotides of margin
+                    clusterObj = MEIcluster(MEIObj, 50) # Allow up to 50 nucleotides of margin
                     clusterList.append(clusterObj)
         
                 # B) There is already at least one cluster in the list -> Check if current MEI within the latest cluster
@@ -203,7 +203,7 @@ def clusterMEI(MEIList):
                     endClusterRange = lastClusterObj.end
 
                     ## Define insertion range for searching for overlap:    
-                    begMEIrange, endMEIrange = insertionRange(MEIObj, 15)     
+                    begMEIrange, endMEIrange = insertionRange(MEIObj, 50)     
               
                     #### Check if both ranges overlap.
                     overlapping = overlap(begMEIrange, endMEIrange, begClusterRange, endClusterRange) 
@@ -216,13 +216,13 @@ def clusterMEI(MEIList):
                     if overlapping:
                         msg = "MEI within cluster -> add MEI to the cluster"
                         log("CLUSTER", msg) 
-                        lastClusterObj.addMEI(MEIObj, 15) # Allow up to 15 nucleotides of margin 
+                        lastClusterObj.addMEI(MEIObj, 50) # Allow up to 50 nucleotides of margin 
                      
                     ## B) Current MEI outside previous cluster interval -> create new cluster and add it into the list
                     else:
                         msg = "MEI outside the cluster -> create new cluster "
                         log("CLUSTER", msg) 
-                        clusterObj = MEIcluster(MEIObj, 15) # Allow up to 15 nucleotides of margin
+                        clusterObj = MEIcluster(MEIObj, 50) # Allow up to 50 nucleotides of margin
                         clusterList.append(clusterObj)
                     
                     msg = "Number of MEI within cluster: ", len(clusterObj.MEIlist)
